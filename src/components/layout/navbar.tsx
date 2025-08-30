@@ -42,7 +42,6 @@ export const Navbar = () => {
               alt="Vyapti" 
               className="h-8 w-auto mr-3"
             />
-            <span className="financial-heading text-xl">Vyapti</span>
           </div>
 
           {/* Navigation Actions */}
