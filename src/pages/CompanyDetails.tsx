@@ -89,8 +89,33 @@ export default function CompanyDetails() {
   }, [isin]);
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+
     try {
-      return new Date(dateString).toLocaleDateString('en-US', {
+      // First try standard date parsing
+      let date = new Date(dateString);
+
+      // If invalid date, check if it's in ddMMyyyyHHmmss format
+      if (isNaN(date.getTime()) && /^\d{14}$/.test(dateString)) {
+        // Parse ddMMyyyyHHmmss format: "22102022114357"
+        const day = dateString.substring(0, 2);
+        const month = dateString.substring(2, 4);
+        const year = dateString.substring(4, 8);
+        const hour = dateString.substring(8, 10);
+        const minute = dateString.substring(10, 12);
+        const second = dateString.substring(12, 14);
+
+        // Create date in ISO format for parsing
+        const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+        date = new Date(isoString);
+      }
+
+      // If still invalid, return original string
+      if (isNaN(date.getTime())) {
+        return dateString;
+      }
+
+      return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -117,8 +142,30 @@ export default function CompanyDetails() {
 
     // Sort by date (newest first)
     return calls.sort((a, b) => {
-      const dateA = new Date(a.news_dt || a.dt || 0);
-      const dateB = new Date(b.news_dt || b.dt || 0);
+      const parseDateForSorting = (dateString: string) => {
+        if (!dateString) return new Date(0);
+
+        // Try standard date parsing first
+        let date = new Date(dateString);
+
+        // If invalid and matches ddMMyyyyHHmmss format
+        if (isNaN(date.getTime()) && /^\d{14}$/.test(dateString)) {
+          const day = dateString.substring(0, 2);
+          const month = dateString.substring(2, 4);
+          const year = dateString.substring(4, 8);
+          const hour = dateString.substring(8, 10);
+          const minute = dateString.substring(10, 12);
+          const second = dateString.substring(12, 14);
+
+          const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+          date = new Date(isoString);
+        }
+
+        return isNaN(date.getTime()) ? new Date(0) : date;
+      };
+
+      const dateA = parseDateForSorting(a.news_dt || a.dt || '');
+      const dateB = parseDateForSorting(b.news_dt || b.dt || '');
       return dateB.getTime() - dateA.getTime();
     });
   };

@@ -38,6 +38,7 @@ export default function Notifications() {
         const response = await client.get('/notifications');
         setNotifications(response.data.notifications);
       } catch (error) {
+        console.error('Failed to load notifications:', error);
         toast({
           title: "Error",
           description: "Failed to load notifications",

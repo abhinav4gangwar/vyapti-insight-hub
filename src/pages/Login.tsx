@@ -47,8 +47,6 @@ export default function Login() {
             alt="Vyapti" 
             className="h-16 w-auto mx-auto mb-4"
           />
-          <h1 className="financial-heading text-3xl mb-2">Vyapti</h1>
-          <p className="financial-body">Financial Insights Platform</p>
         </div>
 
         {/* Login Form */}
@@ -100,7 +98,7 @@ export default function Login() {
                     Signing in...
                   </>
                 ) : (
-                  'Sign In'
+                  ''
                 )}
               </Button>
             </form>
