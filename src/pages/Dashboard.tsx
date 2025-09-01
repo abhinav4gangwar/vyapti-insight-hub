@@ -88,7 +88,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-slide-up">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 animate-slide-up">
           <Card className="shadow-card border-0 hover:shadow-elevated transition-smooth">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="financial-body font-medium">
@@ -119,23 +119,6 @@ export default function Dashboard() {
               </div>
               <p className="financial-body text-xs">
                 Real-time document tracking
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card border-0 hover:shadow-elevated transition-smooth">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="financial-body font-medium">
-                Insights
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-accent" />
-            </CardHeader>
-            <CardContent>
-              <div className="financial-data text-2xl font-bold">
-                Live
-              </div>
-              <p className="financial-body text-xs">
-                Real-time financial analysis
               </p>
             </CardContent>
           </Card>

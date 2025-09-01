@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Bell, Users, LogOut } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { authService } from '@/lib/auth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -7,6 +9,27 @@ import logo from '@/assets/logo.png';
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const client = authService.createAuthenticatedClient();
+        const response = await client.get('/notifications/unread-count');
+        setUnreadCount(response.data.unread_count);
+      } catch (error) {
+        console.error('Failed to fetch unread count:', error);
+      }
+    };
+
+    if (authService.isAuthenticated()) {
+      fetchUnreadCount();
+      
+      // Poll every 30 seconds for new notifications
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, []);
 
   const handleLogout = () => {
     authService.logout();
@@ -18,10 +41,7 @@ export const Navbar = () => {
   };
 
   const handleNotifications = () => {
-    toast({
-      title: "Coming Soon",
-      description: "Notifications feature will be available soon",
-    });
+    navigate('/notifications');
   };
 
   const handleTriggers = () => {
@@ -63,7 +83,14 @@ export const Navbar = () => {
               className="relative hover:bg-secondary/80"
             >
               <Bell className="h-4 w-4" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full"></div>
+              {unreadCount > 0 && (
+                <Badge
+                  variant="default"
+                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-accent text-white"
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              )}
             </Button>
 
             <Button

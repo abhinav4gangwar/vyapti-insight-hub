@@ -12,20 +12,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface Trigger {
   id: number;
-  trigger_type: string;
-  document_type: string;
+  company_isin: string | null;
   company_name: string;
-  company_isin: string;
-  document_url: string;
-  created_at: string;
-  status: string;
+  title: string;
+  source: string;
+  date: string;
+  json: any;
+  url: string;
 }
 
 export default function Triggers() {
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTriggerType, setSelectedTriggerType] = useState<string>('all');
-  const [selectedDocumentType, setSelectedDocumentType] = useState<string>('all');
+  const [selectedSource, setSelectedSource] = useState<string>('all');
   const [expandedTrigger, setExpandedTrigger] = useState<number | null>(null);
 
   useEffect(() => {
@@ -33,7 +32,7 @@ export default function Triggers() {
       try {
         const client = authService.createAuthenticatedClient();
         const response = await client.get('/triggers');
-        setTriggers(response.data);
+        setTriggers(response.data.triggers);
       } catch (error) {
         toast({
           title: "Error",
@@ -89,14 +88,12 @@ export default function Triggers() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return 'bg-green-500/10 text-green-700 border-green-200';
-      case 'pending':
-        return 'bg-yellow-500/10 text-yellow-700 border-yellow-200';
-      case 'completed':
+  const getSourceColor = (source: string) => {
+    switch (source.toLowerCase()) {
+      case 'bse_earnings_call':
         return 'bg-blue-500/10 text-blue-700 border-blue-200';
+      case 'nse_earnings_call':
+        return 'bg-green-500/10 text-green-700 border-green-200';
       default:
         return 'bg-gray-500/10 text-gray-700 border-gray-200';
     }
@@ -107,13 +104,11 @@ export default function Triggers() {
   };
 
   const filteredTriggers = triggers.filter(trigger => {
-    const typeMatch = selectedTriggerType === 'all' || trigger.trigger_type === selectedTriggerType;
-    const docMatch = selectedDocumentType === 'all' || trigger.document_type === selectedDocumentType;
-    return typeMatch && docMatch;
+    const sourceMatch = selectedSource === 'all' || trigger.source === selectedSource;
+    return sourceMatch;
   });
 
-  const uniqueTriggerTypes = [...new Set(triggers.map(t => t.trigger_type))];
-  const uniqueDocumentTypes = [...new Set(triggers.map(t => t.document_type))];
+  const uniqueSources = [...new Set(triggers.map(t => t.source))];
 
   if (isLoading) {
     return (
@@ -150,48 +145,27 @@ export default function Triggers() {
           <CardHeader>
             <CardTitle className="financial-heading">Filter Triggers</CardTitle>
             <CardDescription className="financial-body">
-              Select trigger and document types to filter results
+              Filter triggers by source exchange
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="financial-body font-medium">Trigger Type</label>
-                <Select value={selectedTriggerType} onValueChange={setSelectedTriggerType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select trigger type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    {uniqueTriggerTypes.map(type => (
-                      <SelectItem key={type} value={type}>
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="financial-body font-medium">Document Type</label>
-                <Select value={selectedDocumentType} onValueChange={setSelectedDocumentType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select document type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Documents</SelectItem>
-                    <SelectItem value="earnings_call">Earnings Call</SelectItem>
-                    <SelectItem value="annual_report">Annual Report</SelectItem>
-                    <SelectItem value="expert_call">Expert Call</SelectItem>
-                    <SelectItem value="investor_presentation">Investor Presentation</SelectItem>
-                    {uniqueDocumentTypes.map(type => (
-                      <SelectItem key={type} value={type}>
-                        {type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2 max-w-xs">
+              <label className="financial-body font-medium">Source</label>
+              <Select value={selectedSource} onValueChange={setSelectedSource}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="bse_earnings_call">BSE</SelectItem>
+                  <SelectItem value="nse_earnings_call">NSE</SelectItem>
+                  {uniqueSources.map(source => (
+                    <SelectItem key={source} value={source}>
+                      {source.includes('bse') ? 'BSE' : source.includes('nse') ? 'NSE' : source}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -236,18 +210,17 @@ export default function Triggers() {
                               </h4>
                               <Badge
                                 variant="outline"
-                                className={`text-xs ${getStatusColor(trigger.status)}`}
+                                className={`text-xs ${getSourceColor(trigger.source)}`}
                               >
-                                {trigger.status}
+                                {trigger.source.includes('bse') ? 'BSE' : trigger.source.includes('nse') ? 'NSE' : trigger.source}
                               </Badge>
                             </div>
                             <div className="financial-body text-xs text-muted-foreground flex items-center space-x-4">
                               <span className="flex items-center">
                                 <Calendar className="h-3 w-3 mr-1" />
-                                {formatDate(trigger.created_at)}
+                                {formatDate(trigger.date)}
                               </span>
-                              <span>Type: {trigger.trigger_type}</span>
-                              <span>Doc: {trigger.document_type}</span>
+                              <span>Title: {trigger.title}</span>
                             </div>
                           </div>
                         </div>
@@ -255,7 +228,7 @@ export default function Triggers() {
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
-                      <div className="mt-2 p-4 bg-card border border-border rounded-lg ml-8">
+                        <div className="mt-2 p-4 bg-card border border-border rounded-lg ml-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Company Details</h5>
@@ -264,26 +237,26 @@ export default function Triggers() {
                                 <Building2 className="h-3 w-3 mr-2 text-muted-foreground" />
                                 {trigger.company_name}
                               </div>
-                              <div>ISIN: {trigger.company_isin}</div>
+                              <div>ISIN: {trigger.company_isin || 'N/A'}</div>
                             </div>
                           </div>
 
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Trigger Information</h5>
                             <div className="space-y-1 financial-body text-xs">
-                              <div>Type: {trigger.trigger_type}</div>
-                              <div>Document: {trigger.document_type}</div>
-                              <div>Status: {trigger.status}</div>
+                              <div>Source: {trigger.source}</div>
+                              <div>Title: {trigger.title}</div>
+                              <div>Reason: {trigger.json?.reason || 'N/A'}</div>
                             </div>
                           </div>
                         </div>
 
-                        {trigger.document_url && (
+                        {trigger.url && (
                           <div className="mt-4 pt-4 border-t border-border">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDocument(trigger.document_url)}
+                              onClick={() => openDocument(trigger.url)}
                               className="financial-body"
                             >
                               <FileText className="h-3 w-3 mr-2" />

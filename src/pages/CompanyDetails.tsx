@@ -4,8 +4,9 @@ import { Navbar } from '@/components/layout/navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Building2, FileText, ExternalLink, Calendar, TrendingUp, BarChart3, FileSpreadsheet } from 'lucide-react';
+import { Building2, FileText, ExternalLink, Calendar, TrendingUp, BarChart3, FileSpreadsheet, Filter } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +63,8 @@ export default function CompanyDetails() {
   const [companyData, setCompanyData] = useState<CompanyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('documents');
+  const [activeDocTab, setActiveDocTab] = useState('earnings_calls');
+  const [sourceFilter, setSourceFilter] = useState('all');
 
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -225,6 +228,10 @@ export default function CompanyDetails() {
         {/* Sub Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up">
           <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsTrigger value="documents" className="financial-body">
+              <FileText className="h-4 w-4 mr-2" />
+              Documents
+            </TabsTrigger>
             <TabsTrigger value="pl" className="financial-body">
               <BarChart3 className="h-4 w-4 mr-2" />
               P&L
@@ -232,10 +239,6 @@ export default function CompanyDetails() {
             <TabsTrigger value="analysis" className="financial-body">
               <TrendingUp className="h-4 w-4 mr-2" />
               Analysis
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="financial-body">
-              <FileText className="h-4 w-4 mr-2" />
-              Documents
             </TabsTrigger>
           </TabsList>
 
@@ -280,104 +283,187 @@ export default function CompanyDetails() {
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-6">
-            {/* Earnings Calls Section */}
-            <Card className="shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="financial-heading flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-accent" />
+            {/* Document Sub Navigation */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex space-x-6 border-b border-border">
+                <button
+                  onClick={() => setActiveDocTab('earnings_calls')}
+                  className={`pb-3 transition-smooth ${
+                    activeDocTab === 'earnings_calls'
+                      ? 'border-b-2 border-accent financial-subheading'
+                      : 'financial-body text-muted-foreground hover:text-foreground'
+                  }`}
+                >
                   Earnings Calls
-                  <Badge variant="outline" className="ml-2 financial-body">
-                    {earningsCalls.length}
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="financial-body">
-                  Transcripts and recordings from earnings calls
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {earningsCalls.length > 0 ? (
-                  <div className="space-y-3">
-                    {earningsCalls.map((call, index) => (
-                      <div
-                        key={`${call.exchange}-${index}`}
-                        className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="financial-subheading text-sm">
-                              {call.newssub || call.description || 'Earnings Call'}
-                            </h4>
-                            <Badge variant="outline" className="text-xs">
-                              {call.exchange}
-                            </Badge>
+                </button>
+                <button
+                  onClick={() => setActiveDocTab('annual_reports')}
+                  className={`pb-3 transition-smooth ${
+                    activeDocTab === 'annual_reports'
+                      ? 'border-b-2 border-accent financial-subheading'
+                      : 'financial-body text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Annual Reports
+                </button>
+                <button
+                  onClick={() => setActiveDocTab('investor_presentations')}
+                  className={`pb-3 transition-smooth ${
+                    activeDocTab === 'investor_presentations'
+                      ? 'border-b-2 border-accent financial-subheading'
+                      : 'financial-body text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Investor Presentations
+                </button>
+              </div>
+
+              {/* Filters */}
+              {activeDocTab === 'earnings_calls' && (
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="bse">BSE</SelectItem>
+                      <SelectItem value="nse">NSE</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {/* Document Content */}
+            {activeDocTab === 'earnings_calls' && (
+              <Card className="shadow-card border-0">
+                <CardHeader>
+                  <CardTitle className="financial-heading flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-accent" />
+                    Earnings Calls
+                    <Badge variant="outline" className="ml-2 financial-body">
+                      {earningsCalls.filter(call => 
+                        sourceFilter === 'all' || 
+                        (sourceFilter === 'bse' && call.exchange === 'BSE') ||
+                        (sourceFilter === 'nse' && call.exchange === 'NSE')
+                      ).length}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="financial-body">
+                    Transcripts and recordings from earnings calls
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {earningsCalls.filter(call => 
+                    sourceFilter === 'all' || 
+                    (sourceFilter === 'bse' && call.exchange === 'BSE') ||
+                    (sourceFilter === 'nse' && call.exchange === 'NSE')
+                  ).length > 0 ? (
+                    <div className="space-y-3">
+                      {earningsCalls
+                        .filter(call => 
+                          sourceFilter === 'all' || 
+                          (sourceFilter === 'bse' && call.exchange === 'BSE') ||
+                          (sourceFilter === 'nse' && call.exchange === 'NSE')
+                        )
+                        .map((call, index) => (
+                          <div
+                            key={`${call.exchange}-${index}`}
+                            className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="financial-subheading text-sm">
+                                  {call.newssub || call.description || 'Earnings Call'}
+                                </h4>
+                                <Badge variant="outline" className={`text-xs ${
+                                  call.exchange === 'BSE' 
+                                    ? 'bg-blue-500/10 text-blue-700 border-blue-200'
+                                    : 'bg-green-500/10 text-green-700 border-green-200'
+                                }`}>
+                                  {call.exchange}
+                                </Badge>
+                              </div>
+                              <div className="financial-body text-xs text-muted-foreground flex items-center">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {formatDate(call.news_dt || call.dt || '')}
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDocument(call.pdf_url || call.attachment_file || '')}
+                              className="financial-body hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
                           </div>
-                          <div className="financial-body text-xs text-muted-foreground flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatDate(call.news_dt || call.dt || '')}
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openDocument(call.pdf_url || call.attachment_file || '')}
-                          className="financial-body hover:bg-accent hover:text-accent-foreground"
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="financial-subheading mb-2">No Earnings Calls Found</h3>
+                      <p className="financial-body">
+                        {sourceFilter === 'all' 
+                          ? 'No earnings call documents found for this company'
+                          : `No ${sourceFilter.toUpperCase()} earnings calls found for this company`
+                        }
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeDocTab === 'annual_reports' && (
+              <Card className="shadow-card border-0">
+                <CardHeader>
+                  <CardTitle className="financial-heading flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-accent" />
+                    Annual Reports
+                  </CardTitle>
+                  <CardDescription className="financial-body">
+                    Annual financial reports and statements
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="financial-subheading mb-2">No Earnings Calls</h3>
+                    <h3 className="financial-subheading mb-2">Coming Soon</h3>
                     <p className="financial-body">
-                      No earnings call documents found for this company
+                      Annual reports will be available here
                     </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Placeholder Sections */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {activeDocTab === 'investor_presentations' && (
               <Card className="shadow-card border-0">
                 <CardHeader>
-                  <CardTitle className="financial-subheading">Annual Reports</CardTitle>
+                  <CardTitle className="financial-heading flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-accent" />
+                    Investor Presentations
+                  </CardTitle>
+                  <CardDescription className="financial-body">
+                    Investor presentations and corporate communications
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="financial-body text-sm">Coming Soon</p>
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="financial-subheading mb-2">Coming Soon</h3>
+                    <p className="financial-body">
+                      Investor presentations will be available here
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-
-              <Card className="shadow-card border-0">
-                <CardHeader>
-                  <CardTitle className="financial-subheading">Expert Calls</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="financial-body text-sm">Coming Soon</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card border-0">
-                <CardHeader>
-                  <CardTitle className="financial-subheading">Investor Presentations</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="financial-body text-sm">Coming Soon</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
