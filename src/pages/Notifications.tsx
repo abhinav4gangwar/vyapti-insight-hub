@@ -35,15 +35,24 @@ export default function Notifications() {
     const fetchNotifications = async () => {
       try {
         const client = authService.createAuthenticatedClient();
+        console.log('Making request to:', client.defaults.baseURL + '/notifications');
         const response = await client.get('/notifications');
         setNotifications(response.data.notifications);
       } catch (error) {
         console.error('Failed to load notifications:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load notifications",
-          variant: "destructive",
-        });
+        if (error.code === 'ERR_NETWORK') {
+          toast({
+            title: "Network Error",
+            description: "Unable to connect to the server. Please check if the backend is running and CORS is configured.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to load notifications",
+            variant: "destructive",
+          });
+        }
       } finally {
         setIsLoading(false);
       }

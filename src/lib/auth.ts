@@ -2,6 +2,9 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+// Debug logging for API base URL
+console.log('API_BASE_URL:', API_BASE_URL);
+
 export interface User {
   id: number;
   username: string;
@@ -95,6 +98,10 @@ class AuthService {
   createAuthenticatedClient() {
     const client = axios.create({
       baseURL: API_BASE_URL,
+      timeout: 10000, // 10 second timeout
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     client.interceptors.request.use((config) => {
@@ -107,7 +114,10 @@ class AuthService {
     client.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        // Handle different types of errors
+        if (error.code === 'ERR_NETWORK') {
+          console.error('Network error - check if backend server is running and CORS is configured');
+        } else if (error.response?.status === 401) {
           this.logout();
           window.location.href = '/login';
         }

@@ -8,22 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    proxy: {
-      '/api': {
-        target: 'http://13.235.102.76:8000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        configure: (proxy, _options) => {
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
-            // Forward all headers including Authorization
-            if (req.headers.authorization) {
-              proxyReq.setHeader('Authorization', req.headers.authorization);
-            }
-          });
-        },
-      },
-    },
-    allowedHosts: ["vyapti-ec2.homelab-server.online"], 
+    allowedHosts: ["vyapti-ec2.homelab-server.online"],
   },
   plugins: [
     react(),
