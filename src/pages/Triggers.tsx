@@ -159,11 +159,6 @@ export default function Triggers() {
                   <SelectItem value="all">All Sources</SelectItem>
                   <SelectItem value="bse_earnings_call">BSE</SelectItem>
                   <SelectItem value="nse_earnings_call">NSE</SelectItem>
-                  {uniqueSources.map(source => (
-                    <SelectItem key={source} value={source}>
-                      {source.includes('bse') ? 'BSE' : source.includes('nse') ? 'NSE' : source}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>

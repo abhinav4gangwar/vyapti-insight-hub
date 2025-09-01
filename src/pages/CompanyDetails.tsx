@@ -88,42 +88,48 @@ export default function CompanyDetails() {
     fetchCompanyData();
   }, [isin]);
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '';
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
 
-    try {
-      // First try standard date parsing
-      let date = new Date(dateString);
+  try {
+    // First try standard date parsing
+    let date = new Date(dateString);
 
-      // If invalid date, check if it's in ddMMyyyyHHmmss format
-      if (isNaN(date.getTime()) && /^\d{14}$/.test(dateString)) {
-        // Parse ddMMyyyyHHmmss format: "22102022114357"
-        const day = dateString.substring(0, 2);
-        const month = dateString.substring(2, 4);
-        const year = dateString.substring(4, 8);
-        const hour = dateString.substring(8, 10);
-        const minute = dateString.substring(10, 12);
-        const second = dateString.substring(12, 14);
+    // If invalid, check for d(d)MMyyyyHHmmss format (13 or 14 digits)
+    if (isNaN(date.getTime()) && /^\d{13,14}$/.test(dateString)) {
+      
+      // Pad with a leading zero to ensure the string is 14 digits
+      const paddedDateString = dateString.padStart(14, '0');
 
-        // Create date in ISO format for parsing
-        const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-        date = new Date(isoString);
-      }
+      // Parse the consistent 14-digit ddMMyyyyHHmmss format
+      const day = paddedDateString.substring(0, 2);
+      const month = paddedDateString.substring(2, 4);
+      const year = paddedDateString.substring(4, 8);
+      const hour = paddedDateString.substring(8, 10);
+      const minute = paddedDateString.substring(10, 12);
+      const second = paddedDateString.substring(12, 14);
 
-      // If still invalid, return original string
-      if (isNaN(date.getTime())) {
-        return dateString;
-      }
+      // Create date in ISO format for reliable parsing
+      const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+      date = new Date(isoString);
+    }
 
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch {
+    // If still invalid after custom parsing, return the original string
+    if (isNaN(date.getTime())) {
       return dateString;
     }
-  };
+
+    // Return the formatted date string
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch {
+    // In case of any other error, return the original string
+    return dateString;
+  }
+};
 
   const openDocument = (url: string) => {
     window.open(url, '_blank');
