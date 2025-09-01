@@ -98,7 +98,7 @@ export default function Login() {
                     Signing in...
                   </>
                 ) : (
-                  ''
+                  'Login'
                 )}
               </Button>
             </form>
