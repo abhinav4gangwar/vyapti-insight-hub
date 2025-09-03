@@ -9,6 +9,7 @@ import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2 } from 'l
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getDocumentUrl, isPdfUrl } from '@/lib/document-utils';
 
 interface Trigger {
   id: number;
@@ -99,8 +100,15 @@ export default function Triggers() {
     }
   };
 
-  const openDocument = (url: string) => {
-    window.open(url, '_blank');
+  const openDocument = (url: string, documentDate?: string) => {
+    if (!url) return;
+
+    // Apply document URL transformation for PDF links
+    const processedUrl = isPdfUrl(url)
+      ? getDocumentUrl(url, undefined, documentDate)
+      : url;
+
+    window.open(processedUrl, '_blank');
   };
 
   const filteredTriggers = triggers.filter(trigger => {
@@ -251,7 +259,7 @@ export default function Triggers() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDocument(trigger.url)}
+                              onClick={() => openDocument(trigger.url, trigger.date)}
                               className="financial-body"
                             >
                               <FileText className="h-3 w-3 mr-2" />
