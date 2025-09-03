@@ -5,6 +5,18 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 // Debug logging for API base URL
 console.log('API_BASE_URL:', API_BASE_URL);
 
+// Helper function to decode JWT token and check expiration
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Math.floor(Date.now() / 1000);
+    return payload.exp < currentTime;
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return true; // Treat invalid tokens as expired
+  }
+};
+
 export interface User {
   id: number;
   username: string;
@@ -29,9 +41,11 @@ class AuthService {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
   private user: User | null = null;
+  private tokenCheckInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.loadFromStorage();
+    this.startTokenExpirationCheck();
   }
 
   private loadFromStorage() {
@@ -67,6 +81,36 @@ class AuthService {
     localStorage.removeItem('user');
   }
 
+  private startTokenExpirationCheck() {
+    // Check token expiration every 30 seconds
+    this.tokenCheckInterval = setInterval(() => {
+      if (this.accessToken && isTokenExpired(this.accessToken)) {
+        console.log('Access token expired, logging out user');
+        this.handleTokenExpiration();
+      }
+    }, 30000);
+  }
+
+  private stopTokenExpirationCheck() {
+    if (this.tokenCheckInterval) {
+      clearInterval(this.tokenCheckInterval);
+      this.tokenCheckInterval = null;
+    }
+  }
+
+  private handleTokenExpiration() {
+    this.logout();
+    // Show a notification to the user
+    if (typeof window !== 'undefined') {
+      // Use a custom event to notify components about token expiration
+      window.dispatchEvent(new CustomEvent('tokenExpired', {
+        detail: { message: 'Your session has expired. Please log in again.' }
+      }));
+      // Redirect to login page
+      window.location.href = '/login';
+    }
+  }
+
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const response = await axios.post(`${API_BASE_URL}/auth`, credentials);
@@ -79,11 +123,22 @@ class AuthService {
   }
 
   logout() {
+    this.stopTokenExpirationCheck();
     this.clearStorage();
   }
 
   isAuthenticated(): boolean {
-    return !!this.accessToken && !!this.user;
+    if (!this.accessToken || !this.user) {
+      return false;
+    }
+
+    // Check if token is expired
+    if (isTokenExpired(this.accessToken)) {
+      this.handleTokenExpiration();
+      return false;
+    }
+
+    return true;
   }
 
   getAccessToken(): string | null {
@@ -118,8 +173,8 @@ class AuthService {
         if (error.code === 'ERR_NETWORK') {
           console.error('Network error - check if backend server is running and CORS is configured');
         } else if (error.response?.status === 401) {
-          this.logout();
-          window.location.href = '/login';
+          console.log('Received 401 Unauthorized, handling token expiration');
+          this.handleTokenExpiration();
         }
         return Promise.reject(error);
       }
