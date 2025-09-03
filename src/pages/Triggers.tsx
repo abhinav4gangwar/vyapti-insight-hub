@@ -9,7 +9,7 @@ import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2 } from 'l
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getDocumentUrl, isPdfUrl } from '@/lib/document-utils';
+
 
 interface Trigger {
   id: number;
@@ -100,15 +100,38 @@ export default function Triggers() {
     }
   };
 
-  const openDocument = (url: string, documentDate?: string) => {
+  const openDocument = async (url: string) => {
     if (!url) return;
 
-    // Apply document URL transformation for PDF links
-    const processedUrl = isPdfUrl(url)
-      ? getDocumentUrl(url, undefined, documentDate)
-      : url;
+    try {
+      // First, try the original URL with a HEAD request to check if it's accessible
+      const response = await fetch(url, { method: 'HEAD' });
 
-    window.open(processedUrl, '_blank');
+      if (response.ok) {
+        // If the original URL works, open it
+        window.open(url, '_blank');
+      } else {
+        // If it doesn't work and contains AttachLive, try replacing with AttachHis
+        if (url.toLowerCase().includes('attachlive')) {
+          const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
+          console.log(`Original URL failed (${response.status}), trying fallback:`, fallbackUrl);
+          window.open(fallbackUrl, '_blank');
+        } else {
+          // If it doesn't contain AttachLive, just open the original URL
+          window.open(url, '_blank');
+        }
+      }
+    } catch (error) {
+      // If there's a network error, try the AttachHis fallback if applicable
+      if (url.toLowerCase().includes('attachlive')) {
+        const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
+        console.log('Network error, trying fallback:', fallbackUrl);
+        window.open(fallbackUrl, '_blank');
+      } else {
+        // Otherwise just open the original URL
+        window.open(url, '_blank');
+      }
+    }
   };
 
   const filteredTriggers = triggers.filter(trigger => {
@@ -259,7 +282,7 @@ export default function Triggers() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDocument(trigger.url, trigger.date)}
+                              onClick={() => openDocument(trigger.url)}
                               className="financial-body"
                             >
                               <FileText className="h-3 w-3 mr-2" />

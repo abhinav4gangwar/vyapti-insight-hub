@@ -10,7 +10,7 @@ import { Building2, FileText, ExternalLink, Calendar, TrendingUp, BarChart3, Fil
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getDocumentUrl, isPdfUrl } from '@/lib/document-utils';
+
 
 interface EarningsCall {
   newsid?: string;
@@ -132,15 +132,8 @@ const formatDate = (dateString: string) => {
   }
 };
 
-  const openDocument = (url: string, documentDate?: string) => {
-    if (!url) return;
-
-    // Apply document URL transformation for PDF links
-    const processedUrl = isPdfUrl(url)
-      ? getDocumentUrl(url, undefined, documentDate)
-      : url;
-
-    window.open(processedUrl, '_blank');
+  const openDocument = (url: string) => {
+    window.open(url, '_blank');
   };
 
   const getAllEarningsCalls = () => {
@@ -455,10 +448,7 @@ const formatDate = (dateString: string) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDocument(
-                                getDocumentUrl(call.pdf_url, call.attachment_file, call.news_dt || call.dt),
-                                call.news_dt || call.dt
-                              )}
+                              onClick={() => openDocument(call.pdf_url || call.attachment_file || '')}
                               className="financial-body hover:bg-accent hover:text-accent-foreground"
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />

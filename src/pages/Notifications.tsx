@@ -7,7 +7,7 @@ import { Bell, Calendar, Building2, FileText, ExternalLink, CheckCircle } from '
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getDocumentUrl, isPdfUrl } from '@/lib/document-utils';
+
 
 interface Notification {
   id: number;
@@ -88,15 +88,8 @@ export default function Notifications() {
     }
   };
 
-  const openDocument = (url: string, documentDate?: string) => {
-    if (!url) return;
-
-    // Apply document URL transformation for PDF links
-    const processedUrl = isPdfUrl(url)
-      ? getDocumentUrl(url, undefined, documentDate)
-      : url;
-
-    window.open(processedUrl, '_blank');
+  const openDocument = (url: string) => {
+    window.open(url, '_blank');
   };
 
   const formatDate = (dateString: string) => {
@@ -224,7 +217,7 @@ export default function Notifications() {
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      onClick={() => openDocument(company.url, company.date)}
+                                      onClick={() => openDocument(company.url)}
                                       className="h-6 px-2 text-xs"
                                     >
                                       <FileText className="h-3 w-3 mr-1" />
