@@ -65,7 +65,7 @@ export default function Notifications() {
   const markAsRead = async (notificationId: number) => {
     try {
       const client = authService.createAuthenticatedClient();
-      await client.post(`/notifications/${notificationId}/read`);
+      await client.put(`/notifications/${notificationId}/read`);
       
       setNotifications(prev => 
         prev.map(notif => 
