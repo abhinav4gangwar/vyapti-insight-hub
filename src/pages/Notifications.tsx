@@ -37,7 +37,7 @@ export default function Notifications() {
       try {
         const client = authService.createAuthenticatedClient();
         console.log('Making request to:', client.defaults.baseURL + '/notifications');
-        const response = await client.get('/notifications');
+        const response = await client.get('/notifications/');
         setNotifications(response.data.notifications);
       } catch (error) {
         console.error('Failed to load notifications:', error);

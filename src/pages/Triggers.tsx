@@ -88,10 +88,10 @@ export default function Triggers() {
     try {
       const client = authService.createAuthenticatedClient();
       const response = await client.get(`/triggers/${triggerId}`);
-      toast({
-        title: "Trigger Details",
-        description: `Loaded details for trigger ${triggerId}`,
-      });
+      // toast({
+      //   title: "Trigger Details",
+      //   description: `Loaded details for trigger ${triggerId}`,
+      // });
       return response.data;
     } catch (error) {
       toast({
