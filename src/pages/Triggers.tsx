@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2 } from 'lucide-react';
+import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,31 +22,67 @@ interface Trigger {
   url: string;
 }
 
+interface PaginationInfo {
+  current_page: number;
+  page_size: number;
+  total_pages: number;
+  total_items: number;
+}
+
 export default function Triggers() {
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSource, setSelectedSource] = useState<string>('all');
   const [expandedTrigger, setExpandedTrigger] = useState<number | null>(null);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    current_page: 1,
+    page_size: 50,
+    total_pages: 1,
+    total_items: 0
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const fetchTriggers = async (page: number = 1, source: string = 'all') => {
+    setIsLoading(true);
+    try {
+      const client = authService.createAuthenticatedClient();
+      const params = new URLSearchParams({
+        page: page.toString(),
+        page_size: '50'
+      });
+
+      if (source !== 'all') {
+        params.append('source', source);
+      }
+
+      const response = await client.get(`/triggers?${params.toString()}`);
+      setTriggers(response.data.triggers);
+      setPagination(response.data.pagination);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load triggers",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchTriggers = async () => {
-      try {
-        const client = authService.createAuthenticatedClient();
-        const response = await client.get('/triggers');
-        setTriggers(response.data.triggers);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load triggers",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    fetchTriggers(currentPage, selectedSource);
+  }, [currentPage, selectedSource]);
 
-    fetchTriggers();
-  }, []);
+  const handlePageChange = (newPage: number) => {
+    if (newPage !== currentPage && newPage >= 1 && newPage <= pagination.total_pages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const handleSourceChange = (source: string) => {
+    setSelectedSource(source);
+    setCurrentPage(1); // Reset to first page when changing source
+  };
 
   const fetchTriggerDetails = async (triggerId: number) => {
     try {
@@ -134,12 +170,7 @@ export default function Triggers() {
     }
   };
 
-  const filteredTriggers = triggers.filter(trigger => {
-    const sourceMatch = selectedSource === 'all' || trigger.source === selectedSource;
-    return sourceMatch;
-  });
-
-  const uniqueSources = [...new Set(triggers.map(t => t.source))];
+  // No need for client-side filtering since we're doing server-side filtering now
 
   if (isLoading) {
     return (
@@ -182,7 +213,7 @@ export default function Triggers() {
           <CardContent>
             <div className="space-y-2 max-w-xs">
               <label className="financial-body font-medium">Source</label>
-              <Select value={selectedSource} onValueChange={setSelectedSource}>
+              <Select value={selectedSource} onValueChange={handleSourceChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
@@ -202,7 +233,7 @@ export default function Triggers() {
             <CardTitle className="financial-heading flex items-center justify-between">
               <span>Trigger Events</span>
               <Badge variant="outline" className="financial-body">
-                {filteredTriggers.length} Events
+                {pagination.total_items} Events
               </Badge>
             </CardTitle>
             <CardDescription className="financial-body">
@@ -210,9 +241,9 @@ export default function Triggers() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {filteredTriggers.length > 0 ? (
+            {triggers.length > 0 ? (
               <div className="space-y-3">
-                {filteredTriggers.map((trigger) => (
+                {triggers.map((trigger) => (
                   <Collapsible key={trigger.id}>
                     <CollapsibleTrigger asChild>
                       <div
@@ -263,7 +294,8 @@ export default function Triggers() {
                                 <Building2 className="h-3 w-3 mr-2 text-muted-foreground" />
                                 {trigger.company_name}
                               </div>
-                              <div>ISIN: {trigger.company_isin || 'N/A'}</div>
+                              {/* <div>ISIN: {trigger.company_isin || 'N/A'}</div> */}
+
                             </div>
                           </div>
 
@@ -305,6 +337,64 @@ export default function Triggers() {
                     : "No triggers match your current filter criteria"
                   }
                 </p>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {pagination.total_pages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
+                <div className="financial-body text-sm text-muted-foreground">
+                  Showing {((pagination.current_page - 1) * pagination.page_size) + 1} to{' '}
+                  {Math.min(pagination.current_page * pagination.page_size, pagination.total_items)} of{' '}
+                  {pagination.total_items} triggers
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.current_page - 1)}
+                    disabled={pagination.current_page <= 1}
+                    className="financial-body"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                      const pageNum = Math.max(1, Math.min(
+                        pagination.total_pages - 4,
+                        pagination.current_page - 2
+                      )) + i;
+
+                      if (pageNum > pagination.total_pages) return null;
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pageNum === pagination.current_page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-8 h-8 p-0 financial-body"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.current_page + 1)}
+                    disabled={pagination.current_page >= pagination.total_pages}
+                    className="financial-body"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

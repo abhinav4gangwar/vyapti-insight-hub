@@ -132,8 +132,42 @@ const formatDate = (dateString: string) => {
   }
 };
 
-  const openDocument = (url: string) => {
-    window.open(url, '_blank');
+  // const openDocument = (url: string) => {
+  //   window.open(url, '_blank');
+  // };
+
+    const openDocument = async (url: string) => {
+    if (!url) return;
+
+    try {
+      // First, try the original URL with a HEAD request to check if it's accessible
+      const response = await fetch(url, { method: 'HEAD' });
+
+      if (response.ok) {
+        // If the original URL works, open it
+        window.open(url, '_blank');
+      } else {
+        // If it doesn't work and contains AttachLive, try replacing with AttachHis
+        if (url.toLowerCase().includes('attachlive')) {
+          const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
+          console.log(`Original URL failed (${response.status}), trying fallback:`, fallbackUrl);
+          window.open(fallbackUrl, '_blank');
+        } else {
+          // If it doesn't contain AttachLive, just open the original URL
+          window.open(url, '_blank');
+        }
+      }
+    } catch (error) {
+      // If there's a network error, try the AttachHis fallback if applicable
+      if (url.toLowerCase().includes('attachlive')) {
+        const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
+        console.log('Network error, trying fallback:', fallbackUrl);
+        window.open(fallbackUrl, '_blank');
+      } else {
+        // Otherwise just open the original URL
+        window.open(url, '_blank');
+      }
+    }
   };
 
   const getAllEarningsCalls = () => {
