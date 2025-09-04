@@ -3,7 +3,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Bell, Calendar, Building2, FileText, ExternalLink, CheckCircle } from 'lucide-react';
+import { Bell, Calendar, Building2, FileText, ExternalLink, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,39 +28,69 @@ interface Notification {
   updated_at: string;
 }
 
+interface PaginationInfo {
+  current_page: number;
+  page_size: number;
+  total_pages: number;
+  total_items: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
 export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    current_page: 1,
+    page_size: 20,
+    total_pages: 1,
+    total_items: 0,
+    has_next: false,
+    has_prev: false
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const fetchNotifications = async (page: number = 1) => {
+    setIsLoading(true);
+    try {
+      const client = authService.createAuthenticatedClient();
+      const params = new URLSearchParams({
+        page: page.toString()
+      });
+
+      console.log('Making request to:', client.defaults.baseURL + `/notifications/?${params.toString()}`);
+      const response = await client.get(`/notifications/?${params.toString()}`);
+      setNotifications(response.data.notifications);
+      setPagination(response.data.pagination);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+      if (error.code === 'ERR_NETWORK') {
+        toast({
+          title: "Network Error",
+          description: "Unable to connect to the server. Please check if the backend is running and CORS is configured.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load notifications",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const client = authService.createAuthenticatedClient();
-        console.log('Making request to:', client.defaults.baseURL + '/notifications');
-        const response = await client.get('/notifications/');
-        setNotifications(response.data.notifications);
-      } catch (error) {
-        console.error('Failed to load notifications:', error);
-        if (error.code === 'ERR_NETWORK') {
-          toast({
-            title: "Network Error",
-            description: "Unable to connect to the server. Please check if the backend is running and CORS is configured.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to load notifications",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    fetchNotifications(currentPage);
+  }, [currentPage]);
 
-    fetchNotifications();
-  }, []);
+  const handlePageChange = (newPage: number) => {
+    if (newPage !== currentPage && newPage >= 1 && newPage <= pagination.total_pages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   const markAsRead = async (notificationId: number) => {
     try {
@@ -241,6 +271,64 @@ export default function Notifications() {
                 <p className="financial-body">
                   You have no notifications at this time
                 </p>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {pagination.total_pages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
+                <div className="financial-body text-sm text-muted-foreground">
+                  Showing {((pagination.current_page - 1) * pagination.page_size) + 1} to{' '}
+                  {Math.min(pagination.current_page * pagination.page_size, pagination.total_items)} of{' '}
+                  {pagination.total_items} notifications
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.current_page - 1)}
+                    disabled={!pagination.has_prev}
+                    className="financial-body"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                      const pageNum = Math.max(1, Math.min(
+                        pagination.total_pages - 4,
+                        pagination.current_page - 2
+                      )) + i;
+
+                      if (pageNum > pagination.total_pages) return null;
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pageNum === pagination.current_page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-8 h-8 p-0 financial-body"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.current_page + 1)}
+                    disabled={!pagination.has_next}
+                    className="financial-body"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
