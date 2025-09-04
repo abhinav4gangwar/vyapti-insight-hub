@@ -70,7 +70,7 @@ export const Navbar = () => {
               variant="ghost"
               size="sm"
               onClick={handleTriggers}
-              className="financial-body hover:bg-secondary/80"
+              className="financial-body hover:bg-blue-500 hover:text-white transition-colors"
             >
               <Users className="h-4 w-4 mr-2" />
               Triggers
@@ -80,7 +80,7 @@ export const Navbar = () => {
               variant="ghost"
               size="sm"
               onClick={handleNotifications}
-              className="relative hover:bg-secondary/80"
+              className="relative hover:bg-blue-500 hover:text-white transition-colors"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
