@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Bell, Users, LogOut } from 'lucide-react';
+import { Bell, Users, LogOut, Search, Building } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { authService } from '@/lib/auth';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +48,14 @@ export const Navbar = () => {
     navigate('/triggers');
   };
 
+  const handleAISearch = () => {
+    navigate('/ai-search');
+  };
+
+  const handleCompanySearch = () => {
+    navigate('/dashboard');
+  };
+
   return (
     <nav className="bg-gradient-subtle border-b border-border shadow-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,6 +74,26 @@ export const Navbar = () => {
 
           {/* Navigation Actions */}
           <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCompanySearch}
+              className="financial-body hover:bg-blue-500 hover:text-white transition-colors"
+            >
+              <Building className="h-4 w-4 mr-2" />
+              Company Search
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleAISearch}
+              className="financial-body hover:bg-blue-500 hover:text-white transition-colors"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              AI Search
+            </Button>
+
             <Button
               variant="ghost"
               size="sm"

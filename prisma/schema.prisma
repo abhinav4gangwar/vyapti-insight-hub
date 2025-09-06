@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Chunk {
+  id               String   @id @default(cuid())
+  chunk_id         String   @unique
+  text             String
+  company_name     String
+  company_ticker   String?
+  call_date        String
+  speaker_name     String?
+  speaker_role     String?
+  speaker_type     String?
+  fiscal_period    String?
+  fiscal_year      String?
+  quarter          String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("chunks")
+}
+
+model SearchHistory {
+  id               String   @id @default(cuid())
+  query            String
+  response         String?
+  metadata         Json?
+  user_id          String?
+  created_at       DateTime @default(now())
+
+  @@map("search_history")
+}
+
+model Usage {
+  id               String   @id @default(cuid())
+  search_id        String?
+  component        String
+  prompt_tokens    Int      @default(0)
+  completion_tokens Int     @default(0)
+  cached_tokens    Int      @default(0)
+  input_cost       Float    @default(0)
+  output_cost      Float    @default(0)
+  cost_float       Float    @default(0)
+  model            String?
+  created_at       DateTime @default(now())
+
+  @@map("usage")
+}

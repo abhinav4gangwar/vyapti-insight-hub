@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import CompanyDetails from "./pages/CompanyDetails";
 import Triggers from "./pages/Triggers";
 import Notifications from "./pages/Notifications";
+import AISearch from "./pages/AISearch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,11 @@ const App = () => {
           <Route path="/notifications" element={
             <ProtectedRoute>
               <Notifications />
+            </ProtectedRoute>
+          } />
+          <Route path="/ai-search" element={
+            <ProtectedRoute>
+              <AISearch />
             </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
