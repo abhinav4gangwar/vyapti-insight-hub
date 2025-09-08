@@ -13,12 +13,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface Trigger {
   id: number;
-  company_isin: string | null;
+  company_isin: string;
   company_name: string;
   title: string;
   source: string;
   date: string;
-  json: any;
+  json: {
+    json_id: number;
+    isin: string;
+    date: string;
+    url: string;
+    local_filepath: string;
+    source: string;
+    reason: string;
+    detected_by: string;
+    analysis_period: string;
+    created_at: string;
+  };
   url: string;
 }
 
@@ -32,7 +43,7 @@ interface PaginationInfo {
 export default function Triggers() {
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedSource, setSelectedSource] = useState<string>('all');
+
   const [expandedTrigger, setExpandedTrigger] = useState<number | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
     current_page: 1,
@@ -42,7 +53,7 @@ export default function Triggers() {
   });
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchTriggers = async (page: number = 1, source: string = 'all') => {
+  const fetchTriggers = async (page: number = 1) => {
     setIsLoading(true);
     try {
       const client = authService.createAuthenticatedClient();
@@ -50,10 +61,6 @@ export default function Triggers() {
         page: page.toString(),
         page_size: '50'
       });
-
-      if (source !== 'all') {
-        params.append('source', source);
-      }
 
       const response = await client.get(`/triggers?${params.toString()}`);
       setTriggers(response.data.triggers);
@@ -70,8 +77,8 @@ export default function Triggers() {
   };
 
   useEffect(() => {
-    fetchTriggers(currentPage, selectedSource);
-  }, [currentPage, selectedSource]);
+    fetchTriggers(currentPage);
+  }, [currentPage]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage !== currentPage && newPage >= 1 && newPage <= pagination.total_pages) {
@@ -79,10 +86,7 @@ export default function Triggers() {
     }
   };
 
-  const handleSourceChange = (source: string) => {
-    setSelectedSource(source);
-    setCurrentPage(1); // Reset to first page when changing source
-  };
+
 
   const fetchTriggerDetails = async (triggerId: number) => {
     try {
@@ -127,10 +131,8 @@ export default function Triggers() {
 
   const getSourceColor = (source: string) => {
     switch (source.toLowerCase()) {
-      case 'bse_earnings_call':
+      case 'earnings_calls':
         return 'bg-blue-500/10 text-blue-700 border-blue-200';
-      case 'nse_earnings_call':
-        return 'bg-green-500/10 text-green-700 border-green-200';
       default:
         return 'bg-gray-500/10 text-gray-700 border-gray-200';
     }
@@ -202,30 +204,7 @@ export default function Triggers() {
           </p>
         </div>
 
-        {/* Filters */}
-        <Card className="shadow-card border-0 mb-8 animate-slide-up">
-          <CardHeader>
-            <CardTitle className="financial-heading">Filter Triggers</CardTitle>
-            <CardDescription className="financial-body">
-              Filter triggers by source exchange
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-w-xs">
-              <label className="financial-body font-medium">Source</label>
-              <Select value={selectedSource} onValueChange={handleSourceChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
-                  <SelectItem value="bse_earnings_call">BSE</SelectItem>
-                  <SelectItem value="nse_earnings_call">NSE</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* Triggers List */}
         <Card className="shadow-card border-0 animate-slide-up">
@@ -269,7 +248,7 @@ export default function Triggers() {
                                 variant="outline"
                                 className={`text-xs ${getSourceColor(trigger.source)}`}
                               >
-                                {trigger.source.includes('bse') ? 'BSE' : trigger.source.includes('nse') ? 'NSE' : trigger.source}
+                                {trigger.source === 'earnings_calls' ? 'Earnings Call' : trigger.source}
                               </Badge>
                             </div>
                             <div className="financial-body text-xs text-muted-foreground flex items-center space-x-4">

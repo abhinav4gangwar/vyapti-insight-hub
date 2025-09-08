@@ -13,25 +13,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 
 interface EarningsCall {
-  newsid?: string;
-  seq_id?: number;
-  company_name?: string;
-  sm_name?: string;
-  pdf_url?: string;
-  attachment_file?: string;
-  newssub?: string;
-  description?: string;
-  news_dt?: string;
-  dt?: string;
-  announcement_type?: string;
-  attachmentname?: string;
+  id: number;
+  date: string;
+  url: string;
+  local_filepath: string;
 }
 
-interface Exchange {
-  earnings_calls: EarningsCall[];
-}
-
-interface BSEListing extends Exchange {
+interface BSEListing {
   security_code: number;
   issuer_name: string;
   security_name: string;
@@ -40,7 +28,7 @@ interface BSEListing extends Exchange {
   sector_name: string;
 }
 
-interface NSEListing extends Exchange {
+interface NSEListing {
   symbol: string;
   name: string;
   series: string;
@@ -56,7 +44,7 @@ interface CompanyData {
   is_on_nse: boolean;
   bse_listing?: BSEListing;
   nse_listing?: NSEListing;
-  total_documents: number;
+  earnings_calls: EarningsCall[];
 }
 
 export default function CompanyDetails() {
@@ -65,7 +53,6 @@ export default function CompanyDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('documents');
   const [activeDocTab, setActiveDocTab] = useState('earnings_calls');
-  const [sourceFilter, setSourceFilter] = useState('all');
 
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -171,42 +158,12 @@ const formatDate = (dateString: string) => {
   };
 
   const getAllEarningsCalls = () => {
-    const calls: (EarningsCall & { exchange: 'BSE' | 'NSE' })[] = [];
-    
-    if (companyData?.bse_listing?.earnings_calls) {
-      calls.push(...companyData.bse_listing.earnings_calls.map(call => ({ ...call, exchange: 'BSE' as const })));
-    }
-    
-    if (companyData?.nse_listing?.earnings_calls) {
-      calls.push(...companyData.nse_listing.earnings_calls.map(call => ({ ...call, exchange: 'NSE' as const })));
-    }
+    if (!companyData?.earnings_calls) return [];
 
     // Sort by date (newest first)
-    return calls.sort((a, b) => {
-      const parseDateForSorting = (dateString: string) => {
-        if (!dateString) return new Date(0);
-
-        // Try standard date parsing first
-        let date = new Date(dateString);
-
-        // If invalid and matches ddMMyyyyHHmmss format
-        if (isNaN(date.getTime()) && /^\d{14}$/.test(dateString)) {
-          const day = dateString.substring(0, 2);
-          const month = dateString.substring(2, 4);
-          const year = dateString.substring(4, 8);
-          const hour = dateString.substring(8, 10);
-          const minute = dateString.substring(10, 12);
-          const second = dateString.substring(12, 14);
-
-          const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-          date = new Date(isoString);
-        }
-
-        return isNaN(date.getTime()) ? new Date(0) : date;
-      };
-
-      const dateA = parseDateForSorting(a.news_dt || a.dt || '');
-      const dateB = parseDateForSorting(b.news_dt || b.dt || '');
+    return companyData.earnings_calls.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
       return dateB.getTime() - dateA.getTime();
     });
   };
@@ -274,7 +231,7 @@ const formatDate = (dateString: string) => {
                     </Badge>
                   )}
                   <Badge variant="outline" className="financial-body">
-                    {companyData.total_documents} Documents
+                    {companyData.earnings_calls.length} Documents
                   </Badge>
                 </div>
               </div>
@@ -406,22 +363,7 @@ const formatDate = (dateString: string) => {
                 </button>
               </div>
 
-              {/* Filters */}
-              {activeDocTab === 'earnings_calls' && (
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue placeholder="Source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="bse">BSE</SelectItem>
-                      <SelectItem value="nse">NSE</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+
             </div>
 
             {/* Document Content */}
@@ -432,11 +374,7 @@ const formatDate = (dateString: string) => {
                     <FileText className="h-5 w-5 mr-2 text-accent" />
                     Earnings Calls
                     <Badge variant="outline" className="ml-2 financial-body">
-                      {earningsCalls.filter(call => 
-                        sourceFilter === 'all' || 
-                        (sourceFilter === 'bse' && call.exchange === 'BSE') ||
-                        (sourceFilter === 'nse' && call.exchange === 'NSE')
-                      ).length}
+                      {earningsCalls.length}
                     </Badge>
                   </CardTitle>
                   <CardDescription className="financial-body">
@@ -444,45 +382,28 @@ const formatDate = (dateString: string) => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {earningsCalls.filter(call => 
-                    sourceFilter === 'all' || 
-                    (sourceFilter === 'bse' && call.exchange === 'BSE') ||
-                    (sourceFilter === 'nse' && call.exchange === 'NSE')
-                  ).length > 0 ? (
+                  {earningsCalls.length > 0 ? (
                     <div className="space-y-3">
-                      {earningsCalls
-                        .filter(call => 
-                          sourceFilter === 'all' || 
-                          (sourceFilter === 'bse' && call.exchange === 'BSE') ||
-                          (sourceFilter === 'nse' && call.exchange === 'NSE')
-                        )
-                        .map((call, index) => (
-                          <div
-                            key={`${call.exchange}-${index}`}
-                            className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="financial-subheading text-sm">
-                                  {call.newssub || call.description || 'Earnings Call'}
-                                </h4>
-                                <Badge variant="outline" className={`text-xs ${
-                                  call.exchange === 'BSE' 
-                                    ? 'bg-blue-500/10 text-blue-700 border-blue-200'
-                                    : 'bg-green-500/10 text-green-700 border-green-200'
-                                }`}>
-                                  {call.exchange}
-                                </Badge>
-                              </div>
-                              <div className="financial-body text-xs text-muted-foreground flex items-center">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                {formatDate(call.news_dt || call.dt || '')}
-                              </div>
+                      {earningsCalls.map((call, index) => (
+                        <div
+                          key={`${call.id}-${index}`}
+                          className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="financial-subheading text-sm">
+                                Earnings Call
+                              </h4>
                             </div>
+                            <div className="financial-body text-xs text-muted-foreground flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {formatDate(call.date)}
+                            </div>
+                          </div>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDocument(call.pdf_url || call.attachment_file || '')}
+                              onClick={() => openDocument(call.url)}
                               className="financial-body hover:bg-accent hover:text-accent-foreground"
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
@@ -496,10 +417,7 @@ const formatDate = (dateString: string) => {
                       <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="financial-subheading mb-2">No Earnings Calls Found</h3>
                       <p className="financial-body">
-                        {sourceFilter === 'all' 
-                          ? 'No earnings call documents found for this company'
-                          : `No ${sourceFilter.toUpperCase()} earnings calls found for this company`
-                        }
+                        No earnings call documents found for this company
                       </p>
                     </div>
                   )}
