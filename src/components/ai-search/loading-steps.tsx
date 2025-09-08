@@ -1,16 +1,13 @@
-import { Card } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+"use client"
+
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CheckCircle, Clock, Loader2 } from "lucide-react"
 
 interface LoadingStep {
-  name: string;
-  displayName: string;
-  baseDuration: number;
-}
-
-interface LoadingStepsProps {
-  isVisible: boolean;
-  onStepChange?: (step: number) => void;
+  name: string
+  displayName: string
+  baseDuration: number // base duration in milliseconds
 }
 
 const PROCESSING_STEPS: LoadingStep[] = [
@@ -21,52 +18,108 @@ const PROCESSING_STEPS: LoadingStep[] = [
   { name: "ResultMerger", displayName: "Merging results", baseDuration: 2800 },
   { name: "ContextBuilder", displayName: "Building context", baseDuration: 1000 },
   { name: "AnswerLLM", displayName: "Generating answer", baseDuration: 2000 },
-];
+]
+
+// Function to randomize duration by ±20%
+const randomizeDuration = (baseDuration: number) => {
+  const variation = 0.2 // ±20%
+  const randomFactor = 1 + (Math.random() - 0.5) * 2 * variation
+  return Math.round(baseDuration * randomFactor)
+}
+
+interface LoadingStepsProps {
+  isVisible: boolean;
+  onStepChange?: (step: number) => void;
+}
 
 export function LoadingSteps({ isVisible, onStepChange }: LoadingStepsProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [randomizedSteps, setRandomizedSteps] = useState<(LoadingStep & { duration: number })[]>([])
+  const [isRunning, setIsRunning] = useState(false)
 
   useEffect(() => {
     if (!isVisible) {
-      setCurrentStep(0);
-      return;
+      setCurrentStepIndex(0)
+      setIsRunning(false)
+      onStepChange?.(0)
+      return
     }
 
-    const interval = setInterval(() => {
-      setCurrentStep(prev => {
-        const next = Math.min(prev + 1, PROCESSING_STEPS.length - 1);
-        if (onStepChange) {
-          onStepChange(next + 1); // 1-based indexing for external use
+    if (isRunning) return // Prevent multiple runs
+
+    // Randomize durations for this run
+    const stepsWithRandomDurations = PROCESSING_STEPS.map(step => ({
+      ...step,
+      duration: randomizeDuration(step.baseDuration)
+    }))
+    setRandomizedSteps(stepsWithRandomDurations)
+    setCurrentStepIndex(0)
+    setIsRunning(true)
+
+    console.log('Starting loading steps with durations:', stepsWithRandomDurations.map(s => `${s.displayName}: ${s.duration}ms`))
+
+    const runSteps = () => {
+      const runNextStep = (stepIndex: number) => {
+        if (stepIndex >= stepsWithRandomDurations.length) {
+          console.log('All steps completed')
+          setIsRunning(false)
+          return
         }
-        return next;
-      });
-    }, 1000);
 
-    return () => clearInterval(interval);
-  }, [isVisible, onStepChange, PROCESSING_STEPS.length]);
+        console.log(`Moving to step ${stepIndex}: ${stepsWithRandomDurations[stepIndex].displayName}`)
+        setCurrentStepIndex(stepIndex)
+        onStepChange?.(stepIndex) // Notify parent of step change
+        const step = stepsWithRandomDurations[stepIndex]
 
-  if (!isVisible) return null;
+        // Move to next step after the randomized duration
+        setTimeout(() => runNextStep(stepIndex + 1), step.duration)
+      }
+
+      runNextStep(0)
+    }
+
+    runSteps()
+  }, [isVisible]) // Remove onStepChange from dependencies to prevent re-runs
 
   return (
-    <Card className="p-6 border-blue-200 bg-blue-50">
-      <div className="flex items-center gap-3 mb-4">
-        <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-        <h3 className="font-medium text-blue-900">Searching...</h3>
-      </div>
-      <div className="space-y-2">
-        {PROCESSING_STEPS.map((step, index) => (
-          <div key={index} className={`flex items-center gap-2 text-sm ${
-            index <= currentStep ? 'text-blue-700' : 'text-blue-400'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${
-              index <= currentStep
-                ? 'bg-blue-500 animate-pulse'
-                : 'bg-blue-300'
-            }`} />
-            {step.displayName}
-          </div>
-        ))}
-      </div>
+    <Card className={`border-gray-200 bg-gray-50 ${!isVisible ? 'hidden' : ''}`}>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <Loader2 className="w-5 h-5 text-gray-600 animate-spin" />
+          Processing Your Search
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-3">
+          {randomizedSteps.map((step, index) => {
+            const isCompleted = index < currentStepIndex
+            const isCurrent = index === currentStepIndex
+
+            return (
+              <div key={step.name} className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  {isCompleted ? (
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  ) : isCurrent ? (
+                    <Loader2 className="w-5 h-5 text-gray-600 animate-spin" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className={`text-sm font-medium ${
+                    isCompleted ? 'text-green-700' :
+                    isCurrent ? 'text-gray-900' :
+                    'text-gray-500'
+                  }`}>
+                    {step.displayName}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
     </Card>
-  );
+  )
 }
