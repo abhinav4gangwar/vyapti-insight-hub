@@ -248,7 +248,7 @@ export default function Triggers() {
                                 variant="outline"
                                 className={`text-xs ${getSourceColor(trigger.source)}`}
                               >
-                                {trigger.source === 'earnings_calls' ? 'Earnings Call' : trigger.source}
+                                Earnings Calls
                               </Badge>
                             </div>
                             <div className="financial-body text-xs text-muted-foreground flex items-center space-x-4">
@@ -281,7 +281,7 @@ export default function Triggers() {
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Trigger Information</h5>
                             <div className="space-y-1 financial-body text-xs">
-                              <div>Source: {trigger.source}</div>
+                              <div>Earnings Calls</div>
                               <div>Title: {trigger.title}</div>
                               <div>Reason: {trigger.json?.reason || 'N/A'}</div>
                             </div>
