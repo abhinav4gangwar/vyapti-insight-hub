@@ -193,7 +193,7 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
               <div className="bg-gray-50 rounded-lg px-4">
                 <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
                   <User className="h-5 w-5" />
-                  Speaker : {chunkData.primary_speaker}
+                  {chunkData.primary_speaker}
                 </h3>
               </div>
             )}
