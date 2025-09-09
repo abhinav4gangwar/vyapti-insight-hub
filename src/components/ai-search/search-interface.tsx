@@ -9,16 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Loader2, ChevronDown, ChevronRight, Settings } from "lucide-react"
-
-export interface SearchParameters {
-  top_k: number
-  max_characters: number
-  num_expansion: number
-  similarity_threshold: number
-  system_prompt: string
-  model?: string
-}
+import { Loader2, ChevronDown, ChevronRight, Settings, RotateCcw } from "lucide-react"
+import { useAdvancedSettings, type SearchParameters } from "@/hooks/use-advanced-settings"
 
 interface SearchInterfaceProps {
   onSearch: (query: string, debug: boolean, parameters: SearchParameters) => void
@@ -30,14 +22,7 @@ interface SearchInterfaceProps {
 export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeChange }: SearchInterfaceProps) {
   const [query, setQuery] = useState("")
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [parameters, setParameters] = useState<SearchParameters>({
-    top_k: 25,
-    max_characters: 25000,
-    num_expansion: 5,
-    similarity_threshold: 0.35,
-    model: "gpt-5-nano-2025-08-07",
-    system_prompt: "You are a state-of-the-art financial analyst capable of deriving deep, actionable insights from the earnings call transcripts of various companies. You will be given a question along with relevant context from earnings calls, and you must use only the provided context to answer. Your responses should be comprehensive and detailed, thoroughly analyzing the information without being brief or superficial. Expand on each point with detailed explanations, multiple examples, and in-depth analysis. Use extensive bullet points, numbered lists, and structured formatting to present your insights clearly. Incorporate relevant quotes, specific details, and comprehensive observations from the given context. Break down complex topics into subsections with thorough explanations, providing background information, context, and actionable analysis for each company or theme discussed. Maintain professional financial analysis language throughout, and ensure that your answers provide practical, data-driven insights. Your goal is to deliver complete, detailed responses that exhaustively analyze all aspects of the question using only the provided context."
-  })
+  const { parameters, updateParameter, resetToDefaults, hasChanges } = useAdvancedSettings()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -116,7 +101,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   </Label>
                   <Slider
                     value={[parameters.top_k]}
-                    onValueChange={(value) => setParameters(prev => ({ ...prev, top_k: value[0] }))}
+                    onValueChange={(value) => updateParameter('top_k', value[0])}
                     max={100}
                     min={1}
                     step={1}
@@ -131,7 +116,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   </Label>
                   <Slider
                     value={[parameters.max_characters]}
-                    onValueChange={(value) => setParameters(prev => ({ ...prev, max_characters: value[0] }))}
+                    onValueChange={(value) => updateParameter('max_characters', value[0])}
                     max={100000}
                     min={10000}
                     step={5000}
@@ -146,7 +131,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   </Label>
                   <Slider
                     value={[parameters.num_expansion]}
-                    onValueChange={(value) => setParameters(prev => ({ ...prev, num_expansion: value[0] }))}
+                    onValueChange={(value) => updateParameter('num_expansion', value[0])}
                     max={10}
                     min={1}
                     step={1}
@@ -161,7 +146,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   </Label>
                   <Slider
                     value={[parameters.similarity_threshold]}
-                    onValueChange={(value) => setParameters(prev => ({ ...prev, similarity_threshold: value[0] }))}
+                    onValueChange={(value) => updateParameter('similarity_threshold', value[0])}
                     max={1}
                     min={0.1}
                     step={0.05}
@@ -176,7 +161,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   </Label>
                   <textarea
                     value={parameters.system_prompt}
-                    onChange={(e) => setParameters(prev => ({ ...prev, system_prompt: e.target.value }))}
+                    onChange={(e) => updateParameter('system_prompt', e.target.value)}
                     rows={8}
                     className="w-full p-3 border border-gray-300 rounded-md resize-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 text-sm"
                     placeholder="Enter custom system prompt to guide the search behavior..."
@@ -198,7 +183,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                         name="model"
                         value="gpt-5-2025-08-07"
                         checked={parameters.model === 'gpt-5-2025-08-07'}
-                        onChange={(e) => setParameters(prev => ({ ...prev, model: e.target.value }))}
+                        onChange={(e) => updateParameter('model', e.target.value)}
                       />
                       GPT 5 (very expensive)
                     </label>
@@ -208,7 +193,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                         name="model"
                         value="gpt-5-mini-2025-08-07"
                         checked={parameters.model === 'gpt-5-mini-2025-08-07'}
-                        onChange={(e) => setParameters(prev => ({ ...prev, model: e.target.value }))}
+                        onChange={(e) => updateParameter('model', e.target.value)}
                       />
                       GPT 5 Mini (Moderate)
                     </label>
@@ -218,13 +203,32 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                         name="model"
                         value="gpt-5-nano-2025-08-07"
                         checked={parameters.model === 'gpt-5-nano-2025-08-07'}
-                        onChange={(e) => setParameters(prev => ({ ...prev, model: e.target.value }))}
+                        onChange={(e) => updateParameter('model', e.target.value)}
                       />
                       GPT 5 Nano (Cheap)
                     </label>
                   </div>
                   <div className="text-xs text-gray-500">The selected model will be sent to the backend with your request.</div>
                 </div>
+
+                {/* Reset to Defaults Button */}
+                {hasChanges && (
+                  <div className="col-span-4 pt-4 border-t border-gray-200">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={resetToDefaults}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Reset to Defaults
+                    </Button>
+                    <div className="text-xs text-gray-500 mt-1">
+                      This will restore all advanced settings to their default values
+                    </div>
+                  </div>
+                )}
               </div>
             </CollapsibleContent>
           </Collapsible>

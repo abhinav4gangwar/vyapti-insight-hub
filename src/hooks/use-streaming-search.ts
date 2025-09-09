@@ -1,13 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-
-interface SearchParameters {
-  top_k: number
-  max_characters: number
-  num_expansion: number
-  similarity_threshold: number
-  system_prompt?: string
-  model?: string
-}
+import type { SearchParameters } from '@/hooks/use-advanced-settings'
 
 interface StreamEvent {
   type: 'metadata' | 'content' | 'usage' | 'done' | 'error'
@@ -61,28 +53,38 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
   const [streamedContent, setStreamedContent] = useState('')
   const [metadata, setMetadata] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  
+
   const lastQueryRef = useRef<{ query: string; debug: boolean; parameters: SearchParameters } | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const userStoppedRef = useRef<boolean>(false)
 
   const stopStreaming = useCallback(() => {
+    userStoppedRef.current = true // Mark that user manually stopped
+    if (abortControllerRef.current) {
+      console.log('Aborting streaming request...')
+      abortControllerRef.current.abort('User cancelled request')
+      abortControllerRef.current = null
+    }
+    setIsStreaming(false)
+    setError(null) // Clear any existing errors when manually stopping
+  }, [])
+
+  const startStreaming = useCallback(async (query: string, debug: boolean, parameters: SearchParameters) => {
+    // Reset user stopped flag
+    userStoppedRef.current = false
+
+    // Stop any existing stream
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
-    setIsStreaming(false)
-  }, [])
 
-  const startStreaming = useCallback(async (query: string, debug: boolean, parameters: SearchParameters) => {
-    // Stop any existing stream
-    stopStreaming()
-    
     // Reset state
     setStreamedContent('')
     setMetadata(null)
     setError(null)
     setIsStreaming(true)
-    
+
     // Store query for retry
     lastQueryRef.current = { query, debug, parameters }
 
@@ -122,8 +124,17 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
 
         try {
           while (true) {
+            // Check if we've been aborted before reading
+            if (abortController.signal.aborted) {
+              console.log('Stream aborted before read')
+              break
+            }
+
             const { done, value } = await reader.read()
-            if (done) break
+            if (done) {
+              console.log('Stream completed normally')
+              break
+            }
 
             const chunk = decoder.decode(value, { stream: true })
             buffer += chunk
@@ -274,24 +285,40 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
           }
         } catch (streamError) {
           if (streamError instanceof Error && streamError.name === 'AbortError') {
-            console.log('Stream reading aborted')
+            console.log('Stream reading aborted by user')
             return
           }
+          console.error('Stream reading error:', streamError)
           throw streamError
         } finally {
-          reader.releaseLock()
+          try {
+            reader.releaseLock()
+          } catch (e) {
+            console.warn('Error releasing reader lock:', e)
+          }
         }
       }
 
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        // Request was aborted, don't show error
-        console.log('Streaming request aborted')
+        // Request was aborted, don't show error if user manually stopped
+        console.log('Streaming request aborted by user')
         return
       }
-      console.error('Failed to start streaming:', err)
-      setError(err instanceof Error ? err.message : 'Failed to start streaming')
+
+      // Only show error if user didn't manually stop
+      if (!userStoppedRef.current) {
+        console.error('Failed to start streaming:', err)
+        setError(err instanceof Error ? err.message : 'Failed to start streaming')
+      }
       setIsStreaming(false)
+    } finally {
+      // Clean up abort controller reference if it's still the current one
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        // Only clear if not aborted (meaning it completed naturally)
+      } else {
+        abortControllerRef.current = null
+      }
     }
   }, [stopStreaming])
 

@@ -187,6 +187,40 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
               </div>
             </div>
 
+
+            {/* Primary Speaker */}
+            {chunkData.primary_speaker && (
+              <div className="bg-gray-50 rounded-lg px-4">
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Speaker : {chunkData.primary_speaker}
+                </h3>
+              </div>
+            )}
+
+            {/* Chunk Text */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-lg mb-3">Chunk Text</h3>
+              <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
+                <p className="whitespace-pre-wrap text-gray-800">{chunkData.text}</p>
+              </div>
+            </div>
+            {documentInfo?.pdf_url ? (
+              <Button onClick={handleViewFullDoc} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 ms-4">
+                <ExternalLink className="h-4 w-4" />
+                View Full Document
+              </Button>
+            ) : chunkData?.exchange && (chunkData?.file_name || chunkData?.source_file) ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                Loading document...
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 italic">
+                Document not available
+              </div>
+            )}
+            
             {/* Chunk Details */}
             {(chunkData.chunk_index !== undefined || chunkData.num_chars || chunkData.num_tokens) && (
               <div className="bg-gray-50 rounded-lg p-4">
@@ -225,50 +259,8 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
               </div>
             )}
 
-            {/* Primary Speaker */}
-            {chunkData.primary_speaker && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Primary Speaker
-                </h3>
-                <div className="space-y-2">
-                  <p><span className="font-medium">Name:</span> {chunkData.primary_speaker}</p>
-                  {chunkData.primary_speaker_type && (
-                    <p><span className="font-medium">Type:</span> <Badge variant="outline">{chunkData.primary_speaker_type}</Badge></p>
-                  )}
-                  {chunkData.primary_speaker_role && (
-                    <p><span className="font-medium">Role:</span> {chunkData.primary_speaker_role}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Chunk Text */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-lg mb-3">Chunk Text</h3>
-              <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
-                <p className="whitespace-pre-wrap text-gray-800">{chunkData.text}</p>
-              </div>
-            </div>
-
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-4 border-t">
-              {documentInfo?.pdf_url ? (
-                <Button onClick={handleViewFullDoc} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
-                  <ExternalLink className="h-4 w-4" />
-                  View Full Document
-                </Button>
-              ) : chunkData?.exchange && (chunkData?.file_name || chunkData?.source_file) ? (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                  Loading document...
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500 italic">
-                  Document not available
-                </div>
-              )}
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>

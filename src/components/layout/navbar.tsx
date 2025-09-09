@@ -3,12 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Bell, Users, LogOut, Search, Building } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { authService } from '@/lib/auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import logo from '@/assets/logo.png';
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -56,6 +57,23 @@ export const Navbar = () => {
     navigate('/dashboard');
   };
 
+  // Helper function to determine if a route is active
+  const isActiveRoute = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || location.pathname === '/' || location.pathname.startsWith('/companies');
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  // Helper function to get button classes based on active state
+  const getButtonClasses = (path: string) => {
+    const baseClasses = "financial-body transition-colors";
+    const activeClasses = "bg-blue-500 text-white hover:bg-blue-600";
+    const inactiveClasses = "hover:bg-blue-500 hover:text-white";
+
+    return `${baseClasses} ${isActiveRoute(path) ? activeClasses : inactiveClasses}`;
+  };
+
   return (
     <nav className="bg-gradient-subtle border-b border-border shadow-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -78,7 +96,7 @@ export const Navbar = () => {
               variant="ghost"
               size="sm"
               onClick={handleCompanySearch}
-              className="financial-body hover:bg-blue-500 hover:text-white transition-colors"
+              className={getButtonClasses('/dashboard')}
             >
               <Building className="h-4 w-4 mr-2" />
               Company Search
@@ -88,7 +106,7 @@ export const Navbar = () => {
               variant="ghost"
               size="sm"
               onClick={handleAISearch}
-              className="financial-body hover:bg-blue-500 hover:text-white transition-colors"
+              className={getButtonClasses('/ai-search')}
             >
               <Search className="h-4 w-4 mr-2" />
               AI Search
@@ -98,7 +116,7 @@ export const Navbar = () => {
               variant="ghost"
               size="sm"
               onClick={handleTriggers}
-              className="financial-body hover:bg-blue-500 hover:text-white transition-colors"
+              className={getButtonClasses('/triggers')}
             >
               <Users className="h-4 w-4 mr-2" />
               Triggers
@@ -108,7 +126,7 @@ export const Navbar = () => {
               variant="ghost"
               size="sm"
               onClick={handleNotifications}
-              className="relative hover:bg-blue-500 hover:text-white transition-colors"
+              className={`relative ${getButtonClasses('/notifications')}`}
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (

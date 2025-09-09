@@ -4,7 +4,8 @@ import { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SourcePopup } from '@/components/ai-search/source-popup'
-import { AlertCircle, CheckCircle, RotateCcw } from 'lucide-react'
+import { AlertCircle, CheckCircle, RotateCcw, Copy } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
 
 interface StreamingResultsDisplayProps {
   isStreaming: boolean
@@ -269,26 +270,128 @@ export function StreamingResultsDisplay({
     return null
   }
 
+  // Copy response content to clipboard
+  const copyToClipboard = async () => {
+    if (!streamedContent) return
+
+    try {
+      let cleanText = streamedContent
+
+      // Remove any HTML tags that might be in the content
+      cleanText = cleanText.replace(/<[^>]*>/g, '')
+
+      // Replace chunk references with proper citations
+      if (citations.length > 0) {
+        // Replace grouped chunk references: (Chunks=123,456,789) -> [1][2][3]
+        const groupRegex = /\((?:Chunks?)\s*=\s*([^)]+)\)/gi
+        cleanText = cleanText.replace(groupRegex, (_, ids) => {
+          const idList = ids.match(/\d+/g) || []
+          return idList.map((id: string) => {
+            const cite = citations.find(c => c.chunkId === id)
+            return cite ? `[${cite.number}]` : `[${id}]`
+          }).join('')
+        })
+
+        // Replace single chunk references: Chunk=123 -> [1]
+        const singleRegex = /Chunk\s*[:=]\s*(\d+)/gi
+        cleanText = cleanText.replace(singleRegex, (_, id) => {
+          const cite = citations.find(c => c.chunkId === id)
+          return cite ? `[${cite.number}]` : `[${id}]`
+        })
+      }
+
+      // Process markdown formatting for clean text output
+      // Convert headers to plain text with proper spacing
+      cleanText = cleanText.replace(/^### (.+)$/gm, '$1')  // H3
+      cleanText = cleanText.replace(/^## (.+)$/gm, '$1')   // H2
+      cleanText = cleanText.replace(/^# (.+)$/gm, '$1')    // H1
+
+      // Convert bullet points to clean format, preserving indentation
+      cleanText = cleanText.replace(/^(\s*)- (.+)$/gm, '$1• $2')
+
+      // Convert numbered lists to clean format (keep the numbers and indentation)
+      cleanText = cleanText.replace(/^(\s*)(\d+)\. (.+)$/gm, '$1$2. $3')
+
+      // Remove bold and italic markdown but keep the text
+      cleanText = cleanText.replace(/\*\*(.+?)\*\*/g, '$1') // Bold
+      cleanText = cleanText.replace(/\*(.+?)\*/g, '$1')     // Italic
+
+      // Clean up extra whitespace and normalize line breaks
+      cleanText = cleanText.replace(/\n{3,}/g, '\n\n')  // Max 2 consecutive newlines
+      cleanText = cleanText.trim()
+
+      // Add references section if we have citations
+      if (citations.length > 0) {
+        cleanText += '\n\n--- References ---\n'
+        citations.forEach(c => {
+          const info = citationInfo[c.chunkId]
+          if (info) {
+            const date = (() => {
+              try {
+                return new Date(info.call_date).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })
+              } catch {
+                return info.call_date
+              }
+            })()
+            cleanText += `[${c.number}] ${info.company_name} - ${date}\n`
+          } else {
+            cleanText += `[${c.number}] Chunk ${c.chunkId}\n`
+          }
+        })
+      }
+
+      await navigator.clipboard.writeText(cleanText)
+      toast({
+        title: "Copied to clipboard",
+        description: "Response content with references has been copied to your clipboard.",
+      })
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err)
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy content to clipboard. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Answer Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span>Answer</span>
-            {isStreaming && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-blue-600">Streaming...</span>
-              </div>
-            )}
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <span>Answer</span>
+              {isStreaming && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-blue-600">Streaming...</span>
+                </div>
+              )}
+              {!isStreaming && streamedContent && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-sm text-green-600">Complete</span>
+                </div>
+              )}
+            </CardTitle>
             {!isStreaming && streamedContent && (
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="text-sm text-green-600">Complete</span>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyToClipboard}
+                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </Button>
             )}
-          </CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           {isStreaming ? (

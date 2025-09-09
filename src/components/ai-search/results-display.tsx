@@ -28,10 +28,82 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
 
   const copyToClipboard = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      let cleanText = text
+
+      // Remove any HTML tags that might be in the content
+      cleanText = cleanText.replace(/<[^>]*>/g, '')
+
+      // Replace source references with clean numbered citations
+      if (sourceReferences.length > 0) {
+        sourceReferences.forEach((source) => {
+          const sourceNumber = parseInt(source.id)
+
+          if (source.filename.startsWith('chunk-')) {
+            // Handle Chunk=ID format
+            const chunkId = source.entryId
+
+            // Replace grouped chunks: (Chunks=8116,347907) -> [1][2]
+            const groupedChunkPattern = new RegExp(
+              `[\\(\\[](?:Chunks?)\\s*[:=]\\s*([^\\)\\]]*\\b${chunkId}\\b[^\\)\\]]*)[\\)\\]]`,
+              'gi'
+            )
+            cleanText = cleanText.replace(groupedChunkPattern, `[${sourceNumber}]`)
+
+            // Replace single chunks: Chunk=123 -> [1]
+            const singleChunkPattern = new RegExp(
+              `(?:Chunks?)\\s*[:=]\\s*${chunkId}\\b(?![^\\(\\[]*[\\)\\]])`,
+              'gi'
+            )
+            cleanText = cleanText.replace(singleChunkPattern, `[${sourceNumber}]`)
+          } else {
+            // Handle file-based sources
+            const sourcePattern1 = new RegExp(
+              `Source=([^,\\n]*${source.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^,\\n]*)`,
+              'g'
+            )
+            cleanText = cleanText.replace(sourcePattern1, `[${sourceNumber}]`)
+
+            const sourcePattern2 = new RegExp(
+              `\\(([^)]*${source.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^)]*)\\)`,
+              'g'
+            )
+            cleanText = cleanText.replace(sourcePattern2, `[${sourceNumber}]`)
+          }
+        })
+      }
+
+      // Process markdown formatting for clean text output
+      // Convert headers to plain text with proper spacing
+      cleanText = cleanText.replace(/^### (.+)$/gm, '$1')  // H3
+      cleanText = cleanText.replace(/^## (.+)$/gm, '$1')   // H2
+      cleanText = cleanText.replace(/^# (.+)$/gm, '$1')    // H1
+
+      // Convert bullet points to clean format, preserving indentation
+      cleanText = cleanText.replace(/^(\s*)- (.+)$/gm, '$1• $2')
+
+      // Convert numbered lists to clean format (keep the numbers and indentation)
+      cleanText = cleanText.replace(/^(\s*)(\d+)\. (.+)$/gm, '$1$2. $3')
+
+      // Remove bold and italic markdown but keep the text
+      cleanText = cleanText.replace(/\*\*(.+?)\*\*/g, '$1') // Bold
+      cleanText = cleanText.replace(/\*(.+?)\*/g, '$1')     // Italic
+
+      // Clean up extra whitespace and normalize line breaks
+      cleanText = cleanText.replace(/\n{3,}/g, '\n\n')  // Max 2 consecutive newlines
+      cleanText = cleanText.trim()
+
+      // Add references section
+      if (sourceReferences.length > 0) {
+        cleanText += '\n\n--- References ---\n'
+        sourceReferences.forEach((source) => {
+          cleanText += `[${source.id}] ${source.displayText}\n`
+        })
+      }
+
+      await navigator.clipboard.writeText(cleanText)
       toast({
         title: "Copied to clipboard",
-        description: "Answer has been copied to your clipboard.",
+        description: "Answer with references has been copied to your clipboard.",
       })
     } catch (err) {
       toast({
