@@ -102,7 +102,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <Slider
                     value={[parameters.top_k]}
                     onValueChange={(value) => updateParameter('top_k', value[0])}
-                    max={100}
+                    max={250}
                     min={1}
                     step={1}
                     className="w-full"
@@ -117,7 +117,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <Slider
                     value={[parameters.max_characters]}
                     onValueChange={(value) => updateParameter('max_characters', value[0])}
-                    max={100000}
+                    max={250000}
                     min={10000}
                     step={5000}
                     className="w-full"

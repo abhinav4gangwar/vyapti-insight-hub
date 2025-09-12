@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft } from 'lucide-react';
+import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft, Filter } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,7 +19,7 @@ interface Trigger {
   source: string;
   date: string;
   json: {
-    json_id: number;
+    screener_id: number;
     isin: string;
     date: string;
     url: string;
@@ -29,6 +29,8 @@ interface Trigger {
     detected_by: string;
     analysis_period: string;
     created_at: string;
+    date_of_listing: string;
+    duration: string;
   };
   url: string;
 }
@@ -53,7 +55,11 @@ export default function Triggers() {
   });
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchTriggers = async (page: number = 1) => {
+  // Filter states
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [durationFilter, setDurationFilter] = useState<string>('all');
+
+  const fetchTriggers = async (page: number = 1, source: string = sourceFilter, duration: string = durationFilter) => {
     setIsLoading(true);
     try {
       const client = authService.createAuthenticatedClient();
@@ -61,6 +67,16 @@ export default function Triggers() {
         page: page.toString(),
         page_size: '50'
       });
+
+      // Only send source filter to backend for now, handle duration client-side
+      if (source !== 'all') {
+        params.append('source', source);
+      }
+
+      // TODO: Remove this comment when backend supports duration filtering
+      // if (duration !== 'all') {
+      //   params.append('duration', duration);
+      // }
 
       const response = await client.get(`/triggers?${params.toString()}`);
       setTriggers(response.data.triggers);
@@ -77,8 +93,18 @@ export default function Triggers() {
   };
 
   useEffect(() => {
-    fetchTriggers(currentPage);
-  }, [currentPage]);
+    fetchTriggers(currentPage, sourceFilter, durationFilter);
+  }, [currentPage, sourceFilter, durationFilter]);
+
+  const handleSourceFilterChange = (value: string) => {
+    setSourceFilter(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleDurationFilterChange = (value: string) => {
+    setDurationFilter(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
 
   const handlePageChange = (newPage: number) => {
     if (newPage !== currentPage && newPage >= 1 && newPage <= pagination.total_pages) {
@@ -133,9 +159,88 @@ export default function Triggers() {
     switch (source.toLowerCase()) {
       case 'earnings_calls':
         return 'bg-blue-500/10 text-blue-700 border-blue-200';
+      case 'ppt':
+        return 'bg-green-500/10 text-green-700 border-green-200';
       default:
         return 'bg-gray-500/10 text-gray-700 border-gray-200';
     }
+  };
+
+  const getSourceDisplayName = (source: string) => {
+    switch (source.toLowerCase()) {
+      case 'earnings_calls':
+        return 'Earnings Calls';
+      case 'ppt':
+        return 'Investor PPT';
+      default:
+        return source;
+    }
+  };
+
+  // Helper function to parse duration string and convert to months
+  const parseDurationToMonths = (durationStr: string): number => {
+    if (!durationStr) return 0;
+
+    // Handle different formats: "2.3 months", "1.5 years", "6 month", etc.
+    const match = durationStr.match(/(\d+\.?\d*)\s*(month|year)s?/i);
+    if (!match) {
+      console.log(`Could not parse duration: ${durationStr}`);
+      return 0;
+    }
+
+    const value = parseFloat(match[1]);
+    const unit = match[2].toLowerCase();
+
+    console.log(`Parsed duration: ${durationStr} -> ${value} ${unit}s`);
+
+    if (unit === 'year') {
+      return value * 12;
+    }
+    return value; // already in months
+  };
+
+  // Client-side filtering function
+  const filterTriggers = (triggers: Trigger[]) => {
+    return triggers.filter(trigger => {
+      // Source filter
+      if (sourceFilter !== 'all') {
+        const triggerSource = trigger.json?.source || trigger.source;
+        if (triggerSource !== sourceFilter) {
+          return false;
+        }
+      }
+
+      // Duration filter
+      if (durationFilter !== 'all' && trigger.json?.duration) {
+        const durationInMonths = parseDurationToMonths(trigger.json.duration);
+
+        // Debug logging
+        console.log(`Filtering trigger: ${trigger.company_name}, Duration: ${trigger.json.duration}, Parsed: ${durationInMonths} months, Filter: ${durationFilter}`);
+
+        switch (durationFilter) {
+          case '<6months':
+            if (durationInMonths >= 6) {
+              console.log(`Filtered out: ${durationInMonths} >= 6`);
+              return false;
+            }
+            break;
+          case '6-12months':
+            if (durationInMonths < 6 || durationInMonths > 12) {
+              console.log(`Filtered out: ${durationInMonths} not between 6-12`);
+              return false;
+            }
+            break;
+          case '>12months':
+            if (durationInMonths <= 12) {
+              console.log(`Filtered out: ${durationInMonths} <= 12`);
+              return false;
+            }
+            break;
+        }
+      }
+
+      return true;
+    });
   };
 
   const openDocument = async (url: string) => {
@@ -204,6 +309,51 @@ export default function Triggers() {
           </p>
         </div>
 
+        {/* Filters */}
+        <Card className="shadow-card border-0 mb-6 animate-slide-up">
+          <CardHeader>
+            <CardTitle className="financial-heading flex items-center">
+              <Filter className="h-5 w-5 mr-2 text-accent" />
+              Filters
+            </CardTitle>
+            <CardDescription className="financial-body">
+              Filter triggers by source and duration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="financial-subheading text-sm">Source</label>
+                <Select value={sourceFilter} onValueChange={handleSourceFilterChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="earnings_calls">Earnings Calls</SelectItem>
+                    <SelectItem value="ppt">Investor PPT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="financial-subheading text-sm">Duration Since Listing</label>
+                <Select value={durationFilter} onValueChange={handleDurationFilterChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Durations</SelectItem>
+                    <SelectItem value="<6months">Less than 6 months</SelectItem>
+                    <SelectItem value="6-12months">6-12 months</SelectItem>
+                    <SelectItem value=">12months">More than 12 months</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
 
 
         {/* Triggers List */}
@@ -212,7 +362,7 @@ export default function Triggers() {
             <CardTitle className="financial-heading flex items-center justify-between">
               <span>Trigger Events</span>
               <Badge variant="outline" className="financial-body">
-                {pagination.total_items} Events
+                {filterTriggers(triggers).length} of {pagination.total_items} Events
               </Badge>
             </CardTitle>
             <CardDescription className="financial-body">
@@ -220,9 +370,11 @@ export default function Triggers() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {triggers.length > 0 ? (
-              <div className="space-y-3">
-                {triggers.map((trigger) => (
+            {(() => {
+              const filteredTriggers = filterTriggers(triggers);
+              return filteredTriggers.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredTriggers.map((trigger) => (
                   <Collapsible key={trigger.id}>
                     <CollapsibleTrigger asChild>
                       <div
@@ -246,9 +398,9 @@ export default function Triggers() {
                               </h4>
                               <Badge
                                 variant="outline"
-                                className={`text-xs ${getSourceColor(trigger.source)}`}
+                                className={`text-xs ${getSourceColor(trigger.json?.source || trigger.source)}`}
                               >
-                                Earnings Calls
+                                {getSourceDisplayName(trigger.json?.source || trigger.source)}
                               </Badge>
                             </div>
                             <div className="financial-body text-xs text-muted-foreground flex items-center space-x-4">
@@ -265,7 +417,7 @@ export default function Triggers() {
 
                     <CollapsibleContent>
                         <div className="mt-2 p-4 bg-card border border-border rounded-lg ml-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Company Details</h5>
                             <div className="space-y-1 financial-body text-xs">
@@ -273,17 +425,39 @@ export default function Triggers() {
                                 <Building2 className="h-3 w-3 mr-2 text-muted-foreground" />
                                 {trigger.company_name}
                               </div>
-                              {/* <div>ISIN: {trigger.company_isin || 'N/A'}</div> */}
-
+                              <div>ISIN: {trigger.json?.isin || trigger.company_isin || 'N/A'}</div>
+                              {trigger.json?.date_of_listing && (
+                                <div className="flex items-center">
+                                  <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
+                                  Listed: {formatDate(trigger.json.date_of_listing)}
+                                </div>
+                              )}
                             </div>
                           </div>
 
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Trigger Information</h5>
                             <div className="space-y-1 financial-body text-xs">
-                              <div>Earnings Calls</div>
+                              <div>Source: {getSourceDisplayName(trigger.json?.source || trigger.source)}</div>
                               <div>Title: {trigger.title}</div>
                               <div>Reason: {trigger.json?.reason || 'N/A'}</div>
+                              <div>Detected by: {trigger.json?.detected_by || 'N/A'}</div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h5 className="financial-subheading text-sm">Timeline</h5>
+                            <div className="space-y-1 financial-body text-xs">
+                              {trigger.json?.duration && (
+                                <div className="flex items-center">
+                                  <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
+                                  Duration: {trigger.json.duration}
+                                </div>
+                              )}
+                              <div>Trigger Date: {formatDate(trigger.date)}</div>
+                              {trigger.json?.analysis_period && (
+                                <div>Analysis Period: {trigger.json.analysis_period}</div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -304,20 +478,21 @@ export default function Triggers() {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <Zap className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="financial-subheading mb-2">No Triggers Found</h3>
-                <p className="financial-body">
-                  {triggers.length === 0 
-                    ? "No trigger events have been recorded yet"
-                    : "No triggers match your current filter criteria"
-                  }
-                </p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <Zap className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="financial-subheading mb-2">No Triggers Found</h3>
+                  <p className="financial-body">
+                    {triggers.length === 0
+                      ? "No trigger events have been recorded yet"
+                      : "No triggers match your current filter criteria"
+                    }
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Pagination */}
             {pagination.total_pages > 1 && (
