@@ -156,7 +156,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                 </div>
 
                 {/* Date Range Filter */}
-                <div className="space-y-2 col-span-2">
+                {/* <div className="space-y-2 col-span-2">
                   <Label className="text-sm font-medium text-gray-700">
                     Date Range - From
                   </Label>
@@ -191,9 +191,9 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                     </div>
                   </div>
                   <div className="text-xs text-gray-500">Start date for filtering earnings calls</div>
-                </div>
+                </div> */}
 
-                <div className="space-y-2 col-span-2">
+                {/* <div className="space-y-2 col-span-2">
                   <Label className="text-sm font-medium text-gray-700">
                     Date Range - To
                   </Label>
@@ -228,7 +228,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                     </div>
                   </div>
                   <div className="text-xs text-gray-500">End date for filtering earnings calls</div>
-                </div>
+                </div> */}
 
                 <div className="space-y-2 col-span-4">
                   <Label className="text-sm font-medium text-gray-700">
