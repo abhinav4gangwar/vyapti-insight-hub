@@ -19,6 +19,21 @@ interface EarningsCall {
   local_filepath: string;
 }
 
+interface Presentation {
+  id: number;
+  date: string;
+  url: string;
+  local_filepath: string;
+}
+
+interface AnnualReport {
+  id: number;
+  year: string;
+  url: string;
+  source: string;
+  local_filepath: string;
+}
+
 interface BSEListing {
   security_code: number;
   issuer_name: string;
@@ -45,6 +60,9 @@ interface CompanyData {
   bse_listing?: BSEListing;
   nse_listing?: NSEListing;
   earnings_calls: EarningsCall[];
+  presentations: Presentation[];
+  annual_reports: AnnualReport[];
+  total_documents: number;
 }
 
 export default function CompanyDetails() {
@@ -168,6 +186,28 @@ const formatDate = (dateString: string) => {
     });
   };
 
+  const getAllAnnualReports = () => {
+    if (!companyData?.annual_reports) return [];
+
+    // Sort by year (newest first)
+    return companyData.annual_reports.sort((a, b) => {
+      const yearA = parseInt(a.year);
+      const yearB = parseInt(b.year);
+      return yearB - yearA;
+    });
+  };
+
+  const getAllPresentations = () => {
+    if (!companyData?.presentations) return [];
+
+    // Sort by date (newest first)
+    return companyData.presentations.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateB.getTime() - dateA.getTime();
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
@@ -200,6 +240,8 @@ const formatDate = (dateString: string) => {
   }
 
   const earningsCalls = getAllEarningsCalls();
+  const annualReports = getAllAnnualReports();
+  const presentations = getAllPresentations();
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -431,19 +473,59 @@ const formatDate = (dateString: string) => {
                   <CardTitle className="financial-heading flex items-center">
                     <FileText className="h-5 w-5 mr-2 text-accent" />
                     Annual Reports
+                    <Badge variant="outline" className="ml-2 financial-body">
+                      {annualReports.length}
+                    </Badge>
                   </CardTitle>
                   <CardDescription className="financial-body">
                     Annual financial reports and statements
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="financial-subheading mb-2">Coming Soon</h3>
-                    <p className="financial-body">
-                      Annual reports will be available here
-                    </p>
-                  </div>
+                  {annualReports.length > 0 ? (
+                    <div className="space-y-3">
+                      {annualReports.map((report, index) => (
+                        <div
+                          key={`${report.id}-${index}`}
+                          className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="financial-subheading text-sm">
+                                Annual Report {report.year}
+                              </h4>
+                              {report.source && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {report.source}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="financial-body text-xs text-muted-foreground flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Year {report.year}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openDocument(report.url)}
+                            className="financial-body hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="financial-subheading mb-2">No Annual Reports Found</h3>
+                      <p className="financial-body">
+                        No annual report documents found for this company
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -454,19 +536,54 @@ const formatDate = (dateString: string) => {
                   <CardTitle className="financial-heading flex items-center">
                     <FileText className="h-5 w-5 mr-2 text-accent" />
                     Investor Presentations
+                    <Badge variant="outline" className="ml-2 financial-body">
+                      {presentations.length}
+                    </Badge>
                   </CardTitle>
                   <CardDescription className="financial-body">
                     Investor presentations and corporate communications
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="financial-subheading mb-2">Coming Soon</h3>
-                    <p className="financial-body">
-                      Investor presentations will be available here
-                    </p>
-                  </div>
+                  {presentations.length > 0 ? (
+                    <div className="space-y-3">
+                      {presentations.map((presentation, index) => (
+                        <div
+                          key={`${presentation.id}-${index}`}
+                          className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="financial-subheading text-sm">
+                                Investor Presentation
+                              </h4>
+                            </div>
+                            <div className="financial-body text-xs text-muted-foreground flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {formatDate(presentation.date)}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openDocument(presentation.url)}
+                            className="financial-body hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="financial-subheading mb-2">No Presentations Found</h3>
+                      <p className="financial-body">
+                        No investor presentation documents found for this company
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

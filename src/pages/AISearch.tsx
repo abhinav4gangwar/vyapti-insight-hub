@@ -139,6 +139,9 @@ Notes and caveats
         const apiBaseUrl = getAIApiBaseUrl();
         const apiUrl = `${apiBaseUrl}/global_search`;
 
+        // Filter out frontend-only parameters before sending to backend
+        const { from_month, from_year, to_month, to_year, sources, ...backendParameters } = parameters;
+
         const response = await fetch(apiUrl, {
           method: "POST",
           headers: {
@@ -147,7 +150,7 @@ Notes and caveats
           body: JSON.stringify({
             text,
             debug,
-            ...parameters
+            ...backendParameters
           }),
         });
 
