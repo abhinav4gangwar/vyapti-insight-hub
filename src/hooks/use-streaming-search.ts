@@ -97,6 +97,9 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
       const abortController = new AbortController()
       abortControllerRef.current = abortController
 
+      // Filter out frontend-only parameters before sending to backend
+      const { from_month, from_year, to_month, to_year, sources, ...backendParameters } = parameters;
+
       // Use fetch with streaming instead of EventSource
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -106,7 +109,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
         body: JSON.stringify({
           text: query,
           debug,
-          ...parameters
+          ...backendParameters
         }),
         signal: abortController.signal,
       })

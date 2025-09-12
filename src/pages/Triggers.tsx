@@ -68,15 +68,13 @@ export default function Triggers() {
         page_size: '50'
       });
 
-      // Only send source filter to backend for now, handle duration client-side
+      // Add filter parameters if they're not 'all'
       if (source !== 'all') {
         params.append('source', source);
       }
-
-      // TODO: Remove this comment when backend supports duration filtering
-      // if (duration !== 'all') {
-      //   params.append('duration', duration);
-      // }
+      if (duration !== 'all') {
+        params.append('duration', duration);
+      }
 
       const response = await client.get(`/triggers?${params.toString()}`);
       setTriggers(response.data.triggers);
@@ -177,71 +175,7 @@ export default function Triggers() {
     }
   };
 
-  // Helper function to parse duration string and convert to months
-  const parseDurationToMonths = (durationStr: string): number => {
-    if (!durationStr) return 0;
 
-    // Handle different formats: "2.3 months", "1.5 years", "6 month", etc.
-    const match = durationStr.match(/(\d+\.?\d*)\s*(month|year)s?/i);
-    if (!match) {
-      console.log(`Could not parse duration: ${durationStr}`);
-      return 0;
-    }
-
-    const value = parseFloat(match[1]);
-    const unit = match[2].toLowerCase();
-
-    console.log(`Parsed duration: ${durationStr} -> ${value} ${unit}s`);
-
-    if (unit === 'year') {
-      return value * 12;
-    }
-    return value; // already in months
-  };
-
-  // Client-side filtering function
-  const filterTriggers = (triggers: Trigger[]) => {
-    return triggers.filter(trigger => {
-      // Source filter
-      if (sourceFilter !== 'all') {
-        const triggerSource = trigger.json?.source || trigger.source;
-        if (triggerSource !== sourceFilter) {
-          return false;
-        }
-      }
-
-      // Duration filter
-      if (durationFilter !== 'all' && trigger.json?.duration) {
-        const durationInMonths = parseDurationToMonths(trigger.json.duration);
-
-        // Debug logging
-        console.log(`Filtering trigger: ${trigger.company_name}, Duration: ${trigger.json.duration}, Parsed: ${durationInMonths} months, Filter: ${durationFilter}`);
-
-        switch (durationFilter) {
-          case '<6months':
-            if (durationInMonths >= 6) {
-              console.log(`Filtered out: ${durationInMonths} >= 6`);
-              return false;
-            }
-            break;
-          case '6-12months':
-            if (durationInMonths < 6 || durationInMonths > 12) {
-              console.log(`Filtered out: ${durationInMonths} not between 6-12`);
-              return false;
-            }
-            break;
-          case '>12months':
-            if (durationInMonths <= 12) {
-              console.log(`Filtered out: ${durationInMonths} <= 12`);
-              return false;
-            }
-            break;
-        }
-      }
-
-      return true;
-    });
-  };
 
   const openDocument = async (url: string) => {
     if (!url) return;
@@ -362,7 +296,7 @@ export default function Triggers() {
             <CardTitle className="financial-heading flex items-center justify-between">
               <span>Trigger Events</span>
               <Badge variant="outline" className="financial-body">
-                {filterTriggers(triggers).length} of {pagination.total_items} Events
+                {pagination.total_items} Events
               </Badge>
             </CardTitle>
             <CardDescription className="financial-body">
@@ -370,11 +304,9 @@ export default function Triggers() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {(() => {
-              const filteredTriggers = filterTriggers(triggers);
-              return filteredTriggers.length > 0 ? (
-                <div className="space-y-3">
-                  {filteredTriggers.map((trigger) => (
+            {triggers.length > 0 ? (
+              <div className="space-y-3">
+                {triggers.map((trigger) => (
                   <Collapsible key={trigger.id}>
                     <CollapsibleTrigger asChild>
                       <div
@@ -478,21 +410,20 @@ export default function Triggers() {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <Zap className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="financial-subheading mb-2">No Triggers Found</h3>
-                  <p className="financial-body">
-                    {triggers.length === 0
-                      ? "No trigger events have been recorded yet"
-                      : "No triggers match your current filter criteria"
-                    }
-                  </p>
-                </div>
-              );
-            })()}
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <Zap className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="financial-subheading mb-2">No Triggers Found</h3>
+                <p className="financial-body">
+                  {triggers.length === 0
+                    ? "No trigger events have been recorded yet"
+                    : "No triggers match your current filter criteria"
+                  }
+                </p>
+              </div>
+            )}
 
             {/* Pagination */}
             {pagination.total_pages > 1 && (

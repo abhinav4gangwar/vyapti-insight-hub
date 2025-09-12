@@ -7,6 +7,11 @@ export interface SearchParameters {
   similarity_threshold: number
   system_prompt: string
   model?: string
+  from_month: number
+  from_year: number
+  to_month: number
+  to_year: number
+  sources: string[]
 }
 
 // Default settings
@@ -16,7 +21,12 @@ const DEFAULT_PARAMETERS: SearchParameters = {
   num_expansion: 5,
   similarity_threshold: 0.35,
   system_prompt: `You are a state-of-the-art investigative journalist capable of deep insights from the earnings call transcripts. You will be given a question along with relevant context from earnings calls, and you must use only the provided context to answer. Your responses should be comprehensive and detailed, thoroughly ingesting all the information without being brief or superficial. Use extensive bullet points, numbered lists, and structured formatting to present your findings clearly. Incorporate relevant quotes, specific details, and comprehensive observations from the given context. Maintain professional financial analysis language throughout, and ensure that your answers accurate findings. Your goal is to deliver complete, detailed responses that exhaustively analyze all aspects of the question using only the provided context.`,
-  model: "gpt-5-mini-2025-08-07"
+  model: "gpt-5-mini-2025-08-07",
+  from_month: 1,
+  from_year: 2020,
+  to_month: 12,
+  to_year: 2025,
+  sources: ["earnings_calls"]
 }
 
 const STORAGE_KEY = 'ai-search-advanced-settings'

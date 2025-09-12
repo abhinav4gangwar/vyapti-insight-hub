@@ -155,6 +155,81 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <div className="text-xs text-gray-500">Minimum similarity score for results</div>
                 </div>
 
+                {/* Date Range Filter */}
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Date Range - From
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs text-gray-600">Month</Label>
+                      <select
+                        value={parameters.from_month}
+                        onChange={(e) => updateParameter('from_month', parseInt(e.target.value))}
+                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">Year</Label>
+                      <select
+                        value={parameters.from_year}
+                        onChange={(e) => updateParameter('from_year', parseInt(e.target.value))}
+                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                      >
+                        {Array.from({ length: 6 }, (_, i) => (
+                          <option key={2020 + i} value={2020 + i}>
+                            {2020 + i}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">Start date for filtering earnings calls</div>
+                </div>
+
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Date Range - To
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs text-gray-600">Month</Label>
+                      <select
+                        value={parameters.to_month}
+                        onChange={(e) => updateParameter('to_month', parseInt(e.target.value))}
+                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">Year</Label>
+                      <select
+                        value={parameters.to_year}
+                        onChange={(e) => updateParameter('to_year', parseInt(e.target.value))}
+                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                      >
+                        {Array.from({ length: 6 }, (_, i) => (
+                          <option key={2020 + i} value={2020 + i}>
+                            {2020 + i}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">End date for filtering earnings calls</div>
+                </div>
+
                 <div className="space-y-2 col-span-4">
                   <Label className="text-sm font-medium text-gray-700">
                     System Prompt
