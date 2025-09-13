@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft, Filter } from 'lucide-react';
+import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft, Filter, Copy } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -328,6 +328,20 @@ export default function Triggers() {
                               <h4 className="financial-subheading text-sm truncate">
                                 {trigger.company_name}
                               </h4>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(trigger.company_name);
+                                  toast({
+                                    title: "Copied!",
+                                    description: `Company name "${trigger.company_name}" copied to clipboard`,
+                                  });
+                                }}
+                                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+                                title="Copy company name"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
                               <Badge
                                 variant="outline"
                                 className={`text-xs ${getSourceColor(trigger.json?.source || trigger.source)}`}

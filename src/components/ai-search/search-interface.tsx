@@ -230,6 +230,60 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <div className="text-xs text-gray-500">End date for filtering earnings calls</div>
                 </div>
 
+                {/* Source Multi-Select Filter */}
+                <div className="space-y-2 col-span-4">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Sources
+                  </Label>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={parameters.sources.includes('earnings_calls')}
+                        onChange={(e) => {
+                          const newSources = e.target.checked
+                            ? [...parameters.sources, 'earnings_calls']
+                            : parameters.sources.filter(s => s !== 'earnings_calls');
+                          updateParameter('sources', newSources);
+                        }}
+                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                      />
+                      Earnings Calls
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={parameters.sources.includes('investor_ppt')}
+                        onChange={(e) => {
+                          const newSources = e.target.checked
+                            ? [...parameters.sources, 'investor_ppt']
+                            : parameters.sources.filter(s => s !== 'investor_ppt');
+                          updateParameter('sources', newSources);
+                        }}
+                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                      />
+                      Investor PPT
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={parameters.sources.includes('annual_reports')}
+                        onChange={(e) => {
+                          const newSources = e.target.checked
+                            ? [...parameters.sources, 'annual_reports']
+                            : parameters.sources.filter(s => s !== 'annual_reports');
+                          updateParameter('sources', newSources);
+                        }}
+                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                      />
+                      Annual Reports
+                    </label>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Select which sources to include in search
+                  </div>
+                </div>
+
                 <div className="space-y-2 col-span-4">
                   <Label className="text-sm font-medium text-gray-700">
                     System Prompt
