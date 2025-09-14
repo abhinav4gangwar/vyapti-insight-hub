@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SourcePopup } from '@/components/ai-search/source-popup'
-import { AlertCircle, CheckCircle, RotateCcw, Copy, Bug, Download } from 'lucide-react'
+import { AlertCircle, CheckCircle, RotateCcw, Copy } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 interface StreamingResultsDisplayProps {
@@ -13,7 +13,6 @@ interface StreamingResultsDisplayProps {
   streamedContent?: string
   metadata?: any
   error?: string | null
-  debugMode?: boolean
 }
 
 export function StreamingResultsDisplay({
@@ -21,14 +20,12 @@ export function StreamingResultsDisplay({
   onRetry,
   streamedContent = '',
   metadata = null,
-  error = null,
-  debugMode = false
+  error = null
 }: StreamingResultsDisplayProps) {
 
   const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
   const [formattedParagraphs, setFormattedParagraphs] = useState<string[]>([])
   const [citationInfo, setCitationInfo] = useState<Record<string, { company_name: string; call_date: string; company_ticker?: string }>>({})
-  const [internalDebugMode, setInternalDebugMode] = useState(debugMode)
 
   // Split content into paragraphs (blank line separated)
   const paragraphs = useMemo(() => {
@@ -67,17 +64,13 @@ export function StreamingResultsDisplay({
     }
   }, [metadata])
 
-  // Log final response to temp folder when streaming completes (only in debug mode)
+  // Validate chunk IDs when streaming completes
   useEffect(() => {
     if (!isStreaming && streamedContent && streamedContent.trim()) {
       // Always validate chunk IDs for debugging
       validateChunkIds(streamedContent, metadata);
-      // Only log the response if debug mode is enabled
-      if (internalDebugMode) {
-        logFinalResponse(streamedContent, metadata);
-      }
     }
-  }, [isStreaming, streamedContent, metadata, internalDebugMode])
+  }, [isStreaming, streamedContent, metadata])
 
   // Utility function to validate chunk IDs against metadata
   const validateChunkIds = (content: string, metadata: any) => {
@@ -127,87 +120,7 @@ export function StreamingResultsDisplay({
     }
   }
 
-  const logFinalResponse = async (content: string, metadata: any) => {
-    try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `ai-search-response-${timestamp}.txt`;
 
-      // Create the log content
-      let logContent = `AI Search Response - ${new Date().toISOString()}\n`;
-      logContent += `${'='.repeat(60)}\n\n`;
-
-      // Add metadata if available
-      if (metadata) {
-        logContent += `METADATA:\n`;
-        logContent += `${JSON.stringify(metadata, null, 2)}\n\n`;
-        logContent += `${'='.repeat(60)}\n\n`;
-      }
-
-      // Add the response content
-      logContent += `RESPONSE CONTENT:\n`;
-      logContent += `${content}\n`;
-
-      // Try to log to server first (if backend supports it)
-      try {
-        const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005';
-        const response = await fetch(`${apiBaseUrl}/api/log-response`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            filename,
-            content: logContent,
-            timestamp: new Date().toISOString()
-          }),
-        });
-
-        if (response.ok) {
-          console.log(`Response logged to server: ${filename}`);
-          return; // Success, no need for client-side fallback
-        } else {
-          console.warn('Server logging failed, falling back to client-side');
-        }
-      } catch (serverError) {
-        console.warn('Server logging unavailable, falling back to client-side:', serverError);
-      }
-
-      // Client-side fallback: Try File System Access API or download
-      if ('showDirectoryPicker' in window) {
-        // Modern browsers with File System Access API
-        try {
-          const dirHandle = await (window as any).showDirectoryPicker();
-          const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-          const writable = await fileHandle.createWritable();
-          await writable.write(logContent);
-          await writable.close();
-          console.log(`Response logged to local directory: ${filename}`);
-        } catch (err) {
-          console.warn('Failed to save to directory:', err);
-          // Final fallback to download
-          downloadLogFile(logContent, filename);
-        }
-      } else {
-        // Final fallback: trigger download
-        downloadLogFile(logContent, filename);
-      }
-    } catch (error) {
-      console.error('Failed to log response:', error);
-    }
-  };
-
-  const downloadLogFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    console.log(`Response downloaded as: ${filename}`);
-  };
 
   // Build citations only AFTER streaming completes (supports numeric IDs and grouped forms)
   const citations = useMemo(() => {
@@ -655,49 +568,6 @@ export function StreamingResultsDisplay({
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Debug Controls */}
-      {!isStreaming && (
-        <Card className="mt-4">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bug className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Debug Mode</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${internalDebugMode ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {internalDebugMode ? 'ON' : 'OFF'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setInternalDebugMode(!internalDebugMode)}
-                  className="text-xs"
-                >
-                  {internalDebugMode ? 'Disable' : 'Enable'} Debug
-                </Button>
-                {internalDebugMode && streamedContent && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => logFinalResponse(streamedContent, metadata)}
-                    className="text-xs"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Download Log
-                  </Button>
-                )}
-              </div>
-            </div>
-            {internalDebugMode && (
-              <div className="mt-3 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                Debug mode enabled: Response logging active, chunk ID validation enhanced
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
