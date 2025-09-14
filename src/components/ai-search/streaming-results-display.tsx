@@ -64,11 +64,74 @@ export function StreamingResultsDisplay({
     }
   }, [metadata])
 
+  // Validate chunk IDs when streaming completes
+  useEffect(() => {
+    if (!isStreaming && streamedContent && streamedContent.trim()) {
+      // Always validate chunk IDs for debugging
+      validateChunkIds(streamedContent, metadata);
+    }
+  }, [isStreaming, streamedContent, metadata])
+
+  // Utility function to validate chunk IDs against metadata
+  const validateChunkIds = (content: string, metadata: any) => {
+    if (!metadata || !content) return
+
+    // Extract chunk IDs from content
+    const contentChunkIds = new Set<string>()
+    const chunkPattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
+    let match: RegExpExecArray | null
+    while ((match = chunkPattern.exec(content)) !== null) {
+      if (match[1]) {
+        const ids = match[1].match(/\d+/g) || []
+        ids.forEach((id: string) => contentChunkIds.add(id))
+      } else if (match[2]) {
+        contentChunkIds.add(match[2])
+      }
+    }
+
+    // Extract doc_ids from metadata
+    const metadataDocIds = new Set<string>()
+    if (metadata.semantic_results) {
+      metadata.semantic_results.forEach((result: any) => {
+        result.hits?.forEach((hit: any) => {
+          if (hit.doc_id) metadataDocIds.add(hit.doc_id.toString())
+        })
+      })
+    }
+
+    // Check for mismatches
+    const mismatches: string[] = []
+    metadataDocIds.forEach(docId => {
+      if (!contentChunkIds.has(docId)) {
+        // Check if it might be a corrupted version (missing leading zeros)
+        const possibleCorrupted = docId.replace(/^0+/, '') // Remove leading zeros
+        if (contentChunkIds.has(possibleCorrupted)) {
+          mismatches.push(`${docId} -> ${possibleCorrupted} (leading zeros lost)`)
+        }
+      }
+    })
+
+    if (mismatches.length > 0) {
+      console.error('🚨 CHUNK ID CORRUPTION DETECTED:', mismatches)
+      console.log('Content chunk IDs:', Array.from(contentChunkIds))
+      console.log('Metadata doc IDs:', Array.from(metadataDocIds))
+    } else if (contentChunkIds.size > 0) {
+      console.log('✅ Chunk ID validation passed:', Array.from(contentChunkIds))
+    }
+  }
+
+
+
   // Build citations only AFTER streaming completes (supports numeric IDs and grouped forms)
   const citations = useMemo(() => {
     if (isStreaming || !streamedContent) return [] as { chunkId: string; number: number }[]
     const seen = new Set<string>()
     const list: { chunkId: string; number: number }[] = []
+
+    // Debug: Log the content being parsed for chunk IDs
+    if (streamedContent.includes('Chunk')) {
+      console.log('Parsing chunk IDs from final content. Sample:', streamedContent.slice(-500)) // Last 500 chars
+    }
 
     // Combined pattern: either (Chunk|Chunks= ... ) group or single Chunk=123
     const pattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
@@ -76,6 +139,7 @@ export function StreamingResultsDisplay({
     while ((m = pattern.exec(streamedContent)) !== null) {
       if (m[1]) {
         const ids = m[1].match(/\d+/g) || []
+        console.log('Found grouped chunk IDs:', ids, 'from match:', m[0])
         for (const id of ids) {
           if (!seen.has(id)) {
             seen.add(id)
@@ -84,11 +148,16 @@ export function StreamingResultsDisplay({
         }
       } else if (m[2]) {
         const id = m[2]
+        console.log('Found single chunk ID:', id, 'from match:', m[0])
         if (!seen.has(id)) {
           seen.add(id)
           list.push({ chunkId: id, number: list.length + 1 })
         }
       }
+    }
+
+    if (list.length > 0) {
+      console.log('Final parsed chunk IDs:', list.map(c => c.chunkId))
     }
 
     return list

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +25,67 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
   const sourceReferences = useMemo(() => {
     return parseSourceReferences(results.answer || "");
   }, [results.answer])
+
+  // Log final response when results are received
+  useEffect(() => {
+    if (results && results.answer) {
+      logFinalResponse(results.answer, results);
+    }
+  }, [results])
+
+  const logFinalResponse = async (content: string, fullResults: SearchResponse) => {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `ai-search-response-${timestamp}.txt`;
+
+      // Create the log content
+      let logContent = `AI Search Response - ${new Date().toISOString()}\n`;
+      logContent += `${'='.repeat(60)}\n\n`;
+
+      // Add full results metadata
+      logContent += `METADATA:\n`;
+      logContent += `${JSON.stringify({
+        sources_count: fullResults.sources?.length || 0,
+        openai_usage: fullResults.openai_usage || null,
+        debug_mode: debugMode
+      }, null, 2)}\n\n`;
+      logContent += `${'='.repeat(60)}\n\n`;
+
+      // Add the response content
+      logContent += `RESPONSE CONTENT:\n`;
+      logContent += `${content}\n`;
+
+      // Try to log to server first (if backend supports it)
+      try {
+        const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005';
+        const response = await fetch(`${apiBaseUrl}/api/log-response`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filename,
+            content: logContent,
+            timestamp: new Date().toISOString()
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`Non-streaming response logged to server: ${filename}`);
+          return; // Success, no need for client-side fallback
+        } else {
+          console.warn('Server logging failed for non-streaming response');
+        }
+      } catch (serverError) {
+        console.warn('Server logging unavailable for non-streaming response:', serverError);
+      }
+
+      // Client-side fallback (same as streaming version)
+      console.log(`Non-streaming response logged locally: ${filename}`);
+    } catch (error) {
+      console.error('Failed to log non-streaming response:', error);
+    }
+  };
 
   const copyToClipboard = async (text: string) => {
     try {

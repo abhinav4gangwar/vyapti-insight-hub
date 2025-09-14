@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Loader2, ChevronDown, ChevronRight, Settings, RotateCcw } from "lucide-react"
+import { Loader2, ChevronDown, ChevronRight, Settings, RotateCcw, AlertTriangle } from "lucide-react"
 import { useAdvancedSettings, type SearchParameters } from "@/hooks/use-advanced-settings"
 
 interface SearchInterfaceProps {
@@ -22,11 +22,32 @@ interface SearchInterfaceProps {
 export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeChange }: SearchInterfaceProps) {
   const [query, setQuery] = useState("")
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [dateValidationError, setDateValidationError] = useState<string | null>(null)
   const { parameters, updateParameter, resetToDefaults, hasChanges } = useAdvancedSettings()
+
+  // Validate date range
+  const validateDateRange = (fromMonth: number, fromYear: number, toMonth: number, toYear: number) => {
+    const fromDate = new Date(fromYear, fromMonth - 1) // Month is 0-indexed in Date
+    const toDate = new Date(toYear, toMonth - 1)
+
+    if (toDate < fromDate) {
+      return "End date cannot be earlier than start date"
+    }
+    return null
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate date range before submitting
+    const dateError = validateDateRange(parameters.from_month, parameters.from_year, parameters.to_month, parameters.to_year)
+    if (dateError) {
+      setDateValidationError(dateError)
+      return
+    }
+
     if (query.trim() && !isLoading) {
+      setDateValidationError(null)
       onSearch(query.trim(), debugMode, parameters)
       setShowAdvanced(false)
     }
@@ -38,6 +59,29 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
       handleSubmit(e)
     }
   }
+
+  // Helper function to update date parameters with validation
+  const updateDateParameter = (key: 'from_month' | 'from_year' | 'to_month' | 'to_year', value: number) => {
+    updateParameter(key, value)
+
+    // Get the updated parameters for validation
+    const updatedParams = { ...parameters, [key]: value }
+    const dateError = validateDateRange(
+      updatedParams.from_month,
+      updatedParams.from_year,
+      updatedParams.to_month,
+      updatedParams.to_year
+    )
+    setDateValidationError(dateError)
+  }
+
+  // Clear validation error when date range becomes valid
+  useEffect(() => {
+    const dateError = validateDateRange(parameters.from_month, parameters.from_year, parameters.to_month, parameters.to_year)
+    if (!dateError && dateValidationError) {
+      setDateValidationError(null)
+    }
+  }, [parameters.from_month, parameters.from_year, parameters.to_month, parameters.to_year, dateValidationError])
 
   return (
     <div className="space-y-4">
@@ -59,8 +103,8 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
             />
             <Button
               type="submit"
-              disabled={!query.trim() || isLoading}
-              className="h-12 px-6 bg-gray-900 hover:bg-gray-800 text-white"
+              disabled={!query.trim() || isLoading || !!dateValidationError}
+              className="h-12 px-6 bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50"
             >
               {isLoading ? (
                 <>
@@ -165,7 +209,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <Label className="text-xs text-gray-600">Month</Label>
                       <select
                         value={parameters.from_month}
-                        onChange={(e) => updateParameter('from_month', parseInt(e.target.value))}
+                        onChange={(e) => updateDateParameter('from_month', parseInt(e.target.value))}
                         className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
                       >
                         {Array.from({ length: 12 }, (_, i) => (
@@ -179,7 +223,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <Label className="text-xs text-gray-600">Year</Label>
                       <select
                         value={parameters.from_year}
-                        onChange={(e) => updateParameter('from_year', parseInt(e.target.value))}
+                        onChange={(e) => updateDateParameter('from_year', parseInt(e.target.value))}
                         className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
                       >
                         {Array.from({ length: 6 }, (_, i) => (
@@ -202,7 +246,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <Label className="text-xs text-gray-600">Month</Label>
                       <select
                         value={parameters.to_month}
-                        onChange={(e) => updateParameter('to_month', parseInt(e.target.value))}
+                        onChange={(e) => updateDateParameter('to_month', parseInt(e.target.value))}
                         className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
                       >
                         {Array.from({ length: 12 }, (_, i) => (
@@ -216,7 +260,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <Label className="text-xs text-gray-600">Year</Label>
                       <select
                         value={parameters.to_year}
-                        onChange={(e) => updateParameter('to_year', parseInt(e.target.value))}
+                        onChange={(e) => updateDateParameter('to_year', parseInt(e.target.value))}
                         className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
                       >
                         {Array.from({ length: 6 }, (_, i) => (
@@ -229,6 +273,70 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   </div>
                   <div className="text-xs text-gray-500">End date for filtering earnings calls</div>
                 </div> */}
+
+                {/* Date Validation Error */}
+                {dateValidationError && (
+                  <div className="col-span-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <div className="flex items-center gap-2 text-red-700">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-sm font-medium">{dateValidationError}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Source Multi-Select Filter */}
+                <div className="space-y-2 col-span-4">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Sources
+                  </Label>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={parameters.sources.includes('earnings_calls')}
+                        onChange={(e) => {
+                          const newSources = e.target.checked
+                            ? [...parameters.sources, 'earnings_calls']
+                            : parameters.sources.filter(s => s !== 'earnings_calls');
+                          updateParameter('sources', newSources);
+                        }}
+                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                      />
+                      Earnings Calls
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={parameters.sources.includes('investor_ppt')}
+                        onChange={(e) => {
+                          const newSources = e.target.checked
+                            ? [...parameters.sources, 'investor_ppt']
+                            : parameters.sources.filter(s => s !== 'investor_ppt');
+                          updateParameter('sources', newSources);
+                        }}
+                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                      />
+                      Investor PPT
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={parameters.sources.includes('annual_reports')}
+                        onChange={(e) => {
+                          const newSources = e.target.checked
+                            ? [...parameters.sources, 'annual_reports']
+                            : parameters.sources.filter(s => s !== 'annual_reports');
+                          updateParameter('sources', newSources);
+                        }}
+                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                      />
+                      Annual Reports
+                    </label>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Select which sources to include in search
+                  </div>
+                </div>
 
                 <div className="space-y-2 col-span-4">
                   <Label className="text-sm font-medium text-gray-700">
