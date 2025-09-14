@@ -36,10 +36,52 @@ function cleanStreamingContent(content: string): string {
 }
 
 // Safely append new text by removing overlapping duplication at chunk boundaries
+// Special handling for chunk IDs to prevent corruption
 function appendWithOverlap(prev: string, nextChunk: string, maxOverlap: number = 200): string {
   if (!prev) return nextChunk
+
+  // Check if we're potentially in the middle of a chunk ID
+  // Look for patterns like "Chunk=76" at the end of prev and "013" at the start of nextChunk
+  const chunkIdPattern = /(?:Chunks?)\s*[:=]\s*\d*$/i
+  const chunkIdContinuation = /^\d+/
+
+  if (chunkIdPattern.test(prev) && chunkIdContinuation.test(nextChunk)) {
+    // We're likely in the middle of a chunk ID, don't apply overlap removal
+    console.log('Detected chunk ID split, preserving content:', {
+      prevEnd: prev.slice(-20),
+      nextStart: nextChunk.slice(0, 20)
+    })
+    return prev + nextChunk
+  }
+
+  // Check if the boundary contains chunk references that might be split
+  const boundaryText = prev.slice(-50) + nextChunk.slice(0, 50)
+  const hasChunkReference = /(?:Chunks?)\s*[:=]\s*\d+/i.test(boundaryText)
+
+  if (hasChunkReference) {
+    // If there are chunk references near the boundary, be more conservative
+    const maxCheck = Math.min(20, prev.length, nextChunk.length) // Reduce overlap check
+    for (let len = maxCheck; len > 0; len--) {
+      const overlap = prev.slice(-len)
+      if (overlap === nextChunk.slice(0, len)) {
+        // Additional check: make sure we're not breaking a number
+        const beforeOverlap = prev.slice(-len - 5, -len)
+        const afterOverlap = nextChunk.slice(len, len + 5)
+
+        // If the overlap is purely numeric and surrounded by other numbers, skip it
+        if (/^\d+$/.test(overlap) && (/\d$/.test(beforeOverlap) || /^\d/.test(afterOverlap))) {
+          console.log('Skipping numeric overlap to preserve chunk ID:', overlap)
+          continue
+        }
+
+        return prev + nextChunk.slice(len)
+      }
+    }
+    return prev + nextChunk
+  }
+
+  // Standard overlap removal for non-chunk-ID content
   const maxCheck = Math.min(maxOverlap, prev.length, nextChunk.length)
-  // Find the largest overlap where the end of prev equals the start of nextChunk
   for (let len = maxCheck; len > 0; len--) {
     if (prev.slice(-len) === nextChunk.slice(0, len)) {
       return prev + nextChunk.slice(len)

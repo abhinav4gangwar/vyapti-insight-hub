@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SourcePopup } from '@/components/ai-search/source-popup'
-import { AlertCircle, CheckCircle, RotateCcw, Copy } from 'lucide-react'
+import { AlertCircle, CheckCircle, RotateCcw, Copy, Bug, Download } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 interface StreamingResultsDisplayProps {
@@ -13,6 +13,7 @@ interface StreamingResultsDisplayProps {
   streamedContent?: string
   metadata?: any
   error?: string | null
+  debugMode?: boolean
 }
 
 export function StreamingResultsDisplay({
@@ -20,12 +21,14 @@ export function StreamingResultsDisplay({
   onRetry,
   streamedContent = '',
   metadata = null,
-  error = null
+  error = null,
+  debugMode = false
 }: StreamingResultsDisplayProps) {
 
   const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
   const [formattedParagraphs, setFormattedParagraphs] = useState<string[]>([])
   const [citationInfo, setCitationInfo] = useState<Record<string, { company_name: string; call_date: string; company_ticker?: string }>>({})
+  const [internalDebugMode, setInternalDebugMode] = useState(debugMode)
 
   // Split content into paragraphs (blank line separated)
   const paragraphs = useMemo(() => {
@@ -64,11 +67,158 @@ export function StreamingResultsDisplay({
     }
   }, [metadata])
 
+  // Log final response to temp folder when streaming completes (only in debug mode)
+  useEffect(() => {
+    if (!isStreaming && streamedContent && streamedContent.trim()) {
+      // Always validate chunk IDs for debugging
+      validateChunkIds(streamedContent, metadata);
+      // Only log the response if debug mode is enabled
+      if (internalDebugMode) {
+        logFinalResponse(streamedContent, metadata);
+      }
+    }
+  }, [isStreaming, streamedContent, metadata, internalDebugMode])
+
+  // Utility function to validate chunk IDs against metadata
+  const validateChunkIds = (content: string, metadata: any) => {
+    if (!metadata || !content) return
+
+    // Extract chunk IDs from content
+    const contentChunkIds = new Set<string>()
+    const chunkPattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
+    let match: RegExpExecArray | null
+    while ((match = chunkPattern.exec(content)) !== null) {
+      if (match[1]) {
+        const ids = match[1].match(/\d+/g) || []
+        ids.forEach((id: string) => contentChunkIds.add(id))
+      } else if (match[2]) {
+        contentChunkIds.add(match[2])
+      }
+    }
+
+    // Extract doc_ids from metadata
+    const metadataDocIds = new Set<string>()
+    if (metadata.semantic_results) {
+      metadata.semantic_results.forEach((result: any) => {
+        result.hits?.forEach((hit: any) => {
+          if (hit.doc_id) metadataDocIds.add(hit.doc_id.toString())
+        })
+      })
+    }
+
+    // Check for mismatches
+    const mismatches: string[] = []
+    metadataDocIds.forEach(docId => {
+      if (!contentChunkIds.has(docId)) {
+        // Check if it might be a corrupted version (missing leading zeros)
+        const possibleCorrupted = docId.replace(/^0+/, '') // Remove leading zeros
+        if (contentChunkIds.has(possibleCorrupted)) {
+          mismatches.push(`${docId} -> ${possibleCorrupted} (leading zeros lost)`)
+        }
+      }
+    })
+
+    if (mismatches.length > 0) {
+      console.error('🚨 CHUNK ID CORRUPTION DETECTED:', mismatches)
+      console.log('Content chunk IDs:', Array.from(contentChunkIds))
+      console.log('Metadata doc IDs:', Array.from(metadataDocIds))
+    } else if (contentChunkIds.size > 0) {
+      console.log('✅ Chunk ID validation passed:', Array.from(contentChunkIds))
+    }
+  }
+
+  const logFinalResponse = async (content: string, metadata: any) => {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `ai-search-response-${timestamp}.txt`;
+
+      // Create the log content
+      let logContent = `AI Search Response - ${new Date().toISOString()}\n`;
+      logContent += `${'='.repeat(60)}\n\n`;
+
+      // Add metadata if available
+      if (metadata) {
+        logContent += `METADATA:\n`;
+        logContent += `${JSON.stringify(metadata, null, 2)}\n\n`;
+        logContent += `${'='.repeat(60)}\n\n`;
+      }
+
+      // Add the response content
+      logContent += `RESPONSE CONTENT:\n`;
+      logContent += `${content}\n`;
+
+      // Try to log to server first (if backend supports it)
+      try {
+        const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005';
+        const response = await fetch(`${apiBaseUrl}/api/log-response`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filename,
+            content: logContent,
+            timestamp: new Date().toISOString()
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`Response logged to server: ${filename}`);
+          return; // Success, no need for client-side fallback
+        } else {
+          console.warn('Server logging failed, falling back to client-side');
+        }
+      } catch (serverError) {
+        console.warn('Server logging unavailable, falling back to client-side:', serverError);
+      }
+
+      // Client-side fallback: Try File System Access API or download
+      if ('showDirectoryPicker' in window) {
+        // Modern browsers with File System Access API
+        try {
+          const dirHandle = await (window as any).showDirectoryPicker();
+          const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(logContent);
+          await writable.close();
+          console.log(`Response logged to local directory: ${filename}`);
+        } catch (err) {
+          console.warn('Failed to save to directory:', err);
+          // Final fallback to download
+          downloadLogFile(logContent, filename);
+        }
+      } else {
+        // Final fallback: trigger download
+        downloadLogFile(logContent, filename);
+      }
+    } catch (error) {
+      console.error('Failed to log response:', error);
+    }
+  };
+
+  const downloadLogFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    console.log(`Response downloaded as: ${filename}`);
+  };
+
   // Build citations only AFTER streaming completes (supports numeric IDs and grouped forms)
   const citations = useMemo(() => {
     if (isStreaming || !streamedContent) return [] as { chunkId: string; number: number }[]
     const seen = new Set<string>()
     const list: { chunkId: string; number: number }[] = []
+
+    // Debug: Log the content being parsed for chunk IDs
+    if (streamedContent.includes('Chunk')) {
+      console.log('Parsing chunk IDs from final content. Sample:', streamedContent.slice(-500)) // Last 500 chars
+    }
 
     // Combined pattern: either (Chunk|Chunks= ... ) group or single Chunk=123
     const pattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
@@ -76,6 +226,7 @@ export function StreamingResultsDisplay({
     while ((m = pattern.exec(streamedContent)) !== null) {
       if (m[1]) {
         const ids = m[1].match(/\d+/g) || []
+        console.log('Found grouped chunk IDs:', ids, 'from match:', m[0])
         for (const id of ids) {
           if (!seen.has(id)) {
             seen.add(id)
@@ -84,11 +235,16 @@ export function StreamingResultsDisplay({
         }
       } else if (m[2]) {
         const id = m[2]
+        console.log('Found single chunk ID:', id, 'from match:', m[0])
         if (!seen.has(id)) {
           seen.add(id)
           list.push({ chunkId: id, number: list.length + 1 })
         }
       }
+    }
+
+    if (list.length > 0) {
+      console.log('Final parsed chunk IDs:', list.map(c => c.chunkId))
     }
 
     return list
@@ -499,6 +655,49 @@ export function StreamingResultsDisplay({
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Debug Controls */}
+      {!isStreaming && (
+        <Card className="mt-4">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bug className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">Debug Mode</span>
+                <span className={`text-xs px-2 py-1 rounded-full ${internalDebugMode ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {internalDebugMode ? 'ON' : 'OFF'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInternalDebugMode(!internalDebugMode)}
+                  className="text-xs"
+                >
+                  {internalDebugMode ? 'Disable' : 'Enable'} Debug
+                </Button>
+                {internalDebugMode && streamedContent && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logFinalResponse(streamedContent, metadata)}
+                    className="text-xs"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Download Log
+                  </Button>
+                )}
+              </div>
+            </div>
+            {internalDebugMode && (
+              <div className="mt-3 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                Debug mode enabled: Response logging active, chunk ID validation enhanced
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

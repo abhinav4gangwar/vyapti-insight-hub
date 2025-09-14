@@ -298,6 +298,7 @@ Notes and caveats
                 streamedContent={streamedContent}
                 metadata={metadata}
                 error={streamingError}
+                debugMode={debugMode}
               />
             )
           ) : (
