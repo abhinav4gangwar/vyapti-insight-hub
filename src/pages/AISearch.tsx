@@ -54,6 +54,7 @@ const AISearch = () => {
     isStreaming,
     streamedContent,
     metadata,
+    referenceMapping,
     error: streamingError,
     startStreaming,
     stopStreaming,
@@ -297,6 +298,7 @@ Notes and caveats
                 onRetry={retryStreaming}
                 streamedContent={streamedContent}
                 metadata={metadata}
+                referenceMapping={referenceMapping}
                 error={streamingError}
               />
             )

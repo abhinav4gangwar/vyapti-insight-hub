@@ -52,6 +52,32 @@ interface NSEListing {
   face_value: number;
 }
 
+interface ExpertInterview {
+  id: number;
+  title: string;
+  published_date: string;
+  created_at: string;
+  updated_at: string;
+  published_at: string;
+  expert_type: string;
+  est_read: number;
+  read_time: number | null;
+  primary_isin: string | null;
+  secondary_isins: string[];
+  industry: string;
+  sub_industries: string[];
+  primary_companies: string[];
+  secondary_companies: string[];
+}
+
+interface SEBIDocument {
+  id: number;
+  date: string;
+  url: string;
+  title: string;
+  pdf_url: string;
+}
+
 interface CompanyData {
   isin: string;
   name: string;
@@ -62,6 +88,8 @@ interface CompanyData {
   earnings_calls: EarningsCall[];
   presentations: Presentation[];
   annual_reports: AnnualReport[];
+  expert_interviews: ExpertInterview[];
+  sebi_documents: SEBIDocument[];
   total_documents: number;
 }
 
@@ -372,10 +400,10 @@ const formatDate = (dateString: string) => {
           <TabsContent value="documents" className="space-y-6">
             {/* Document Sub Navigation */}
             <div className="flex items-center justify-between mb-6">
-              <div className="flex space-x-6 border-b border-border">
+              <div className="flex space-x-6 border-b border-border overflow-x-auto">
                 <button
                   onClick={() => setActiveDocTab('earnings_calls')}
-                  className={`pb-3 transition-smooth ${
+                  className={`pb-3 transition-smooth whitespace-nowrap ${
                     activeDocTab === 'earnings_calls'
                       ? 'border-b-2 border-accent financial-subheading'
                       : 'financial-body text-muted-foreground hover:text-foreground'
@@ -385,7 +413,7 @@ const formatDate = (dateString: string) => {
                 </button>
                 <button
                   onClick={() => setActiveDocTab('annual_reports')}
-                  className={`pb-3 transition-smooth ${
+                  className={`pb-3 transition-smooth whitespace-nowrap ${
                     activeDocTab === 'annual_reports'
                       ? 'border-b-2 border-accent financial-subheading'
                       : 'financial-body text-muted-foreground hover:text-foreground'
@@ -395,7 +423,7 @@ const formatDate = (dateString: string) => {
                 </button>
                 <button
                   onClick={() => setActiveDocTab('investor_presentations')}
-                  className={`pb-3 transition-smooth ${
+                  className={`pb-3 transition-smooth whitespace-nowrap ${
                     activeDocTab === 'investor_presentations'
                       ? 'border-b-2 border-accent financial-subheading'
                       : 'financial-body text-muted-foreground hover:text-foreground'
@@ -403,9 +431,27 @@ const formatDate = (dateString: string) => {
                 >
                   Investor Presentations
                 </button>
+                <button
+                  onClick={() => setActiveDocTab('expert_interviews')}
+                  className={`pb-3 transition-smooth whitespace-nowrap ${
+                    activeDocTab === 'expert_interviews'
+                      ? 'border-b-2 border-accent financial-subheading'
+                      : 'financial-body text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Kavi - Expert Interviews
+                </button>
+                <button
+                  onClick={() => setActiveDocTab('sebi_documents')}
+                  className={`pb-3 transition-smooth whitespace-nowrap ${
+                    activeDocTab === 'sebi_documents'
+                      ? 'border-b-2 border-accent financial-subheading'
+                      : 'financial-body text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  SEBI Docs
+                </button>
               </div>
-
-
             </div>
 
             {/* Document Content */}
@@ -581,6 +627,135 @@ const formatDate = (dateString: string) => {
                       <h3 className="financial-subheading mb-2">No Presentations Found</h3>
                       <p className="financial-body">
                         No investor presentation documents found for this company
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeDocTab === 'expert_interviews' && (
+              <Card className="shadow-card border-0">
+                <CardHeader>
+                  <CardTitle className="financial-heading flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-accent" />
+                    Kavi - Expert Interviews
+                    <Badge variant="outline" className="ml-2 financial-body">
+                      {companyData.expert_interviews?.length || 0}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="financial-body">
+                    Expert interviews and industry insights
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {companyData.expert_interviews && companyData.expert_interviews.length > 0 ? (
+                    <div className="space-y-3">
+                      {companyData.expert_interviews.map((interview) => (
+                        <div
+                          key={interview.id}
+                          className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth cursor-pointer"
+                          onClick={() => window.open(`/expert-interviews/${interview.id}`, '_blank')}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="financial-subheading text-sm">
+                                {interview.title}
+                              </h4>
+                              <Badge variant="secondary" className="text-xs">
+                                {interview.expert_type}
+                              </Badge>
+                            </div>
+                            <div className="financial-body text-xs text-muted-foreground flex items-center gap-4">
+                              <div className="flex items-center">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {formatDate(interview.published_date)}
+                              </div>
+                              <div className="flex items-center">
+                                <span className="mr-1">📖</span>
+                                {interview.est_read} min read
+                              </div>
+                              <div className="flex items-center">
+                                <span className="mr-1">🏢</span>
+                                {interview.industry}
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="financial-body hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="financial-subheading mb-2">No Expert Interviews Found</h3>
+                      <p className="financial-body">
+                        No expert interview documents found for this company
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeDocTab === 'sebi_documents' && (
+              <Card className="shadow-card border-0">
+                <CardHeader>
+                  <CardTitle className="financial-heading flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-accent" />
+                    SEBI Documents
+                    <Badge variant="outline" className="ml-2 financial-body">
+                      {companyData.sebi_documents?.length || 0}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="financial-body">
+                    SEBI filings and regulatory documents
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {companyData.sebi_documents && companyData.sebi_documents.length > 0 ? (
+                    <div className="space-y-3">
+                      {companyData.sebi_documents.map((document) => (
+                        <div
+                          key={document.id}
+                          className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="financial-subheading text-sm">
+                                {document.title}
+                              </h4>
+                            </div>
+                            <div className="financial-body text-xs text-muted-foreground flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {formatDate(document.date)}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(document.pdf_url, '_blank')}
+                            className="financial-body hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            View PDF
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="financial-subheading mb-2">No SEBI Documents Found</h3>
+                      <p className="financial-body">
+                        No SEBI documents found for this company
                       </p>
                     </div>
                   )}

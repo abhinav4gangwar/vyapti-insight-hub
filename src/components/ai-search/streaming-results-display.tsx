@@ -1,17 +1,21 @@
 "use client"
 
-import { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SourcePopup } from '@/components/ai-search/source-popup'
 import { AlertCircle, CheckCircle, RotateCcw, Copy } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 
 interface StreamingResultsDisplayProps {
   isStreaming: boolean
   onRetry?: () => void
   streamedContent?: string
   metadata?: any
+  referenceMapping?: Record<string, string> | null
   error?: string | null
 }
 
@@ -20,42 +24,41 @@ export function StreamingResultsDisplay({
   onRetry,
   streamedContent = '',
   metadata = null,
+  referenceMapping = null,
   error = null
 }: StreamingResultsDisplayProps) {
 
   const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
-  const [formattedParagraphs, setFormattedParagraphs] = useState<string[]>([])
   const [citationInfo, setCitationInfo] = useState<Record<string, { company_name: string; call_date: string; company_ticker?: string }>>({})
 
-  // Split content into paragraphs (blank line separated)
-  const paragraphs = useMemo(() => {
-    if (!streamedContent) return [] as string[]
-    return streamedContent.split(/\n\s*\n/).filter(p => p.trim())
-  }, [streamedContent])
+  // Extract citations from reference mapping and content
+  const citations = useMemo(() => {
+    if (isStreaming || !streamedContent || !referenceMapping) return [] as { chunkId: string; number: string }[]
 
-  // Format a single paragraph (headers, lists, basic typography)
-  const formatParagraph = (paragraph: string) => {
-    let formatted = paragraph
-    formatted = formatted.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">$1</h3>')
-    formatted = formatted.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">$1</h2>')
-    formatted = formatted.replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold text-gray-900 mt-8 mb-4">$1</h1>')
-    formatted = formatted.replace(/^- (.+)$/gm, '<li class="ml-4 mb-1">• $1</li>')
-    formatted = formatted.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 mb-1 list-decimal">$1</li>')
-    formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-    formatted = formatted.replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
-    return formatted
-  }
+    const seen = new Set<string>()
+    const list: { chunkId: string; number: string }[] = []
 
-  // During streaming: format completed paragraphs (all except the last)
-  useEffect(() => {
-    if (isStreaming) {
-      const completed = paragraphs.slice(0, -1)
-      setFormattedParagraphs(completed.map(formatParagraph))
-    } else {
-      // On completion: format all paragraphs (citations still added later in existing logic)
-      setFormattedParagraphs(paragraphs.map(formatParagraph))
+    // Find all [1] [2] [3] style references in the content
+    const referencePattern = /\[(\d+)\]/g
+    let match: RegExpExecArray | null
+
+    while ((match = referencePattern.exec(streamedContent)) !== null) {
+      const refNumber = match[1]
+      const chunkId = referenceMapping[refNumber]
+
+      if (chunkId && !seen.has(chunkId)) {
+        seen.add(chunkId)
+        list.push({ chunkId, number: refNumber })
+        console.log(`Found reference [${refNumber}] -> chunk ${chunkId}`)
+      }
     }
-  }, [paragraphs, isStreaming])
+
+    if (list.length > 0) {
+      console.log('Final parsed citations:', list)
+    }
+
+    return list
+  }, [isStreaming, streamedContent, referenceMapping])
 
   // Debug metadata
   useEffect(() => {
@@ -64,111 +67,24 @@ export function StreamingResultsDisplay({
     }
   }, [metadata])
 
-  // Validate chunk IDs when streaming completes
+  // Validate reference mapping when streaming completes
   useEffect(() => {
-    if (!isStreaming && streamedContent && streamedContent.trim()) {
-      // Always validate chunk IDs for debugging
-      validateChunkIds(streamedContent, metadata);
+    if (!isStreaming && streamedContent && referenceMapping) {
+      console.log('Reference mapping received:', referenceMapping)
+      console.log('Content sample:', streamedContent.slice(-200))
     }
-  }, [isStreaming, streamedContent, metadata])
-
-  // Utility function to validate chunk IDs against metadata
-  const validateChunkIds = (content: string, metadata: any) => {
-    if (!metadata || !content) return
-
-    // Extract chunk IDs from content
-    const contentChunkIds = new Set<string>()
-    const chunkPattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
-    let match: RegExpExecArray | null
-    while ((match = chunkPattern.exec(content)) !== null) {
-      if (match[1]) {
-        const ids = match[1].match(/\d+/g) || []
-        ids.forEach((id: string) => contentChunkIds.add(id))
-      } else if (match[2]) {
-        contentChunkIds.add(match[2])
-      }
-    }
-
-    // Extract doc_ids from metadata
-    const metadataDocIds = new Set<string>()
-    if (metadata.semantic_results) {
-      metadata.semantic_results.forEach((result: any) => {
-        result.hits?.forEach((hit: any) => {
-          if (hit.doc_id) metadataDocIds.add(hit.doc_id.toString())
-        })
-      })
-    }
-
-    // Check for mismatches
-    const mismatches: string[] = []
-    metadataDocIds.forEach(docId => {
-      if (!contentChunkIds.has(docId)) {
-        // Check if it might be a corrupted version (missing leading zeros)
-        const possibleCorrupted = docId.replace(/^0+/, '') // Remove leading zeros
-        if (contentChunkIds.has(possibleCorrupted)) {
-          mismatches.push(`${docId} -> ${possibleCorrupted} (leading zeros lost)`)
-        }
-      }
-    })
-
-    if (mismatches.length > 0) {
-      console.error('🚨 CHUNK ID CORRUPTION DETECTED:', mismatches)
-      console.log('Content chunk IDs:', Array.from(contentChunkIds))
-      console.log('Metadata doc IDs:', Array.from(metadataDocIds))
-    } else if (contentChunkIds.size > 0) {
-      console.log('✅ Chunk ID validation passed:', Array.from(contentChunkIds))
-    }
-  }
+  }, [isStreaming, streamedContent, referenceMapping])
 
 
 
-  // Build citations only AFTER streaming completes (supports numeric IDs and grouped forms)
-  const citations = useMemo(() => {
-    if (isStreaming || !streamedContent) return [] as { chunkId: string; number: number }[]
-    const seen = new Set<string>()
-    const list: { chunkId: string; number: number }[] = []
 
-    // Debug: Log the content being parsed for chunk IDs
-    if (streamedContent.includes('Chunk')) {
-      console.log('Parsing chunk IDs from final content. Sample:', streamedContent.slice(-500)) // Last 500 chars
-    }
-
-    // Combined pattern: either (Chunk|Chunks= ... ) group or single Chunk=123
-    const pattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
-    let m: RegExpExecArray | null
-    while ((m = pattern.exec(streamedContent)) !== null) {
-      if (m[1]) {
-        const ids = m[1].match(/\d+/g) || []
-        console.log('Found grouped chunk IDs:', ids, 'from match:', m[0])
-        for (const id of ids) {
-          if (!seen.has(id)) {
-            seen.add(id)
-            list.push({ chunkId: id, number: list.length + 1 })
-          }
-        }
-      } else if (m[2]) {
-        const id = m[2]
-        console.log('Found single chunk ID:', id, 'from match:', m[0])
-        if (!seen.has(id)) {
-          seen.add(id)
-          list.push({ chunkId: id, number: list.length + 1 })
-        }
-      }
-    }
-
-    if (list.length > 0) {
-      console.log('Final parsed chunk IDs:', list.map(c => c.chunkId))
-    }
-
-    return list
-  }, [isStreaming, streamedContent])
 
   // Prefetch citation info after streaming completes to show company name and date
   useEffect(() => {
-    if (!isStreaming && streamedContent) {
-      // Create a stable list of citation IDs to avoid infinite loops
-      const citationIds = citations.map(c => c.chunkId)
-      const newIds = citationIds.filter(id => !citationInfo[id])
+    if (!isStreaming && streamedContent && referenceMapping) {
+      // Get all chunk IDs from the reference mapping and convert to strings
+      const chunkIds = Object.values(referenceMapping).map(id => id.toString())
+      const newIds = chunkIds.filter(id => !citationInfo[id])
 
       if (newIds.length > 0) {
         let alive = true
@@ -196,124 +112,125 @@ export function StreamingResultsDisplay({
         return () => { alive = false }
       }
     }
-  }, [isStreaming, streamedContent, citations.map(c => c.chunkId).join(',')]) // Use stable string of IDs
+  }, [isStreaming, streamedContent, referenceMapping, citationInfo])
 
-  // Replace grouped and single chunk refs with [n] clickable after done (same as ResultsDisplay)
-  const renderTextWithCitations = (text: string) => {
-    if (isStreaming) return <span>{text}</span>
+  // Custom component for rendering clickable references
+  const ReferenceLink = ({ children, refNumber }: { children: React.ReactNode; refNumber: string }) => {
+    const chunkId = referenceMapping?.[refNumber]
 
-    // If no citations parsed, still try to render text as-is
-    if (citations.length === 0) return <span>{text}</span>
-
-    // Grouped: (Chunk|Chunks= ...)
-    const groupRegex = /\((?:Chunks?)\s*=\s*([^)]+)\)/gi
-    const singleRegex = /Chunk\s*[:=]\s*(\d+)/gi
-
-    const parts: any[] = []
-    let lastIndex = 0
-
-    // 1) Replace grouped forms inline with concatenated [n]
-    let gm: RegExpExecArray | null
-    while ((gm = groupRegex.exec(text)) !== null) {
-      const start = gm.index
-      parts.push(text.substring(lastIndex, start))
-      const ids = gm[1].match(/\d+/g) || []
-      ids.forEach((id, idx) => {
-        const cite = citations.find(c => c.chunkId === id)
-        const n = cite?.number || 0
-        parts.push(
-          <button
-            key={`${start}-${id}-${idx}`}
-            className="text-blue-600 underline hover:text-blue-800 mx-1"
-            onClick={() => setSelectedChunk(id)}
-          >
-            [{n}]
-          </button>
-        )
-      })
-      lastIndex = groupRegex.lastIndex
+    if (!chunkId || isStreaming) {
+      // During streaming or if no mapping, show as plain text
+      return <span className="text-gray-600">{children}</span>
     }
 
-    // 2) Handle the tail and replace single Chunk=123 occurrences
-    let tail = text.substring(lastIndex)
-    const subparts: any[] = []
-    let subLast = 0
-    let sm: RegExpExecArray | null
-    while ((sm = singleRegex.exec(tail)) !== null) {
-      const start = sm.index
-      subparts.push(tail.substring(subLast, start))
-      const id = sm[1]
-      const cite = citations.find(c => c.chunkId === id)
-      const n = cite?.number || 0
-      subparts.push(
-        <button
-          key={`tail-${start}-${id}`}
-          className="text-blue-600 underline hover:text-blue-800 mx-1"
-          onClick={() => setSelectedChunk(id)}
-        >
-          [{n}]
-        </button>
-      )
-      subLast = singleRegex.lastIndex
-    }
-    subparts.push(tail.substring(subLast))
-
-    parts.push(...subparts)
-    return <span>{parts}</span>
+    return (
+      <button
+        className="text-blue-600 underline hover:text-blue-800 mx-1 font-medium"
+        onClick={() => setSelectedChunk(chunkId.toString())}
+        title={`View details for reference ${refNumber}`}
+      >
+        {children}
+      </button>
+    )
   }
 
-  // After done: format headers, lists, paragraphs
-  const formattedNodes = useMemo(() => {
-    if (isStreaming || !streamedContent) return null
-    const lines = streamedContent.split('\n')
-    const nodes: any[] = []
-    lines.forEach((line, idx) => {
-      if (line.startsWith('## ')) {
-        nodes.push(
-          <h2 key={`h2-${idx}`} className="text-2xl font-bold text-gray-900 mt-6 mb-3 border-b border-gray-200 pb-1">{line.substring(3)}</h2>
-        )
-        return
-      }
-      if (line.startsWith('### ')) {
-        nodes.push(
-          <h3 key={`h3-${idx}`} className="text-xl font-semibold text-gray-800 mt-4 mb-2">{line.substring(4)}</h3>
-        )
-        return
-      }
-      if (/^\d+\.\s/.test(line)) {
-        const num = line.match(/^\d+/)?.[0]
-        const rest = line.replace(/^\d+\.\s/, '')
-        nodes.push(
-          <div key={`ol-${idx}`} className="ml-4 mb-2">
-            <div className="flex items-start gap-2">
-              <span className="text-gray-700 font-medium min-w-[20px]">{num}.</span>
-              <div className="flex-1">{renderTextWithCitations(rest)}</div>
-            </div>
-          </div>
-        )
-        return
-      }
-      if (line.startsWith('- ')) {
-        nodes.push(
-          <div key={`li-${idx}`} className="ml-4 mb-2">
-            <div className="flex items-start gap-2">
-              <span className="text-gray-500 mt-2">•</span>
-              <div className="flex-1">{renderTextWithCitations(line.substring(2))}</div>
-            </div>
-          </div>
-        )
-        return
-      }
-      if (line.trim() === '') {
-        nodes.push(<div key={`sp-${idx}`} className="h-3" />)
-        return
-      }
-      nodes.push(
-        <p key={`p-${idx}`} className="text-gray-800 leading-relaxed mb-2">{renderTextWithCitations(line)}</p>
-      )
-    })
-    return nodes
-  }, [isStreaming, streamedContent, citations])
+  // Custom markdown components with reference processing
+  const markdownComponents = useMemo(() => ({
+    // Handle [1] [2] [3] style references in paragraphs
+    p: ({ children, ...props }: any) => {
+      // Process text content to make references clickable
+      const processedChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string') {
+          // Split by [number] pattern and create clickable links
+          const parts = child.split(/(\[\d+\])/)
+          return parts.map((part, partIndex) => {
+            const match = part.match(/^\[(\d+)\]$/)
+            if (match) {
+              const refNumber = match[1]
+              return (
+                <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                  [{refNumber}]
+                </ReferenceLink>
+              )
+            }
+            return part
+          })
+        }
+        return child
+      })
+
+      return <p {...props}>{processedChildren}</p>
+    },
+
+    // Handle references in list items and flatten paragraph content
+    li: ({ children, ...props }: any) => {
+      const processedChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string') {
+          const parts = child.split(/(\[\d+\])/)
+          return parts.map((part, partIndex) => {
+            const match = part.match(/^\[(\d+)\]$/)
+            if (match) {
+              const refNumber = match[1]
+              return (
+                <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                  [{refNumber}]
+                </ReferenceLink>
+              )
+            }
+            return part
+          })
+        }
+        // If child is a paragraph element, extract its content to avoid nested block elements
+        if (React.isValidElement(child) && child.type === 'p') {
+          return (child.props as any).children
+        }
+        return child
+      })
+
+      return <li className="ml-4 mb-1" {...props}>{processedChildren}</li>
+    },
+    // Style headers appropriately
+    h1: ({ children, ...props }: any) => (
+      <h1 className="text-2xl font-bold text-gray-900 mt-8 mb-4" {...props}>{children}</h1>
+    ),
+    h2: ({ children, ...props }: any) => (
+      <h2 className="text-xl font-bold text-gray-900 mt-6 mb-3" {...props}>{children}</h2>
+    ),
+    h3: ({ children, ...props }: any) => (
+      <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2" {...props}>{children}</h3>
+    ),
+    // Style lists
+    ul: ({ children, ...props }: any) => (
+      <ul className="list-disc list-inside space-y-1 my-3" {...props}>{children}</ul>
+    ),
+    ol: ({ children, ...props }: any) => (
+      <ol className="list-decimal list-inside space-y-1 my-3" {...props}>{children}</ol>
+    ),
+    // Style emphasis
+    strong: ({ children, ...props }: any) => (
+      <strong className="font-semibold" {...props}>{children}</strong>
+    ),
+    em: ({ children, ...props }: any) => (
+      <em className="italic" {...props}>{children}</em>
+    ),
+  }), [referenceMapping, isStreaming])
+
+  // Render content with React Markdown (both streaming and completed)
+  const renderedContent = useMemo(() => {
+    if (!streamedContent) return null
+
+    return (
+      <div className="prose max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={markdownComponents}
+        >
+          {streamedContent}
+        </ReactMarkdown>
+      </div>
+    )
+  }, [streamedContent, referenceMapping, isStreaming])
 
   if (error) {
     return (
@@ -463,26 +380,12 @@ export function StreamingResultsDisplay({
           </div>
         </CardHeader>
         <CardContent>
-          {isStreaming ? (
-            <div className="space-y-3">
-              {/* Render formatted completed paragraphs */}
-              {formattedParagraphs.map((html, i) => (
-                <div key={`fp-${i}`} className="prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
-              ))}
-              {/* Render the live last paragraph (raw) if any */}
-              {(() => {
-                const inProgress = paragraphs.slice(-1)
-                return inProgress.map((p, idx) => (
-                  <div key={`raw-${idx}`} className="whitespace-pre-wrap text-gray-800 bg-gray-50 p-4 rounded-md border-l-4 border-blue-400">
-                    {p}
-                    <span className="inline-block w-2 h-5 bg-blue-500 ml-1 animate-pulse"></span>
-                  </div>
-                ))
-              })()}
-            </div>
-          ) : (
-            <div className="prose max-w-none">{formattedNodes}</div>
-          )}
+          <div className="relative">
+            {renderedContent}
+            {isStreaming && (
+              <span className="inline-block w-2 h-5 bg-blue-500 ml-1 animate-pulse"></span>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -531,42 +434,45 @@ export function StreamingResultsDisplay({
       )}
 
       {/* References */}
-      {!isStreaming && citations.length > 0 && (
+      {!isStreaming && referenceMapping && Object.keys(referenceMapping).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>References</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {citations.map(c => (
-                <div key={c.chunkId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium text-gray-700">[{c.number}]</span>
-                    <span className="text-sm text-gray-700">
-                      {citationInfo[c.chunkId]?.company_name ? (
-                        <>
-                          {citationInfo[c.chunkId]?.company_name} • {(() => {
-                            try {
-                              return new Date(citationInfo[c.chunkId]?.call_date || '').toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })
-                            } catch {
-                              return citationInfo[c.chunkId]?.call_date
-                            }
-                          })()}
-                        </>
-                      ) : (
-                        <span className="font-mono text-sm text-gray-600">Chunk {c.chunkId}</span>
-                      )}
-                    </span>
+              {Object.entries(referenceMapping).map(([refNumber, chunkId]) => {
+                const chunkIdStr = chunkId.toString()
+                return (
+                  <div key={chunkIdStr} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-gray-700">[{refNumber}]</span>
+                      <span className="text-sm text-gray-700">
+                        {citationInfo[chunkIdStr]?.company_name ? (
+                          <>
+                            {citationInfo[chunkIdStr]?.company_name} • {(() => {
+                              try {
+                                return new Date(citationInfo[chunkIdStr]?.call_date || '').toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })
+                              } catch {
+                                return citationInfo[chunkIdStr]?.call_date
+                              }
+                            })()}
+                          </>
+                        ) : (
+                          <span className="font-mono text-sm text-gray-600">Chunk {chunkIdStr}</span>
+                        )}
+                      </span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setSelectedChunk(chunkIdStr)}>
+                      View Details
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedChunk(c.chunkId)}>
-                    View Details
-                  </Button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
