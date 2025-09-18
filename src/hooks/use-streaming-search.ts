@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import type { SearchParameters } from '@/hooks/use-advanced-settings'
 
 interface StreamEvent {
-  type: 'metadata' | 'content' | 'usage' | 'done' | 'error'
+  type: 'metadata' | 'content' | 'usage' | 'done' | 'error' | 'reference_mapping'
   data: any
 }
 
@@ -10,6 +10,7 @@ interface UseStreamingSearchReturn {
   isStreaming: boolean
   streamedContent: string
   metadata: any
+  referenceMapping: Record<string, string> | null
   error: string | null
   startStreaming: (query: string, debug: boolean, parameters: SearchParameters) => void
   stopStreaming: () => void
@@ -94,6 +95,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamedContent, setStreamedContent] = useState('')
   const [metadata, setMetadata] = useState<any>(null)
+  const [referenceMapping, setReferenceMapping] = useState<Record<string, string> | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const lastQueryRef = useRef<{ query: string; debug: boolean; parameters: SearchParameters } | null>(null)
@@ -124,6 +126,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     // Reset state
     setStreamedContent('')
     setMetadata(null)
+    setReferenceMapping(null)
     setError(null)
     setIsStreaming(true)
 
@@ -240,15 +243,23 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                         break
                       }
                         
+                      case 'reference_mapping':
+                        console.log('Received reference mapping:', data.data)
+                        // Handle nested data structure: data.data.data contains the actual mapping
+                        const mappingData = data.data?.data || data.data
+                        console.log('Processed reference mapping:', mappingData)
+                        setReferenceMapping(mappingData)
+                        break
+
                       case 'done':
                         setIsStreaming(false)
                         break
-                        
+
                       case 'error':
                         setError(data.data?.message || 'An error occurred during streaming')
                         setIsStreaming(false)
                         break
-                        
+
                       default:
                         console.warn('Unknown event type:', data.type)
                     }
@@ -308,15 +319,23 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                     break
                   }
                     
+                  case 'reference_mapping':
+                    console.log('Received reference mapping (buffer):', data.data)
+                    // Handle nested data structure: data.data.data contains the actual mapping
+                    const mappingData = data.data?.data || data.data
+                    console.log('Processed reference mapping (buffer):', mappingData)
+                    setReferenceMapping(mappingData)
+                    break
+
                   case 'done':
                     setIsStreaming(false)
                     break
-                    
+
                   case 'error':
                     setError(data.data?.message || 'An error occurred during streaming')
                     setIsStreaming(false)
                     break
-                    
+
                   default:
                     console.warn('Unknown event type:', data.type)
                 }
@@ -384,6 +403,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     isStreaming,
     streamedContent,
     metadata,
+    referenceMapping,
     error,
     startStreaming,
     stopStreaming,

@@ -8,6 +8,7 @@ import { useTokenExpiration } from "@/hooks/use-token-expiration";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CompanyDetails from "./pages/CompanyDetails";
+import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import Triggers from "./pages/Triggers";
 import Notifications from "./pages/Notifications";
 import AISearch from "./pages/AISearch";
@@ -36,6 +37,11 @@ const App = () => {
           <Route path="/companies/:isin" element={
             <ProtectedRoute>
               <CompanyDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="/expert-interviews/:id" element={
+            <ProtectedRoute>
+              <ExpertInterviewDetails />
             </ProtectedRoute>
           } />
           <Route path="/triggers" element={
