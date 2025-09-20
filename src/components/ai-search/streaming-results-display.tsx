@@ -164,30 +164,52 @@ export function StreamingResultsDisplay({
 
     // Handle references in list items and flatten paragraph content
     li: ({ children, ...props }: any) => {
-      const processedChildren = React.Children.map(children, (child, index) => {
-        if (typeof child === 'string') {
-          const parts = child.split(/(\[\d+\])/)
-          return parts.map((part, partIndex) => {
-            const match = part.match(/^\[(\d+)\]$/)
-            if (match) {
-              const refNumber = match[1]
-              return (
-                <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                  [{refNumber}]
-                </ReferenceLink>
-              )
-            }
-            return part
-          })
-        }
-        // If child is a paragraph element, extract its content to avoid nested block elements
-        if (React.isValidElement(child) && child.type === 'p') {
-          return (child.props as any).children
-        }
-        return child
-      })
+      // Recursively process children to flatten paragraphs and handle references
+      const flattenChildren = (children: any): any => {
+        return React.Children.map(children, (child, index) => {
+          if (typeof child === 'string') {
+            const parts = child.split(/(\[\d+\])/)
+            return parts.map((part, partIndex) => {
+              const match = part.match(/^\[(\d+)\]$/)
+              if (match) {
+                const refNumber = match[1]
+                return (
+                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                    [{refNumber}]
+                  </ReferenceLink>
+                )
+              }
+              return part
+            })
+          }
+          // If child is a paragraph element, extract and process its content
+          if (React.isValidElement(child) && child.type === 'p') {
+            return flattenChildren((child.props as any).children)
+          }
+          // If child is a nested list (ul/ol), keep it as is
+          if (React.isValidElement(child) && (child.type === 'ul' || child.type === 'ol')) {
+            return child
+          }
+          // For other React elements, recursively process their children
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child as any, {
+              key: child.key || index,
+              children: flattenChildren((child.props as any).children)
+            })
+          }
+          return child
+        })
+      }
 
-      return <li className="ml-4 mb-1" {...props}>{processedChildren}</li>
+      const processedChildren = flattenChildren(children)
+
+      // Check if this li contains nested lists and adjust styling accordingly
+      const hasNestedList = React.Children.toArray(processedChildren).some(child =>
+        React.isValidElement(child) && (child.type === 'ul' || child.type === 'ol')
+      )
+
+      const className = hasNestedList ? "mb-2" : "mb-1"
+      return <li className={className} {...props}>{processedChildren}</li>
     },
     // Style headers appropriately
     h1: ({ children, ...props }: any) => (
@@ -199,13 +221,23 @@ export function StreamingResultsDisplay({
     h3: ({ children, ...props }: any) => (
       <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2" {...props}>{children}</h3>
     ),
-    // Style lists
-    ul: ({ children, ...props }: any) => (
-      <ul className="list-disc list-inside space-y-1 my-3" {...props}>{children}</ul>
-    ),
-    ol: ({ children, ...props }: any) => (
-      <ol className="list-decimal list-inside space-y-1 my-3" {...props}>{children}</ol>
-    ),
+    // Style lists with proper nesting support
+    ul: ({ children, ...props }: any) => {
+      // Check if this is a nested list (inside an li)
+      const isNested = props.node?.parent?.tagName === 'li'
+      const className = isNested
+        ? "list-disc list-inside space-y-1 ml-4 mt-1" // Nested list styling
+        : "list-disc list-inside space-y-1 my-3" // Top-level list styling
+      return <ul className={className} {...props}>{children}</ul>
+    },
+    ol: ({ children, ...props }: any) => {
+      // Check if this is a nested list (inside an li)
+      const isNested = props.node?.parent?.tagName === 'li'
+      const className = isNested
+        ? "list-decimal list-inside space-y-1 ml-4 mt-1" // Nested list styling
+        : "list-decimal list-inside space-y-1 my-3" // Top-level list styling
+      return <ol className={className} {...props}>{children}</ol>
+    },
     // Style emphasis
     strong: ({ children, ...props }: any) => (
       <strong className="font-semibold" {...props}>{children}</strong>

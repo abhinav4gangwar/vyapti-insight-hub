@@ -27,6 +27,12 @@ FORMATTING REQUIREMENTS:
 - Use ### for subsections (e.g., ### Revenue Growth, ### Market Expansion)
 - Use bullet points (-) for detailed explanations and key points
 - Use numbered lists (1., 2., 3.) for sequential information or rankings
+- Use nested lists with proper indentation for hierarchical information:
+  - Main point
+    - Sub-point A
+    - Sub-point B
+      - Sub-sub-point i
+      - Sub-sub-point ii
 - Use **bold text** for emphasis on important metrics and findings
 - Use *italic text* for company names and specific terminology
 - Include specific quotes and examples from the context
