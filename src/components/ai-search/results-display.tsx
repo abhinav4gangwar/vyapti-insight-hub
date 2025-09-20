@@ -19,7 +19,8 @@ interface ResultsDisplayProps {
 }
 
 export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
-  const [selectedSource, setSelectedSource] = useState<{ filename: string; entryId: string } | null>(null)
+  const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
 
   // Parse sources once using useMemo to avoid re-renders
   const sourceReferences = useMemo(() => {
@@ -71,21 +72,44 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
         });
 
         if (response.ok) {
-          console.log(`Non-streaming response logged to server: ${filename}`);
           return; // Success, no need for client-side fallback
-        } else {
-          console.warn('Server logging failed for non-streaming response');
         }
       } catch (serverError) {
-        console.warn('Server logging unavailable for non-streaming response:', serverError);
+        // Server logging unavailable, continue to client-side fallback
       }
 
       // Client-side fallback (same as streaming version)
-      console.log(`Non-streaming response logged locally: ${filename}`);
     } catch (error) {
-      console.error('Failed to log non-streaming response:', error);
+      // Failed to log response
     }
   };
+
+  // Preprocess content to handle >> nested list syntax
+  const preprocessContent = (content: string): string => {
+    if (!content) return content
+
+    const lines = content.split('\n')
+    const processedLines: string[] = []
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      // Handle >> nested bullet points
+      if (line.match(/^(\s*)(>{2,})\s*(.+)$/)) {
+        const match = line.match(/^(\s*)(>{2,})\s*(.+)$/)
+        if (match) {
+          const [, leadingSpace, arrows, content] = match
+          const depth = arrows.length - 1 // >> = depth 1, >>> = depth 2, etc.
+          const indent = '  '.repeat(depth) // 2 spaces per depth level
+          processedLines.push(`${leadingSpace}${indent}- ${content}`)
+        }
+      } else {
+        processedLines.push(line)
+      }
+    }
+
+    return processedLines.join('\n')
+  }
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -181,8 +205,11 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
     // Use the memoized sourceReferences
     const sources = sourceReferences
 
+    // Preprocess content to handle >> nested lists
+    const preprocessedAnswer = preprocessContent(answer)
+
     // Replace source references with numbered links
-    const processedAnswer = replaceSourceReferences(answer, sources)
+    const processedAnswer = replaceSourceReferences(preprocessedAnswer, sources)
 
     return (
       <div>
@@ -199,13 +226,24 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                 {line.slice(3)}
               </h3>
             )
-          } else if (line.startsWith("- ")) {
-            // Process numbered source references in list items
-            const processedLine = line.slice(2)
-            const parts = processedLine.split(/(\[\d+\])/)
+          } else if (line.match(/^(\s*)- /)) {
+            // Handle nested list items with proper indentation
+            const match = line.match(/^(\s*)- (.+)$/)
+            if (match) {
+              const [, leadingSpace, content] = match
+              const indentLevel = leadingSpace.length / 2 // 2 spaces per indent level
+              const marginLeft = indentLevel * 1.5 // 1.5rem per level
+              const parts = content.split(/(\[\d+\])/)
 
-            return (
-              <li key={index} className="ml-4 text-gray-700 mb-2">
+              return (
+                <li
+                  key={index}
+                  className="text-gray-700 mb-2 leading-relaxed list-disc"
+                  style={{
+                    marginLeft: `${marginLeft + 1}rem`,
+                    listStylePosition: 'outside'
+                  }}
+                >
                 {parts.map((part, partIndex) => {
                   const linkMatch = part.match(/^\[(\d+)\]$/)
                   if (linkMatch) {
@@ -215,7 +253,7 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                       return (
                         <button
                           key={partIndex}
-                          onClick={() => setSelectedSource({ filename: source.filename, entryId: source.entryId })}
+                          onClick={() => setSelectedChunk(source.entryId)}
                           className="inline-flex items-center text-blue-600 hover:text-blue-800 underline cursor-pointer mx-1"
                         >
                           [{linkMatch[1]}]
@@ -225,8 +263,9 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                   }
                   return <span key={partIndex}>{part}</span>
                 })}
-              </li>
-            )
+                </li>
+              )
+            }
           } else if (line.trim() === "") {
             return <br key={index} />
           } else {
@@ -244,7 +283,7 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                       return (
                         <button
                           key={partIndex}
-                          onClick={() => setSelectedSource({ filename: source.filename, entryId: source.entryId })}
+                          onClick={() => setSelectedChunk(source.entryId)}
                           className="inline-flex items-center text-blue-600 hover:text-blue-800 underline cursor-pointer mx-1"
                         >
                           [{linkMatch[1]}]
@@ -268,7 +307,7 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                 <div key={source.id} className="flex items-center gap-2 text-sm">
                   <span className="text-gray-600">[{index + 1}]</span>
                   <button
-                    onClick={() => setSelectedSource({ filename: source.filename, entryId: source.entryId })}
+                    onClick={() => setSelectedChunk(source.entryId)}
                     className="text-blue-600 hover:text-blue-800 underline"
                   >
                     {source.filename}
@@ -325,21 +364,45 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold text-gray-900">Answer</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(results.answer)}
-              className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              <Copy className="w-4 h-4" />
-              Copy
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDebug(!showDebug)}
+                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                {showDebug ? 'Hide Debug' : 'Show Debug'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(results.answer)}
+                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="prose prose-gray max-w-none">{formatAnswer(results.answer)}</div>
         </CardContent>
       </Card>
+
+      {/* Debug Section */}
+      {showDebug && (
+        <Card className="border-gray-200">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold text-gray-900">Raw Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-md border overflow-auto max-h-96 font-mono">
+              {results.answer}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Source Documents (Debug Mode) */}
       {debugMode && merged_results.length > 0 && (
@@ -369,10 +432,9 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
 
       {/* Source Popup */}
       <SourcePopup
-        isOpen={selectedSource !== null}
-        onClose={() => setSelectedSource(null)}
-        sourceFile={selectedSource?.filename || ""}
-        entryId={selectedSource?.entryId || ""}
+        isOpen={selectedChunk !== null}
+        onClose={() => setSelectedChunk(null)}
+        chunkId={selectedChunk || ""}
       />
     </div>
   )
