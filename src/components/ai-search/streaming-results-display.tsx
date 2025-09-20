@@ -29,7 +29,40 @@ export function StreamingResultsDisplay({
 }: StreamingResultsDisplayProps) {
 
   const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
-  const [citationInfo, setCitationInfo] = useState<Record<string, { company_name: string; call_date: string; company_ticker?: string }>>({})
+  const [citationInfo, setCitationInfo] = useState<Record<string, {
+    title: string;
+    subtitle: string;
+    date: string;
+    type: 'expert_interview' | 'earnings_call'
+  }>>({})
+  const [showDebug, setShowDebug] = useState(false)
+
+  // Preprocess content to handle >> nested list syntax
+  const preprocessContent = (content: string): string => {
+    if (!content) return content
+
+    const lines = content.split('\n')
+    const processedLines: string[] = []
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      // Handle >> nested bullet points
+      if (line.match(/^(\s*)(>{2,})\s*(.+)$/)) {
+        const match = line.match(/^(\s*)(>{2,})\s*(.+)$/)
+        if (match) {
+          const [, leadingSpace, arrows, content] = match
+          const depth = arrows.length - 1 // >> = depth 1, >>> = depth 2, etc.
+          const indent = '  '.repeat(depth) // 2 spaces per depth level
+          processedLines.push(`${leadingSpace}${indent}- ${content}`)
+        }
+      } else {
+        processedLines.push(line)
+      }
+    }
+
+    return processedLines.join('\n')
+  }
 
   // Extract citations from reference mapping and content
   const citations = useMemo(() => {
@@ -89,7 +122,7 @@ export function StreamingResultsDisplay({
       if (newIds.length > 0) {
         let alive = true
         const fetchAll = async () => {
-          const entries: [string, { company_name: string; call_date: string }][] = []
+          const entries: [string, { title: string; subtitle: string; date: string; type: 'expert_interview' | 'earnings_call' }][] = []
           for (const id of newIds) {
             try {
               // Use backend API to get chunk info
@@ -97,8 +130,30 @@ export function StreamingResultsDisplay({
               const res = await fetch(`${apiBaseUrl}/api/chunks/${id}`)
               if (res.ok) {
                 const json = await res.json()
-                entries.push([id, { company_name: json.company_name, call_date: json.call_date }])
-                console.log('Fetched chunk info:', json)
+
+                // Determine chunk type and format metadata accordingly
+                const isExpertInterview = id.startsWith('k_')
+
+                if (isExpertInterview) {
+                  // Expert interview metadata - truncate title to 50 chars
+                  const title = json.title || 'Expert Interview'
+                  const truncatedTitle = title.length > 50 ? title.substring(0, 50) + '...' : title
+
+                  entries.push([id, {
+                    title: truncatedTitle,
+                    subtitle: `${json.expert_type || 'Expert'} • ${json.industry || 'Industry'}`,
+                    date: json.published_date || '',
+                    type: 'expert_interview'
+                  }])
+                } else {
+                  // Earnings call metadata
+                  entries.push([id, {
+                    title: json.company_name || 'Company',
+                    subtitle: `${json.primary_speaker || 'Speaker'} • ${json.quarter || ''} ${json.fiscal_year || ''}`,
+                    date: json.call_date || '',
+                    type: 'earnings_call'
+                  }])
+                }
               }
             } catch (e) {
               console.warn(`Failed to fetch chunk ${id}:`, e)
@@ -134,14 +189,48 @@ export function StreamingResultsDisplay({
     )
   }
 
-  // Custom markdown components with reference processing
+  // Custom markdown components with reference processing and >> nested list support
   const markdownComponents = useMemo(() => ({
-    // Handle [1] [2] [3] style references in paragraphs
+    // Handle [1] [2] [3] style references in paragraphs and >> nested lists
     p: ({ children, ...props }: any) => {
-      // Process text content to make references clickable
+      // Process text content to make references clickable and handle >> nested lists
       const processedChildren = React.Children.map(children, (child, index) => {
         if (typeof child === 'string') {
-          // Split by [number] pattern and create clickable links
+          // Check if this is a >> nested list item
+          const nestedListMatch = child.match(/^(>{2,})\s*(.*)$/)
+          if (nestedListMatch) {
+            const depth = nestedListMatch[1].length - 1 // >> = depth 1, >>> = depth 2, etc.
+            const content = nestedListMatch[2]
+            const marginLeft = depth * 1.5 // 1.5rem per level
+
+            // Process references in the nested content
+            const parts = content.split(/(\[\d+\])/)
+            const processedContent = parts.map((part, partIndex) => {
+              const match = part.match(/^\[(\d+)\]$/)
+              if (match) {
+                const refNumber = match[1]
+                return (
+                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                    [{refNumber}]
+                  </ReferenceLink>
+                )
+              }
+              return part
+            })
+
+            return (
+              <div
+                key={index}
+                className="flex items-start gap-2 my-1"
+                style={{ marginLeft: `${marginLeft}rem` }}
+              >
+                <span className="text-gray-600 mt-1">•</span>
+                <span className="flex-1">{processedContent}</span>
+              </div>
+            )
+          }
+
+          // Regular text processing for references
           const parts = child.split(/(\[\d+\])/)
           return parts.map((part, partIndex) => {
             const match = part.match(/^\[(\d+)\]$/)
@@ -158,36 +247,67 @@ export function StreamingResultsDisplay({
         }
         return child
       })
+
+      // If this paragraph contains only >> nested items, render as div
+      const hasOnlyNestedItems = React.Children.toArray(processedChildren).every(child =>
+        React.isValidElement(child) && child.type === 'div'
+      )
+
+      if (hasOnlyNestedItems) {
+        return <div {...props}>{processedChildren}</div>
+      }
 
       return <p {...props}>{processedChildren}</p>
     },
 
     // Handle references in list items and flatten paragraph content
     li: ({ children, ...props }: any) => {
-      const processedChildren = React.Children.map(children, (child, index) => {
-        if (typeof child === 'string') {
-          const parts = child.split(/(\[\d+\])/)
-          return parts.map((part, partIndex) => {
-            const match = part.match(/^\[(\d+)\]$/)
-            if (match) {
-              const refNumber = match[1]
-              return (
-                <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                  [{refNumber}]
-                </ReferenceLink>
-              )
-            }
-            return part
-          })
-        }
-        // If child is a paragraph element, extract its content to avoid nested block elements
-        if (React.isValidElement(child) && child.type === 'p') {
-          return (child.props as any).children
-        }
-        return child
-      })
+      // Recursively process children to flatten paragraphs and handle references
+      const flattenChildren = (children: any): any => {
+        return React.Children.map(children, (child, index) => {
+          if (typeof child === 'string') {
+            const parts = child.split(/(\[\d+\])/)
+            return parts.map((part, partIndex) => {
+              const match = part.match(/^\[(\d+)\]$/)
+              if (match) {
+                const refNumber = match[1]
+                return (
+                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                    [{refNumber}]
+                  </ReferenceLink>
+                )
+              }
+              return part
+            })
+          }
+          // If child is a paragraph element, extract and process its content
+          if (React.isValidElement(child) && child.type === 'p') {
+            return flattenChildren((child.props as any).children)
+          }
+          // If child is a nested list (ul/ol), keep it as is
+          if (React.isValidElement(child) && (child.type === 'ul' || child.type === 'ol')) {
+            return child
+          }
+          // For other React elements, recursively process their children
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child as any, {
+              key: child.key || index,
+              children: flattenChildren((child.props as any).children)
+            })
+          }
+          return child
+        })
+      }
 
-      return <li className="ml-4 mb-1" {...props}>{processedChildren}</li>
+      const processedChildren = flattenChildren(children)
+
+      // Check if this li contains nested lists and adjust styling accordingly
+      const hasNestedList = React.Children.toArray(processedChildren).some(child =>
+        React.isValidElement(child) && (child.type === 'ul' || child.type === 'ol')
+      )
+
+      const className = hasNestedList ? "mb-2 leading-relaxed" : "mb-1 leading-relaxed"
+      return <li className={className} {...props}>{processedChildren}</li>
     },
     // Style headers appropriately
     h1: ({ children, ...props }: any) => (
@@ -199,13 +319,23 @@ export function StreamingResultsDisplay({
     h3: ({ children, ...props }: any) => (
       <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2" {...props}>{children}</h3>
     ),
-    // Style lists
-    ul: ({ children, ...props }: any) => (
-      <ul className="list-disc list-inside space-y-1 my-3" {...props}>{children}</ul>
-    ),
-    ol: ({ children, ...props }: any) => (
-      <ol className="list-decimal list-inside space-y-1 my-3" {...props}>{children}</ol>
-    ),
+    // Style lists with proper nesting support
+    ul: ({ children, ...props }: any) => {
+      // Check if this is a nested list (inside an li)
+      const isNested = props.node?.parent?.tagName === 'li'
+      const className = isNested
+        ? "list-disc list-outside space-y-1 ml-6 mt-1 pl-2" // Nested list styling with more indentation
+        : "list-disc list-outside space-y-2 my-3 ml-4 pl-2" // Top-level list styling
+      return <ul className={className} {...props}>{children}</ul>
+    },
+    ol: ({ children, ...props }: any) => {
+      // Check if this is a nested list (inside an li)
+      const isNested = props.node?.parent?.tagName === 'li'
+      const className = isNested
+        ? "list-decimal list-outside space-y-1 ml-6 mt-1 pl-2" // Nested list styling with more indentation
+        : "list-decimal list-outside space-y-2 my-3 ml-4 pl-2" // Top-level list styling
+      return <ol className={className} {...props}>{children}</ol>
+    },
     // Style emphasis
     strong: ({ children, ...props }: any) => (
       <strong className="font-semibold" {...props}>{children}</strong>
@@ -219,6 +349,8 @@ export function StreamingResultsDisplay({
   const renderedContent = useMemo(() => {
     if (!streamedContent) return null
 
+    const processedContent = preprocessContent(streamedContent)
+
     return (
       <div className="prose max-w-none">
         <ReactMarkdown
@@ -226,7 +358,7 @@ export function StreamingResultsDisplay({
           rehypePlugins={[rehypeRaw]}
           components={markdownComponents}
         >
-          {streamedContent}
+          {processedContent}
         </ReactMarkdown>
       </div>
     )
@@ -314,16 +446,24 @@ export function StreamingResultsDisplay({
           if (info) {
             const date = (() => {
               try {
-                return new Date(info.call_date).toLocaleDateString('en-US', {
+                const dateStr = info.date
+                if (!dateStr) return 'No date'
+
+                const parsedDate = new Date(dateStr)
+                if (isNaN(parsedDate.getTime())) {
+                  return dateStr // Return original if parsing fails
+                }
+
+                return parsedDate.toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric'
                 })
               } catch {
-                return info.call_date
+                return info.date || 'No date'
               }
             })()
-            cleanText += `[${c.number}] ${info.company_name} - ${date}\n`
+            cleanText += `[${c.number}] ${info.title} - ${date}\n`
           } else {
             cleanText += `[${c.number}] Chunk ${c.chunkId}\n`
           }
@@ -367,15 +507,25 @@ export function StreamingResultsDisplay({
               )}
             </CardTitle>
             {!isStreaming && streamedContent && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyToClipboard}
-                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                <Copy className="w-4 h-4" />
-                Copy
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDebug(!showDebug)}
+                  className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  {showDebug ? 'Hide Debug' : 'Show Debug'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyToClipboard}
+                  className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -388,6 +538,20 @@ export function StreamingResultsDisplay({
           </div>
         </CardContent>
       </Card>
+
+      {/* Debug Section */}
+      {showDebug && !isStreaming && streamedContent && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Raw Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-md border overflow-auto max-h-96 font-mono">
+              {streamedContent}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cost Metrics (Bottom) */}
       {!isStreaming && metadata?.openai_usage?.length > 0 && (
@@ -448,20 +612,34 @@ export function StreamingResultsDisplay({
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-gray-700">[{refNumber}]</span>
                       <span className="text-sm text-gray-700">
-                        {citationInfo[chunkIdStr]?.company_name ? (
-                          <>
-                            {citationInfo[chunkIdStr]?.company_name} • {(() => {
-                              try {
-                                return new Date(citationInfo[chunkIdStr]?.call_date || '').toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })
-                              } catch {
-                                return citationInfo[chunkIdStr]?.call_date
-                              }
-                            })()}
-                          </>
+                        {citationInfo[chunkIdStr] ? (
+                          <div className="flex flex-col">
+                            <span className="font-medium">{citationInfo[chunkIdStr].title}</span>
+                            <span className="text-xs text-gray-500">
+                              {(() => {
+                                try {
+                                  // Handle different date formats for expert interviews vs earnings calls
+                                  const dateStr = citationInfo[chunkIdStr].date
+                                  if (!dateStr) return 'No date'
+
+                                  // For expert interviews, the date is in YYYY-MM-DD format
+                                  // For earnings calls, it might be in different format
+                                  const date = new Date(dateStr)
+                                  if (isNaN(date.getTime())) {
+                                    return dateStr // Return original if parsing fails
+                                  }
+
+                                  return date.toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })
+                                } catch {
+                                  return citationInfo[chunkIdStr].date || 'No date'
+                                }
+                              })()}
+                            </span>
+                          </div>
                         ) : (
                           <span className="font-mono text-sm text-gray-600">Chunk {chunkIdStr}</span>
                         )}

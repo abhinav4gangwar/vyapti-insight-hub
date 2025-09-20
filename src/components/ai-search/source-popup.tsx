@@ -6,17 +6,24 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Calendar, Building, User, ExternalLink } from 'lucide-react'
 
-interface ChunkData {
-  id: string
+// Base interface for common fields
+interface BaseChunkData {
+  id: string | number
+  source_type: 'earnings_call' | 'expert_interview'
+}
+
+// Earnings call chunk data (e_ prefix)
+interface EarningsCallChunkData extends BaseChunkData {
+  source_type: 'earnings_call'
   text: string
   company_name: string
-  company_ticker: string
+  isin: string
   call_date: string
   fiscal_year?: number
   quarter?: string
   exchange?: string
   source_file?: string
-  file_name?: string
+  source_url?: string
   chunk_index?: number
   char_start?: number
   char_end?: number
@@ -27,7 +34,40 @@ interface ChunkData {
   primary_speaker_type?: string
   primary_speaker_role?: string
   section_guess?: string
+  speaker_spans?: Array<{
+    start: number
+    end: number
+    speaker_name: string
+    speaker_role: string
+    speaker_type: string
+    coverage_ratio: number
+  }>
+  created_at?: string
+  updated_at?: string
 }
+
+// Expert interview chunk data (k_ prefix)
+interface ExpertInterviewChunkData extends BaseChunkData {
+  source_type: 'expert_interview'
+  title: string
+  published_date: string
+  expert_type: string
+  industry: string
+  sub_industries: string[]
+  primary_companies: string[]
+  secondary_companies: string[]
+  briefs: Array<{
+    id: number
+    point: string
+  }>
+  table_with_content: string
+  primary_isin?: string
+  secondary_isins: string[]
+  est_read: number
+  read_time?: number
+}
+
+type ChunkData = EarningsCallChunkData | ExpertInterviewChunkData
 
 interface DocumentInfo {
   exchange: string
@@ -60,34 +100,51 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
       setError(null)
 
       try {
-        // Fetch chunk data from backend API
+        // Determine chunk type based on prefix
+        const isExpertInterview = chunkId.startsWith('k_')
+        const isEarningsCall = chunkId.startsWith('e_')
+
+        if (!isExpertInterview && !isEarningsCall) {
+          throw new Error('Invalid chunk ID format. Expected k_ or e_ prefix.')
+        }
+
         const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005'
-        const chunkResponse = await fetch(`${apiBaseUrl}/api/chunks/${chunkId}`)
+
+        // Use different endpoints based on chunk type
+        const endpoint = isExpertInterview
+          ? `${apiBaseUrl}/api/chunks/${chunkId}` // Keep full k_ prefix for expert interviews
+          : `${apiBaseUrl}/api/chunks/${chunkId}` // Keep full e_ prefix for earnings calls
+
+        const chunkResponse = await fetch(endpoint)
         if (!chunkResponse.ok) {
           throw new Error(`Failed to fetch chunk data: ${chunkResponse.statusText}`)
         }
 
-        const chunk: ChunkData = await chunkResponse.json()
-        setChunkData(chunk)
+        const chunk = await chunkResponse.json()
 
-        // Fetch document info for the "View Full Document" functionality
-        const filename = chunk.source_file
-        if (chunk.exchange && filename) {
-          try {
-            console.log('Fetching document info:', { exchange: chunk.exchange, filename })
-            const docResponse = await fetch(`${apiBaseUrl}/api/documents?exchange=${chunk.exchange}&filename=${filename}`)
-            if (docResponse.ok) {
-              const docInfo: DocumentInfo = await docResponse.json()
-              console.log('Document info received:', docInfo)
-              setDocumentInfo(docInfo)
-            } else {
-              console.warn('Document response not ok:', docResponse.status, docResponse.statusText)
+        // Add source_type to the data
+        const chunkWithType: ChunkData = {
+          ...chunk,
+          source_type: isExpertInterview ? 'expert_interview' : 'earnings_call'
+        }
+
+        setChunkData(chunkWithType)
+
+        // Fetch document info for earnings calls only
+        if (chunkWithType.source_type === 'earnings_call') {
+          const earningsChunk = chunkWithType as EarningsCallChunkData
+          const filename = earningsChunk.source_file
+          if (earningsChunk.exchange && filename) {
+            try {
+              const docResponse = await fetch(`${apiBaseUrl}/api/documents?exchange=${earningsChunk.exchange}&filename=${filename}`)
+              if (docResponse.ok) {
+                const docInfo: DocumentInfo = await docResponse.json()
+                setDocumentInfo(docInfo)
+              }
+            } catch (docErr) {
+              // Silently handle document fetch errors
             }
-          } catch (docErr) {
-            console.warn('Failed to fetch document info:', docErr)
           }
-        } else {
-          console.log('Missing exchange or filename:', { exchange: chunk.exchange, file_name: chunk.file_name, source_file: chunk.source_file })
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load chunk data")
@@ -144,67 +201,179 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
 
         {chunkData && (
           <div className="space-y-6">
-            {/* Company Information */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Company Information
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="font-medium">Company:</span>
-                  <p className="text-gray-700">{chunkData.company_name}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Ticker:</span>
-                  <p className="text-gray-700">{chunkData.company_ticker}</p>
-                </div>
-                {chunkData.exchange && (
-                  <div>
-                    <span className="font-medium">Exchange:</span>
-                    <Badge variant="outline">{chunkData.exchange}</Badge>
+            {chunkData.source_type === 'earnings_call' ? (
+              // Earnings Call Content
+              <>
+                {/* Company Information */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Company Information
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="font-medium">Company:</span>
+                      <p className="text-gray-700">{(chunkData as EarningsCallChunkData).company_name}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">ISIN:</span>
+                      <p className="text-gray-700">{(chunkData as EarningsCallChunkData).isin}</p>
+                    </div>
+                    {(chunkData as EarningsCallChunkData).exchange && (
+                      <div>
+                        <span className="font-medium">Exchange:</span>
+                        <Badge variant="outline">{(chunkData as EarningsCallChunkData).exchange}</Badge>
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-medium">Call Date:</span>
+                      <p className="text-gray-700 flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate((chunkData as EarningsCallChunkData).call_date)}
+                      </p>
+                    </div>
+                    {(chunkData as EarningsCallChunkData).quarter && (chunkData as EarningsCallChunkData).fiscal_year && (
+                      <div>
+                        <span className="font-medium">Quarter:</span>
+                        <p className="text-gray-700">{(chunkData as EarningsCallChunkData).quarter} {(chunkData as EarningsCallChunkData).fiscal_year}</p>
+                      </div>
+                    )}
+                    {(chunkData as EarningsCallChunkData).section_guess && (
+                      <div>
+                        <span className="font-medium">Section:</span>
+                        <Badge variant="secondary">{(chunkData as EarningsCallChunkData).section_guess}</Badge>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div>
-                  <span className="font-medium">Date:</span>
-                  <p className="text-gray-700 flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {formatDate(chunkData.call_date)}
-                  </p>
                 </div>
-                {chunkData.quarter && chunkData.fiscal_year && (
-                  <div>
-                    <span className="font-medium">Quarter:</span>
-                    <p className="text-gray-700">{chunkData.quarter} {chunkData.fiscal_year}</p>
+              </>
+            ) : (
+              // Expert Interview Content
+              <>
+                {/* Expert Interview Information */}
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Expert Interview
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="font-medium">Title:</span>
+                      <p className="text-gray-700">{(chunkData as ExpertInterviewChunkData).title}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="font-medium">Published Date:</span>
+                        <p className="text-gray-700 flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {formatDate((chunkData as ExpertInterviewChunkData).published_date)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Expert Type:</span>
+                        <Badge variant="outline">{(chunkData as ExpertInterviewChunkData).expert_type}</Badge>
+                      </div>
+                      <div>
+                        <span className="font-medium">Industry:</span>
+                        <p className="text-gray-700">{(chunkData as ExpertInterviewChunkData).industry}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Est. Read Time:</span>
+                        <p className="text-gray-700">{(chunkData as ExpertInterviewChunkData).est_read} min</p>
+                      </div>
+                    </div>
+                    {(chunkData as ExpertInterviewChunkData).sub_industries.length > 0 && (
+                      <div>
+                        <span className="font-medium">Sub-industries:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {(chunkData as ExpertInterviewChunkData).sub_industries.map((industry, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">{industry}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(chunkData as ExpertInterviewChunkData).primary_companies.length > 0 && (
+                      <div>
+                        <span className="font-medium">Primary Companies:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {(chunkData as ExpertInterviewChunkData).primary_companies.map((company, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">{company}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-                {chunkData.section_guess && (
-                  <div>
-                    <span className="font-medium">Section:</span>
-                    <Badge variant="secondary">{chunkData.section_guess}</Badge>
-                  </div>
-                )}
-              </div>
-            </div>
-
-
-            {/* Primary Speaker */}
-            {chunkData.primary_speaker && (
-              <div className="bg-gray-50 rounded-lg px-4">
-                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  {chunkData.primary_speaker}
-                </h3>
-              </div>
+                </div>
+              </>
             )}
 
-            {/* Chunk Text */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-lg mb-3">Chunk Text</h3>
-              <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
-                <p className="whitespace-pre-wrap text-gray-800">{chunkData.text}</p>
-              </div>
-            </div>
+
+            {chunkData.source_type === 'earnings_call' ? (
+              <>
+                {/* Primary Speaker */}
+                {(chunkData as EarningsCallChunkData).primary_speaker && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Speaker Information
+                    </h3>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-medium">Name:</span>
+                        <p className="text-gray-700">{(chunkData as EarningsCallChunkData).primary_speaker}</p>
+                      </div>
+                      {(chunkData as EarningsCallChunkData).primary_speaker_type && (
+                        <div>
+                          <span className="font-medium">Type:</span>
+                          <Badge variant="outline">{(chunkData as EarningsCallChunkData).primary_speaker_type}</Badge>
+                        </div>
+                      )}
+                      {(chunkData as EarningsCallChunkData).primary_speaker_role && (
+                        <div>
+                          <span className="font-medium">Role:</span>
+                          <p className="text-gray-700 text-sm">{(chunkData as EarningsCallChunkData).primary_speaker_role}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Earnings Call Text */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3">Transcript Text</h3>
+                  <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-gray-800">{(chunkData as EarningsCallChunkData).text}</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Expert Interview Briefs */}
+                {(chunkData as ExpertInterviewChunkData).briefs.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3">Key Points</h3>
+                    <div className="space-y-3">
+                      {(chunkData as ExpertInterviewChunkData).briefs.map((brief, index) => (
+                        <div key={brief.id} className="bg-white rounded p-3 border">
+                          <div className="flex items-start gap-2">
+                            <Badge variant="outline" className="text-xs mt-1">{index + 1}</Badge>
+                            <p className="text-gray-800 text-sm">{brief.point}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expert Interview Content */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3">Interview Content</h3>
+                  <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-gray-800">{(chunkData as ExpertInterviewChunkData).table_with_content}</p>
+                  </div>
+                </div>
+              </>
+            )}
             {documentInfo?.pdf_url ? (
               <Button onClick={handleViewFullDoc} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 ms-4">
                 <ExternalLink className="h-4 w-4" />

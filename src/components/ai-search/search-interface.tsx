@@ -25,13 +25,15 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
   const [dateValidationError, setDateValidationError] = useState<string | null>(null)
   const { parameters, updateParameter, resetToDefaults, hasChanges } = useAdvancedSettings()
 
-  // Validate date range
-  const validateDateRange = (fromMonth: number, fromYear: number, toMonth: number, toYear: number) => {
-    const fromDate = new Date(fromYear, fromMonth - 1) // Month is 0-indexed in Date
-    const toDate = new Date(toYear, toMonth - 1)
+  // Validate source date ranges
+  const validateSourceDateRanges = () => {
+    for (const [source, range] of Object.entries(parameters.source_date_ranges)) {
+      const fromDate = new Date(range.from_year, range.from_month - 1) // Month is 0-indexed in Date
+      const toDate = new Date(range.to_year, range.to_month - 1)
 
-    if (toDate < fromDate) {
-      return "End date cannot be earlier than start date"
+      if (toDate < fromDate) {
+        return `End date cannot be earlier than start date for ${source}`
+      }
     }
     return null
   }
@@ -39,8 +41,8 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate date range before submitting
-    const dateError = validateDateRange(parameters.from_month, parameters.from_year, parameters.to_month, parameters.to_year)
+    // Validate source date ranges before submitting
+    const dateError = validateSourceDateRanges()
     if (dateError) {
       setDateValidationError(dateError)
       return
@@ -60,28 +62,13 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
     }
   }
 
-  // Helper function to update date parameters with validation
-  const updateDateParameter = (key: 'from_month' | 'from_year' | 'to_month' | 'to_year', value: number) => {
-    updateParameter(key, value)
-
-    // Get the updated parameters for validation
-    const updatedParams = { ...parameters, [key]: value }
-    const dateError = validateDateRange(
-      updatedParams.from_month,
-      updatedParams.from_year,
-      updatedParams.to_month,
-      updatedParams.to_year
-    )
-    setDateValidationError(dateError)
-  }
-
-  // Clear validation error when date range becomes valid
+  // Clear validation error when date ranges become valid
   useEffect(() => {
-    const dateError = validateDateRange(parameters.from_month, parameters.from_year, parameters.to_month, parameters.to_year)
+    const dateError = validateSourceDateRanges()
     if (!dateError && dateValidationError) {
       setDateValidationError(null)
     }
-  }, [parameters.from_month, parameters.from_year, parameters.to_month, parameters.to_year, dateValidationError])
+  }, [parameters.source_date_ranges, dateValidationError])
 
   return (
     <div className="space-y-4">
@@ -127,6 +114,16 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
             </Button>
           </div>
         </div>
+
+        {/* Date Validation Error */}
+        {dateValidationError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">{dateValidationError}</span>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center w-full">
           <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="w-full">
@@ -199,92 +196,9 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <div className="text-xs text-gray-500">Minimum similarity score for results</div>
                 </div>
 
-                {/* Date Range Filter */}
-                <div className="space-y-2 col-span-2">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Date Range - From
-                  </Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs text-gray-600">Month</Label>
-                      <select
-                        value={parameters.from_month}
-                        onChange={(e) => updateDateParameter('from_month', parseInt(e.target.value))}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i + 1} value={i + 1}>
-                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-600">Year</Label>
-                      <select
-                        value={parameters.from_year}
-                        onChange={(e) => updateDateParameter('from_year', parseInt(e.target.value))}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
-                      >
-                        {Array.from({ length: 6 }, (_, i) => (
-                          <option key={2020 + i} value={2020 + i}>
-                            {2020 + i}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500">Start date for filtering earnings calls</div>
-                </div>
 
-            
-    <div className="space-y-2 col-span-2">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Date Range - To
-                  </Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs text-gray-600">Month</Label>
-                      <select
-                        value={parameters.to_month}
-                        onChange={(e) => updateDateParameter('to_month', parseInt(e.target.value))}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i + 1} value={i + 1}>
-                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-600">Year</Label>
-                      <select
-                        value={parameters.to_year}
-                        onChange={(e) => updateDateParameter('to_year', parseInt(e.target.value))}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
-                      >
-                        {Array.from({ length: 6 }, (_, i) => (
-                          <option key={2020 + i} value={2020 + i}>
-                            {2020 + i}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500">End date for filtering earnings calls</div>
-                </div>
-                {/* Date Validation Error */}
-                {dateValidationError && (
-                  <div className="col-span-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <div className="flex items-center gap-2 text-red-700">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span className="text-sm font-medium">{dateValidationError}</span>
-                    </div>
-                  </div>
-                )}
 
-                {/* Source Multi-Select Filter */}
+                {/* Sources */}
                 <div className="space-y-2 col-span-4">
                   <Label className="text-sm font-medium text-gray-700">
                     Sources
@@ -293,48 +207,178 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                     <label className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
-                        checked={parameters.sources.includes('earnings_calls')}
+                        checked={parameters.bm25_sources.includes('earnings_calls_20_25') || parameters.semantic_sources.includes('earnings_calls_20_25')}
                         onChange={(e) => {
-                          const newSources = e.target.checked
-                            ? [...parameters.sources, 'earnings_calls']
-                            : parameters.sources.filter(s => s !== 'earnings_calls');
-                          updateParameter('sources', newSources);
+                          if (e.target.checked) {
+                            updateParameter('bm25_sources', [...parameters.bm25_sources, 'earnings_calls_20_25']);
+                            updateParameter('semantic_sources', [...parameters.semantic_sources, 'earnings_calls_20_25']);
+
+                            // Add default date range if doesn't exist
+                            if (!parameters.source_date_ranges['earnings_calls_20_25']) {
+                              updateParameter('source_date_ranges', {
+                                ...parameters.source_date_ranges,
+                                'earnings_calls_20_25': {
+                                  from_month: 8,
+                                  from_year: 2025,
+                                  to_month: 12,
+                                  to_year: 2025
+                                }
+                              });
+                            }
+                          } else {
+                            updateParameter('bm25_sources', parameters.bm25_sources.filter(s => s !== 'earnings_calls_20_25'));
+                            updateParameter('semantic_sources', parameters.semantic_sources.filter(s => s !== 'earnings_calls_20_25'));
+                          }
                         }}
                         className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
                       />
-                      Earnings Calls
+                      Earnings Calls 2025
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
-                        checked={parameters.sources.includes('investor_ppt')}
+                        checked={parameters.bm25_sources.includes('expert_interviews_embeddings') || parameters.semantic_sources.includes('expert_interviews_embeddings')}
                         onChange={(e) => {
-                          const newSources = e.target.checked
-                            ? [...parameters.sources, 'investor_ppt']
-                            : parameters.sources.filter(s => s !== 'investor_ppt');
-                          updateParameter('sources', newSources);
+                          if (e.target.checked) {
+                            updateParameter('bm25_sources', [...parameters.bm25_sources, 'expert_interviews_embeddings']);
+                            updateParameter('semantic_sources', [...parameters.semantic_sources, 'expert_interviews_embeddings']);
+
+                            // Add default date range if doesn't exist
+                            if (!parameters.source_date_ranges['expert_interviews_embeddings']) {
+                              updateParameter('source_date_ranges', {
+                                ...parameters.source_date_ranges,
+                                'expert_interviews_embeddings': {
+                                  from_month: 1,
+                                  from_year: 2024,
+                                  to_month: 6,
+                                  to_year: 2024
+                                }
+                              });
+                            }
+                          } else {
+                            updateParameter('bm25_sources', parameters.bm25_sources.filter(s => s !== 'expert_interviews_embeddings'));
+                            updateParameter('semantic_sources', parameters.semantic_sources.filter(s => s !== 'expert_interviews_embeddings'));
+                          }
                         }}
                         className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
                       />
-                      Investor PPT
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={parameters.sources.includes('annual_reports')}
-                        onChange={(e) => {
-                          const newSources = e.target.checked
-                            ? [...parameters.sources, 'annual_reports']
-                            : parameters.sources.filter(s => s !== 'annual_reports');
-                          updateParameter('sources', newSources);
-                        }}
-                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
-                      />
-                      Annual Reports
+                      Expert Interviews
                     </label>
                   </div>
                   <div className="text-xs text-gray-500">
-                    Select which sources to include in search
+                    Select sources to include in search
+                  </div>
+                </div>
+
+                {/* Source Date Ranges */}
+                <div className="space-y-4 col-span-4">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Date Range
+                  </Label>
+                  {Array.from(new Set([...parameters.bm25_sources, ...parameters.semantic_sources])).map((source) => (
+                    <div key={source} className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="text-sm font-medium text-gray-700 mb-2">
+                        {source === 'earnings_calls_20_25' ? 'Earnings Calls 2025' :
+                         source === 'expert_interviews_embeddings' ? 'Expert Interviews' : source}
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div>
+                          <Label className="text-xs text-gray-600">From Month</Label>
+                          <select
+                            value={parameters.source_date_ranges[source].from_month}
+                            onChange={(e) => {
+                              const newRanges = {
+                                ...parameters.source_date_ranges,
+                                [source]: {
+                                  ...parameters.source_date_ranges[source],
+                                  from_month: parseInt(e.target.value)
+                                }
+                              };
+                              updateParameter('source_date_ranges', newRanges);
+                            }}
+                            className="w-full p-1 border border-gray-300 rounded-md text-xs focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">From Year</Label>
+                          <select
+                            value={parameters.source_date_ranges[source].from_year}
+                            onChange={(e) => {
+                              const newRanges = {
+                                ...parameters.source_date_ranges,
+                                [source]: {
+                                  ...parameters.source_date_ranges[source],
+                                  from_year: parseInt(e.target.value)
+                                }
+                              };
+                              updateParameter('source_date_ranges', newRanges);
+                            }}
+                            className="w-full p-1 border border-gray-300 rounded-md text-xs focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                          >
+                            {Array.from({ length: 6 }, (_, i) => (
+                              <option key={2020 + i} value={2020 + i}>
+                                {2020 + i}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">To Month</Label>
+                          <select
+                            value={parameters.source_date_ranges[source].to_month}
+                            onChange={(e) => {
+                              const newRanges = {
+                                ...parameters.source_date_ranges,
+                                [source]: {
+                                  ...parameters.source_date_ranges[source],
+                                  to_month: parseInt(e.target.value)
+                                }
+                              };
+                              updateParameter('source_date_ranges', newRanges);
+                            }}
+                            className="w-full p-1 border border-gray-300 rounded-md text-xs focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">To Year</Label>
+                          <select
+                            value={parameters.source_date_ranges[source].to_year}
+                            onChange={(e) => {
+                              const newRanges = {
+                                ...parameters.source_date_ranges,
+                                [source]: {
+                                  ...parameters.source_date_ranges[source],
+                                  to_year: parseInt(e.target.value)
+                                }
+                              };
+                              updateParameter('source_date_ranges', newRanges);
+                            }}
+                            className="w-full p-1 border border-gray-300 rounded-md text-xs focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+                          >
+                            {Array.from({ length: 6 }, (_, i) => (
+                              <option key={2020 + i} value={2020 + i}>
+                                {2020 + i}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-xs text-gray-500">
+                    Configure date range for the selected source
                   </div>
                 </div>
 

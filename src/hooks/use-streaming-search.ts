@@ -48,10 +48,6 @@ function appendWithOverlap(prev: string, nextChunk: string, maxOverlap: number =
 
   if (chunkIdPattern.test(prev) && chunkIdContinuation.test(nextChunk)) {
     // We're likely in the middle of a chunk ID, don't apply overlap removal
-    console.log('Detected chunk ID split, preserving content:', {
-      prevEnd: prev.slice(-20),
-      nextStart: nextChunk.slice(0, 20)
-    })
     return prev + nextChunk
   }
 
@@ -71,7 +67,6 @@ function appendWithOverlap(prev: string, nextChunk: string, maxOverlap: number =
 
         // If the overlap is purely numeric and surrounded by other numbers, skip it
         if (/^\d+$/.test(overlap) && (/\d$/.test(beforeOverlap) || /^\d/.test(afterOverlap))) {
-          console.log('Skipping numeric overlap to preserve chunk ID:', overlap)
           continue
         }
 
@@ -105,7 +100,6 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
   const stopStreaming = useCallback(() => {
     userStoppedRef.current = true // Mark that user manually stopped
     if (abortControllerRef.current) {
-      console.log('Aborting streaming request...')
       abortControllerRef.current.abort('User cancelled request')
       abortControllerRef.current = null
     }
@@ -136,7 +130,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     try {
       // Use environment variables for API configuration
       const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005'
-      const apiUrl = `${apiBaseUrl}/global_search_streaming/stream`
+      const apiUrl = `${apiBaseUrl}/enhanced_global_search_streaming/stream`
 
       // Create abort controller for this request
       const abortController = new AbortController()
@@ -171,13 +165,11 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
           while (true) {
             // Check if we've been aborted before reading
             if (abortController.signal.aborted) {
-              console.log('Stream aborted before read')
               break
             }
 
             const { done, value } = await reader.read()
             if (done) {
-              console.log('Stream completed normally')
               break
             }
 
@@ -244,10 +236,8 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                       }
                         
                       case 'reference_mapping':
-                        console.log('Received reference mapping:', data.data)
                         // Handle nested data structure: data.data.data contains the actual mapping
                         const mappingData = data.data?.data || data.data
-                        console.log('Processed reference mapping:', mappingData)
                         setReferenceMapping(mappingData)
                         break
 
@@ -320,10 +310,8 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                   }
                     
                   case 'reference_mapping':
-                    console.log('Received reference mapping (buffer):', data.data)
                     // Handle nested data structure: data.data.data contains the actual mapping
                     const mappingData = data.data?.data || data.data
-                    console.log('Processed reference mapping (buffer):', mappingData)
                     setReferenceMapping(mappingData)
                     break
 
@@ -346,7 +334,6 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
           }
         } catch (streamError) {
           if (streamError instanceof Error && streamError.name === 'AbortError') {
-            console.log('Stream reading aborted by user')
             return
           }
           console.error('Stream reading error:', streamError)
@@ -363,7 +350,6 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Request was aborted, don't show error if user manually stopped
-        console.log('Streaming request aborted by user')
         return
       }
 
