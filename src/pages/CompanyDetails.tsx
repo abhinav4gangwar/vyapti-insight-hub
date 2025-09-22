@@ -439,7 +439,7 @@ const formatDate = (dateString: string) => {
                       : 'financial-body text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Kavi - Expert Interviews
+                  K Expert Interviews
                 </button>
                 <button
                   onClick={() => setActiveDocTab('sebi_documents')}
@@ -639,7 +639,7 @@ const formatDate = (dateString: string) => {
                 <CardHeader>
                   <CardTitle className="financial-heading flex items-center">
                     <FileText className="h-5 w-5 mr-2 text-accent" />
-                    Kavi - Expert Interviews
+                    K Expert Interviews
                     <Badge variant="outline" className="ml-2 financial-body">
                       {companyData.expert_interviews?.length || 0}
                     </Badge>

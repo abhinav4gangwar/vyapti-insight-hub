@@ -60,6 +60,15 @@ export default function ExpertInterviewDetails() {
         const client = authService.createAuthenticatedClient();
         const response = await client.get(`/expert-interviews/${id}`);
         setInterviewData(response.data);
+
+        // Set all sections to be expanded by default
+        if (response.data.table_with_content) {
+          const initialOpenState: { [key: number]: boolean } = {};
+          response.data.table_with_content.forEach((section: any) => {
+            initialOpenState[section.id] = true;
+          });
+          setOpenSections(initialOpenState);
+        }
       } catch (error) {
         toast({
           title: "Error",

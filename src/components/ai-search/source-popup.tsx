@@ -4,70 +4,9 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Calendar, Building, User, ExternalLink } from 'lucide-react'
-
-// Base interface for common fields
-interface BaseChunkData {
-  id: string | number
-  source_type: 'earnings_call' | 'expert_interview'
-}
-
-// Earnings call chunk data (e_ prefix)
-interface EarningsCallChunkData extends BaseChunkData {
-  source_type: 'earnings_call'
-  text: string
-  company_name: string
-  isin: string
-  call_date: string
-  fiscal_year?: number
-  quarter?: string
-  exchange?: string
-  source_file?: string
-  source_url?: string
-  chunk_index?: number
-  char_start?: number
-  char_end?: number
-  num_chars?: number
-  num_tokens?: number
-  total_chunks?: number
-  primary_speaker?: string
-  primary_speaker_type?: string
-  primary_speaker_role?: string
-  section_guess?: string
-  speaker_spans?: Array<{
-    start: number
-    end: number
-    speaker_name: string
-    speaker_role: string
-    speaker_type: string
-    coverage_ratio: number
-  }>
-  created_at?: string
-  updated_at?: string
-}
-
-// Expert interview chunk data (k_ prefix)
-interface ExpertInterviewChunkData extends BaseChunkData {
-  source_type: 'expert_interview'
-  title: string
-  published_date: string
-  expert_type: string
-  industry: string
-  sub_industries: string[]
-  primary_companies: string[]
-  secondary_companies: string[]
-  briefs: Array<{
-    id: number
-    point: string
-  }>
-  table_with_content: string
-  primary_isin?: string
-  secondary_isins: string[]
-  est_read: number
-  read_time?: number
-}
-
-type ChunkData = EarningsCallChunkData | ExpertInterviewChunkData
+import { FileText, Calendar, Building, User, ExternalLink, Copy } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
+import type { ChunkData, EarningsCallChunkData, ExpertInterviewChunkData } from '@/hooks/use-bulk-chunks'
 
 interface DocumentInfo {
   exchange: string
@@ -110,11 +49,8 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
 
         const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005'
 
-        // Use different endpoints based on chunk type
-        const endpoint = isExpertInterview
-          ? `${apiBaseUrl}/api/chunks/${chunkId}` // Keep full k_ prefix for expert interviews
-          : `${apiBaseUrl}/api/chunks/${chunkId}` // Keep full e_ prefix for earnings calls
-
+        // Use individual chunk endpoint
+        const endpoint = `${apiBaseUrl}/api/chunks/${chunkId}`
         const chunkResponse = await fetch(endpoint)
         if (!chunkResponse.ok) {
           throw new Error(`Failed to fetch chunk data: ${chunkResponse.statusText}`)
@@ -175,6 +111,14 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
     }
   }
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({
+      title: "Copied to clipboard",
+      description: "Text has been copied to your clipboard",
+    })
+  }
+
   if (!isOpen) return null
 
   return (
@@ -213,7 +157,17 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="font-medium">Company:</span>
-                      <p className="text-gray-700">{(chunkData as EarningsCallChunkData).company_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-gray-700">{(chunkData as EarningsCallChunkData).company_name}</p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard((chunkData as EarningsCallChunkData).company_name)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     <div>
                       <span className="font-medium">ISIN:</span>
@@ -251,7 +205,7 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
               // Expert Interview Content
               <>
                 {/* Expert Interview Information */}
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
                     <User className="h-5 w-5" />
                     Expert Interview
@@ -374,54 +328,83 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                 </div>
               </>
             )}
-            {documentInfo?.pdf_url ? (
-              <Button onClick={handleViewFullDoc} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 ms-4">
-                <ExternalLink className="h-4 w-4" />
-                View Full Document
-              </Button>
-            ) : chunkData?.exchange && (chunkData?.file_name || chunkData?.source_file) ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                Loading document...
-              </div>
-            ) : (
-              <div className="text-sm text-gray-500 italic">
-                Document not available
-              </div>
-            )}
+
+            {/* Document Actions */}
+            <div className="flex items-center gap-4">
+              {chunkData.source_type === 'earnings_call' ? (
+                // Earnings Call Document Button
+                documentInfo?.pdf_url ? (
+                  <Button onClick={handleViewFullDoc} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
+                    <ExternalLink className="h-4 w-4" />
+                    View Full Document
+                  </Button>
+                ) : (chunkData as EarningsCallChunkData).exchange && ((chunkData as EarningsCallChunkData).source_file) ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                    Loading document...
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 italic">
+                    Document not available
+                  </div>
+                )
+              ) : (
+                // Expert Interview Document Button
+                (() => {
+                  const expertChunk = chunkData as ExpertInterviewChunkData;
+
+                  // Use interview_id if available, otherwise fall back to the main id field
+                  const interviewId = expertChunk.interview_id;
+
+                  return interviewId ? (
+                    <Button
+                      onClick={() => window.open(`/expert-interviews/${interviewId}`, '_blank')}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View Full Interview
+                    </Button>
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">
+                      Interview not available
+                    </div>
+                  );
+                })()
+              )}
+            </div>
             
             {/* Chunk Details */}
-            {(chunkData.chunk_index !== undefined || chunkData.num_chars || chunkData.num_tokens) && (
+            {((chunkData as any).chunk_index !== undefined || (chunkData as any).num_chars || (chunkData as any).num_tokens) && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="font-semibold text-lg mb-3">Chunk Details</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  {chunkData.chunk_index !== undefined && chunkData.total_chunks && (
+                  {(chunkData as any).chunk_index !== undefined && (chunkData as any).total_chunks && (
                     <div>
                       <span className="font-medium">Chunk Index:</span>
-                      <p className="text-gray-700">{chunkData.chunk_index} of {chunkData.total_chunks}</p>
+                      <p className="text-gray-700">{(chunkData as any).chunk_index} of {(chunkData as any).total_chunks}</p>
                     </div>
                   )}
-                  {chunkData.num_chars && (
+                  {(chunkData as any).num_chars && (
                     <div>
                       <span className="font-medium">Characters:</span>
                       <p className="text-gray-700">
-                        {chunkData.num_chars}
-                        {chunkData.char_start !== undefined && chunkData.char_end !== undefined &&
-                          ` (${chunkData.char_start}-${chunkData.char_end})`
+                        {(chunkData as any).num_chars}
+                        {(chunkData as any).char_start !== undefined && (chunkData as any).char_end !== undefined &&
+                          ` (${(chunkData as any).char_start}-${(chunkData as any).char_end})`
                         }
                       </p>
                     </div>
                   )}
-                  {chunkData.num_tokens && (
+                  {(chunkData as any).num_tokens && (
                     <div>
                       <span className="font-medium">Tokens:</span>
-                      <p className="text-gray-700">{chunkData.num_tokens}</p>
+                      <p className="text-gray-700">{(chunkData as any).num_tokens}</p>
                     </div>
                   )}
-                  {chunkData.source_file && (
+                  {(chunkData as any).source_file && (
                     <div>
                       <span className="font-medium">Source File:</span>
-                      <p className="text-gray-700 font-mono text-sm">{chunkData.source_file}</p>
+                      <p className="text-gray-700 font-mono text-sm">{(chunkData as any).source_file}</p>
                     </div>
                   )}
                 </div>

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { SearchParameters } from '@/hooks/use-advanced-settings'
+import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
 
 interface StreamEvent {
   type: 'metadata' | 'content' | 'usage' | 'done' | 'error' | 'reference_mapping'
@@ -92,6 +93,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
   const [metadata, setMetadata] = useState<any>(null)
   const [referenceMapping, setReferenceMapping] = useState<Record<string, string> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { fetchChunks } = useBulkChunksContext()
 
   const lastQueryRef = useRef<{ query: string; debug: boolean; parameters: SearchParameters } | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -239,6 +241,20 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                         // Handle nested data structure: data.data.data contains the actual mapping
                         const mappingData = data.data?.data || data.data
                         setReferenceMapping(mappingData)
+
+                        // Preload all chunks from the reference mapping
+                        if (mappingData && typeof mappingData === 'object') {
+                          const chunkIds = Object.values(mappingData).filter(id =>
+                            typeof id === 'string' && (id.startsWith('e_') || id.startsWith('k_'))
+                          ) as string[]
+
+                          if (chunkIds.length > 0) {
+                            console.log('🚀 Preloading chunks from reference mapping:', chunkIds)
+                            fetchChunks(chunkIds).catch(err =>
+                              console.warn('Failed to preload chunks:', err)
+                            )
+                          }
+                        }
                         break
 
                       case 'done':
@@ -313,6 +329,20 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                     // Handle nested data structure: data.data.data contains the actual mapping
                     const mappingData = data.data?.data || data.data
                     setReferenceMapping(mappingData)
+
+                    // Preload all chunks from the reference mapping
+                    if (mappingData && typeof mappingData === 'object') {
+                      const chunkIds = Object.values(mappingData).filter(id =>
+                        typeof id === 'string' && (id.startsWith('e_') || id.startsWith('k_'))
+                      ) as string[]
+
+                      if (chunkIds.length > 0) {
+                        console.log('🚀 Preloading chunks from reference mapping (buffer):', chunkIds)
+                        fetchChunks(chunkIds).catch(err =>
+                          console.warn('Failed to preload chunks:', err)
+                        )
+                      }
+                    }
                     break
 
                   case 'done':

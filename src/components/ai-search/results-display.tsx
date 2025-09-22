@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Copy, ChevronDown, ChevronRight, Clock, DollarSign, Zap, AlertTriangle } from "lucide-react"
+import { Copy, ChevronDown, ChevronRight, Clock, DollarSign, Zap, AlertTriangle, Filter } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { SourcePopup } from "@/components/ai-search/source-popup"
 import { parseSourceReferences, replaceSourceReferences } from "@/lib/ai-search-utils"
+import { useBulkChunksContext } from "@/contexts/BulkChunksContext"
 import type { SearchResponse, OpenAIUsage, SourceDocument } from "@/pages/AISearch"
+import type { SourceReference } from "@/lib/ai-search-utils"
 
 
 
@@ -21,11 +23,69 @@ interface ResultsDisplayProps {
 export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
   const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
   const [showDebug, setShowDebug] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews'>('all')
+  const [companyFilter, setCompanyFilter] = useState<string>('all')
+  const { preloadChunksFromReferences, getChunk } = useBulkChunksContext()
 
   // Parse sources once using useMemo to avoid re-renders
   const sourceReferences = useMemo(() => {
     return parseSourceReferences(results.answer || "");
   }, [results.answer])
+
+  // Preload chunks when source references are available
+  // Note: The streaming hook now handles preloading from reference_mapping,
+  // but we keep this as a fallback for non-streaming scenarios
+  useEffect(() => {
+    if (sourceReferences.length > 0) {
+      // Add a small delay to avoid duplicate requests if streaming just finished
+      const timeoutId = setTimeout(() => {
+        preloadChunksFromReferences(sourceReferences)
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [sourceReferences, preloadChunksFromReferences])
+
+  // Get unique companies from loaded chunks for filter
+  const availableCompanies = useMemo(() => {
+    const companies = new Set<string>()
+    sourceReferences.forEach(source => {
+      const chunk = getChunk(source.entryId)
+      if (chunk) {
+        if (chunk.source_type === 'earnings_call') {
+          companies.add(chunk.company_name)
+        } else if (chunk.source_type === 'expert_interview') {
+          chunk.primary_companies.forEach(company => companies.add(company))
+        }
+      }
+    })
+    return Array.from(companies).sort()
+  }, [sourceReferences, getChunk])
+
+  // Filter sources based on selected filters
+  const filteredSources = useMemo(() => {
+    return sourceReferences.filter(source => {
+      const chunk = getChunk(source.entryId)
+      if (!chunk) return true // Show if chunk not loaded yet
+
+      // Source type filter
+      if (sourceFilter !== 'all') {
+        const expectedType = sourceFilter === 'earnings_calls' ? 'earnings_call' : 'expert_interview'
+        if (chunk.source_type !== expectedType) return false
+      }
+
+      // Company filter
+      if (companyFilter !== 'all') {
+        if (chunk.source_type === 'earnings_call') {
+          if (chunk.company_name !== companyFilter) return false
+        } else if (chunk.source_type === 'expert_interview') {
+          if (!chunk.primary_companies.includes(companyFilter)) return false
+        }
+      }
+
+      return true
+    })
+  }, [sourceReferences, sourceFilter, companyFilter, getChunk])
 
   // Log final response when results are received
   useEffect(() => {
@@ -299,20 +359,43 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
         })}
 
         {/* Sources section */}
-        {sources.length > 0 && (
+        {sourceReferences.length > 0 && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">References:</h4>
-            <div className="space-y-2">
-              {sources.map((source, index) => (
-                <div key={source.id} className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-600">[{index + 1}]</span>
-                  <button
-                    onClick={() => setSelectedChunk(source.entryId)}
-                    className="text-blue-600 hover:text-blue-800 underline"
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-medium text-gray-900">References ({filteredSources.length}/{sourceReferences.length}):</h4>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value as any)}
+                  className="text-xs border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="all">All Sources</option>
+                  <option value="earnings_calls">Earnings Calls</option>
+                  <option value="expert_interviews">Expert Interviews</option>
+                </select>
+                {availableCompanies.length > 0 && (
+                  <select
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                    className="text-xs border border-gray-300 rounded px-2 py-1"
                   >
-                    {source.filename}
-                  </button>
-                </div>
+                    <option value="all">All Companies</option>
+                    {availableCompanies.map(company => (
+                      <option key={company} value={company}>{company}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              {filteredSources.map((source, index) => (
+                <ReferenceItem
+                  key={source.id}
+                  source={source}
+                  index={sourceReferences.findIndex(s => s.id === source.id) + 1}
+                  onChunkClick={setSelectedChunk}
+                />
               ))}
             </div>
           </div>
@@ -480,6 +563,60 @@ function UsageCard({ usage }: { usage: OpenAIUsage }) {
   )
 }
 
+// Reference item component with tags and company info
+function ReferenceItem({
+  source,
+  index,
+  onChunkClick
+}: {
+  source: SourceReference;
+  index: number;
+  onChunkClick: (chunkId: string) => void;
+}) {
+  const { getChunk } = useBulkChunksContext()
+  const chunk = getChunk(source.entryId)
+
+  const getSourceTypeTag = () => {
+    if (source.entryId.startsWith('k_')) {
+      return <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">K</Badge>
+    } else if (source.entryId.startsWith('e_')) {
+      return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">E</Badge>
+    }
+    return null
+  }
+
+  const getCompanyName = () => {
+    if (!chunk) return null
+
+    if (chunk.source_type === 'earnings_call') {
+      return chunk.company_name
+    } else if (chunk.source_type === 'expert_interview') {
+      return chunk.primary_companies[0] // Show first primary company
+    }
+    return null
+  }
+
+  const companyName = getCompanyName()
+
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-gray-600">[{index}]</span>
+      {getSourceTypeTag()}
+      {companyName && (
+        <Badge variant="outline" className="text-xs">
+          {companyName}
+        </Badge>
+      )}
+      <button
+        onClick={() => onChunkClick(source.entryId)}
+        className="text-blue-600 hover:text-blue-800 underline flex-1 text-left"
+      >
+        {source.filename}
+      </button>
+    </div>
+  )
+}
+
 function SourceDocumentCard({ doc, index }: { doc: SourceDocument; index: number }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showFullText, setShowFullText] = useState(false)
@@ -498,15 +635,15 @@ function SourceDocumentCard({ doc, index }: { doc: SourceDocument; index: number
             {isExpanded ? <ChevronDown className="w-4 h-4 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 flex-shrink-0" />}
             <div className="flex-grow">
               <div className="flex items-center gap-2">
-                {metadata.company_ticker && (
+                {(metadata as any).company_ticker && (
                     <Badge variant="outline" className="text-xs border-gray-300">
-                        {metadata.company_ticker}
+                        {(metadata as any).company_ticker}
                     </Badge>
                 )}
-                <span className="font-medium text-gray-900">{metadata.company_name || "Unknown Company"}</span>
+                <span className="font-medium text-gray-900">{(metadata as any).company_name || "Unknown Company"}</span>
               </div>
               <div className="text-sm text-gray-600 mt-1">
-                {metadata.call_date} • {metadata.speaker_name || "Unknown Speaker"}
+                {(metadata as any).call_date} • {(metadata as any).speaker_name || "Unknown Speaker"}
               </div>
             </div>
           </div>
