@@ -54,6 +54,7 @@ const AISearch = () => {
     isStreaming,
     streamedContent,
     metadata,
+    referenceMapping,
     error: streamingError,
     startStreaming,
     stopStreaming,
@@ -166,14 +167,11 @@ Notes and caveats
   };
 
   const handleStepChange = (step: number) => {
-    console.log('Loading step changed:', step);
     setCurrentLoadingStep(step);
     if (step >= 5) {
       setHasReachedStep5(true);
     }
   };
-
-  console.log('AISearch rendering...');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -297,6 +295,7 @@ Notes and caveats
                 onRetry={retryStreaming}
                 streamedContent={streamedContent}
                 metadata={metadata}
+                referenceMapping={referenceMapping}
                 error={streamingError}
               />
             )

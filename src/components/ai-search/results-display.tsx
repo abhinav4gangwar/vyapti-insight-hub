@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Copy, ChevronDown, ChevronRight, Clock, DollarSign, Zap, AlertTriangle } from "lucide-react"
+import { Copy, ChevronDown, ChevronRight, Clock, DollarSign, Zap, AlertTriangle, Filter } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { SourcePopup } from "@/components/ai-search/source-popup"
 import { parseSourceReferences, replaceSourceReferences } from "@/lib/ai-search-utils"
+import { useBulkChunksContext } from "@/contexts/BulkChunksContext"
 import type { SearchResponse, OpenAIUsage, SourceDocument } from "@/pages/AISearch"
+import type { SourceReference } from "@/lib/ai-search-utils"
 
 
 
@@ -19,12 +21,71 @@ interface ResultsDisplayProps {
 }
 
 export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
-  const [selectedSource, setSelectedSource] = useState<{ filename: string; entryId: string } | null>(null)
+  const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews'>('all')
+  const [companyFilter, setCompanyFilter] = useState<string>('all')
+  const { preloadChunksFromReferences, getChunk } = useBulkChunksContext()
 
   // Parse sources once using useMemo to avoid re-renders
   const sourceReferences = useMemo(() => {
     return parseSourceReferences(results.answer || "");
   }, [results.answer])
+
+  // Preload chunks when source references are available
+  // Note: The streaming hook now handles preloading from reference_mapping,
+  // but we keep this as a fallback for non-streaming scenarios
+  useEffect(() => {
+    if (sourceReferences.length > 0) {
+      // Add a small delay to avoid duplicate requests if streaming just finished
+      const timeoutId = setTimeout(() => {
+        preloadChunksFromReferences(sourceReferences)
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [sourceReferences, preloadChunksFromReferences])
+
+  // Get unique companies from loaded chunks for filter
+  const availableCompanies = useMemo(() => {
+    const companies = new Set<string>()
+    sourceReferences.forEach(source => {
+      const chunk = getChunk(source.entryId)
+      if (chunk) {
+        if (chunk.source_type === 'earnings_call') {
+          companies.add(chunk.company_name)
+        } else if (chunk.source_type === 'expert_interview') {
+          chunk.primary_companies.forEach(company => companies.add(company))
+        }
+      }
+    })
+    return Array.from(companies).sort()
+  }, [sourceReferences, getChunk])
+
+  // Filter sources based on selected filters
+  const filteredSources = useMemo(() => {
+    return sourceReferences.filter(source => {
+      const chunk = getChunk(source.entryId)
+      if (!chunk) return true // Show if chunk not loaded yet
+
+      // Source type filter
+      if (sourceFilter !== 'all') {
+        const expectedType = sourceFilter === 'earnings_calls' ? 'earnings_call' : 'expert_interview'
+        if (chunk.source_type !== expectedType) return false
+      }
+
+      // Company filter
+      if (companyFilter !== 'all') {
+        if (chunk.source_type === 'earnings_call') {
+          if (chunk.company_name !== companyFilter) return false
+        } else if (chunk.source_type === 'expert_interview') {
+          if (!chunk.primary_companies.includes(companyFilter)) return false
+        }
+      }
+
+      return true
+    })
+  }, [sourceReferences, sourceFilter, companyFilter, getChunk])
 
   // Log final response when results are received
   useEffect(() => {
@@ -71,21 +132,44 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
         });
 
         if (response.ok) {
-          console.log(`Non-streaming response logged to server: ${filename}`);
           return; // Success, no need for client-side fallback
-        } else {
-          console.warn('Server logging failed for non-streaming response');
         }
       } catch (serverError) {
-        console.warn('Server logging unavailable for non-streaming response:', serverError);
+        // Server logging unavailable, continue to client-side fallback
       }
 
       // Client-side fallback (same as streaming version)
-      console.log(`Non-streaming response logged locally: ${filename}`);
     } catch (error) {
-      console.error('Failed to log non-streaming response:', error);
+      // Failed to log response
     }
   };
+
+  // Preprocess content to handle >> nested list syntax
+  const preprocessContent = (content: string): string => {
+    if (!content) return content
+
+    const lines = content.split('\n')
+    const processedLines: string[] = []
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      // Handle >> nested bullet points
+      if (line.match(/^(\s*)(>{2,})\s*(.+)$/)) {
+        const match = line.match(/^(\s*)(>{2,})\s*(.+)$/)
+        if (match) {
+          const [, leadingSpace, arrows, content] = match
+          const depth = arrows.length - 1 // >> = depth 1, >>> = depth 2, etc.
+          const indent = '  '.repeat(depth) // 2 spaces per depth level
+          processedLines.push(`${leadingSpace}${indent}- ${content}`)
+        }
+      } else {
+        processedLines.push(line)
+      }
+    }
+
+    return processedLines.join('\n')
+  }
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -181,8 +265,11 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
     // Use the memoized sourceReferences
     const sources = sourceReferences
 
+    // Preprocess content to handle >> nested lists
+    const preprocessedAnswer = preprocessContent(answer)
+
     // Replace source references with numbered links
-    const processedAnswer = replaceSourceReferences(answer, sources)
+    const processedAnswer = replaceSourceReferences(preprocessedAnswer, sources)
 
     return (
       <div>
@@ -199,13 +286,24 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                 {line.slice(3)}
               </h3>
             )
-          } else if (line.startsWith("- ")) {
-            // Process numbered source references in list items
-            const processedLine = line.slice(2)
-            const parts = processedLine.split(/(\[\d+\])/)
+          } else if (line.match(/^(\s*)- /)) {
+            // Handle nested list items with proper indentation
+            const match = line.match(/^(\s*)- (.+)$/)
+            if (match) {
+              const [, leadingSpace, content] = match
+              const indentLevel = leadingSpace.length / 2 // 2 spaces per indent level
+              const marginLeft = indentLevel * 1.5 // 1.5rem per level
+              const parts = content.split(/(\[\d+\])/)
 
-            return (
-              <li key={index} className="ml-4 text-gray-700 mb-2">
+              return (
+                <li
+                  key={index}
+                  className="text-gray-700 mb-2 leading-relaxed list-disc"
+                  style={{
+                    marginLeft: `${marginLeft + 1}rem`,
+                    listStylePosition: 'outside'
+                  }}
+                >
                 {parts.map((part, partIndex) => {
                   const linkMatch = part.match(/^\[(\d+)\]$/)
                   if (linkMatch) {
@@ -215,7 +313,7 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                       return (
                         <button
                           key={partIndex}
-                          onClick={() => setSelectedSource({ filename: source.filename, entryId: source.entryId })}
+                          onClick={() => setSelectedChunk(source.entryId)}
                           className="inline-flex items-center text-blue-600 hover:text-blue-800 underline cursor-pointer mx-1"
                         >
                           [{linkMatch[1]}]
@@ -225,8 +323,9 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                   }
                   return <span key={partIndex}>{part}</span>
                 })}
-              </li>
-            )
+                </li>
+              )
+            }
           } else if (line.trim() === "") {
             return <br key={index} />
           } else {
@@ -244,7 +343,7 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
                       return (
                         <button
                           key={partIndex}
-                          onClick={() => setSelectedSource({ filename: source.filename, entryId: source.entryId })}
+                          onClick={() => setSelectedChunk(source.entryId)}
                           className="inline-flex items-center text-blue-600 hover:text-blue-800 underline cursor-pointer mx-1"
                         >
                           [{linkMatch[1]}]
@@ -260,20 +359,43 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
         })}
 
         {/* Sources section */}
-        {sources.length > 0 && (
+        {sourceReferences.length > 0 && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">References:</h4>
-            <div className="space-y-2">
-              {sources.map((source, index) => (
-                <div key={source.id} className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-600">[{index + 1}]</span>
-                  <button
-                    onClick={() => setSelectedSource({ filename: source.filename, entryId: source.entryId })}
-                    className="text-blue-600 hover:text-blue-800 underline"
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-medium text-gray-900">References ({filteredSources.length}/{sourceReferences.length}):</h4>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value as any)}
+                  className="text-xs border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="all">All Sources</option>
+                  <option value="earnings_calls">Earnings Calls</option>
+                  <option value="expert_interviews">Expert Interviews</option>
+                </select>
+                {availableCompanies.length > 0 && (
+                  <select
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                    className="text-xs border border-gray-300 rounded px-2 py-1"
                   >
-                    {source.filename}
-                  </button>
-                </div>
+                    <option value="all">All Companies</option>
+                    {availableCompanies.map(company => (
+                      <option key={company} value={company}>{company}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              {filteredSources.map((source, index) => (
+                <ReferenceItem
+                  key={source.id}
+                  source={source}
+                  index={sourceReferences.findIndex(s => s.id === source.id) + 1}
+                  onChunkClick={setSelectedChunk}
+                />
               ))}
             </div>
           </div>
@@ -325,21 +447,45 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold text-gray-900">Answer</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(results.answer)}
-              className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              <Copy className="w-4 h-4" />
-              Copy
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDebug(!showDebug)}
+                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                {showDebug ? 'Hide Debug' : 'Show Debug'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(results.answer)}
+                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="prose prose-gray max-w-none">{formatAnswer(results.answer)}</div>
         </CardContent>
       </Card>
+
+      {/* Debug Section */}
+      {showDebug && (
+        <Card className="border-gray-200">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold text-gray-900">Raw Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-md border overflow-auto max-h-96 font-mono">
+              {results.answer}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Source Documents (Debug Mode) */}
       {debugMode && merged_results.length > 0 && (
@@ -369,10 +515,9 @@ export function ResultsDisplay({ results, debugMode }: ResultsDisplayProps) {
 
       {/* Source Popup */}
       <SourcePopup
-        isOpen={selectedSource !== null}
-        onClose={() => setSelectedSource(null)}
-        sourceFile={selectedSource?.filename || ""}
-        entryId={selectedSource?.entryId || ""}
+        isOpen={selectedChunk !== null}
+        onClose={() => setSelectedChunk(null)}
+        chunkId={selectedChunk || ""}
       />
     </div>
   )
@@ -418,6 +563,60 @@ function UsageCard({ usage }: { usage: OpenAIUsage }) {
   )
 }
 
+// Reference item component with tags and company info
+function ReferenceItem({
+  source,
+  index,
+  onChunkClick
+}: {
+  source: SourceReference;
+  index: number;
+  onChunkClick: (chunkId: string) => void;
+}) {
+  const { getChunk } = useBulkChunksContext()
+  const chunk = getChunk(source.entryId)
+
+  const getSourceTypeTag = () => {
+    if (source.entryId.startsWith('k_')) {
+      return <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">K</Badge>
+    } else if (source.entryId.startsWith('e_')) {
+      return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">E</Badge>
+    }
+    return null
+  }
+
+  const getCompanyName = () => {
+    if (!chunk) return null
+
+    if (chunk.source_type === 'earnings_call') {
+      return chunk.company_name
+    } else if (chunk.source_type === 'expert_interview') {
+      return chunk.primary_companies[0] // Show first primary company
+    }
+    return null
+  }
+
+  const companyName = getCompanyName()
+
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-gray-600">[{index}]</span>
+      {getSourceTypeTag()}
+      {companyName && (
+        <Badge variant="outline" className="text-xs">
+          {companyName}
+        </Badge>
+      )}
+      <button
+        onClick={() => onChunkClick(source.entryId)}
+        className="text-blue-600 hover:text-blue-800 underline flex-1 text-left"
+      >
+        {source.filename}
+      </button>
+    </div>
+  )
+}
+
 function SourceDocumentCard({ doc, index }: { doc: SourceDocument; index: number }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showFullText, setShowFullText] = useState(false)
@@ -436,15 +635,15 @@ function SourceDocumentCard({ doc, index }: { doc: SourceDocument; index: number
             {isExpanded ? <ChevronDown className="w-4 h-4 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 flex-shrink-0" />}
             <div className="flex-grow">
               <div className="flex items-center gap-2">
-                {metadata.company_ticker && (
+                {(metadata as any).company_ticker && (
                     <Badge variant="outline" className="text-xs border-gray-300">
-                        {metadata.company_ticker}
+                        {(metadata as any).company_ticker}
                     </Badge>
                 )}
-                <span className="font-medium text-gray-900">{metadata.company_name || "Unknown Company"}</span>
+                <span className="font-medium text-gray-900">{(metadata as any).company_name || "Unknown Company"}</span>
               </div>
               <div className="text-sm text-gray-600 mt-1">
-                {metadata.call_date} • {metadata.speaker_name || "Unknown Speaker"}
+                {(metadata as any).call_date} • {(metadata as any).speaker_name || "Unknown Speaker"}
               </div>
             </div>
           </div>

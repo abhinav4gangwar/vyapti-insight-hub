@@ -19,9 +19,6 @@ export interface SourceReference {
 export function parseSourceReferences(answer: string): SourceReference[] {
   if (!answer) return [];
 
-  // Debug: Log the input to see what we're parsing
-  console.log('Parsing answer for source references:', answer.substring(0, 200) + '...');
-
   const sources: SourceReference[] = [];
   const sourceMap = new Map<string, number>();
   let sourceCounter = 1;
@@ -80,11 +77,9 @@ export function parseSourceReferences(answer: string): SourceReference[] {
 
   // Try pattern 3 (Chunk= format)
   while ((match = chunkPattern.exec(answer)) !== null) {
-    console.log('Found chunk match:', match[0], 'Groups:', match[1], match[2]);
     if (match[1]) {
       // Multiple chunks in brackets/parentheses: [Chunks=38910,453429,308620,8116] or (Chunks=123,456,789)
       const chunkIds = match[1].match(/\d+/g) || [];
-      console.log('Extracted chunk IDs from group 1:', chunkIds);
       for (const chunkId of chunkIds) {
         if (!sourceMap.has(chunkId)) {
           sourceMap.set(chunkId, sourceCounter);

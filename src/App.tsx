@@ -5,9 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ui/protected-route";
 import { useTokenExpiration } from "@/hooks/use-token-expiration";
+import { BulkChunksProvider } from "@/contexts/BulkChunksContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CompanyDetails from "./pages/CompanyDetails";
+import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import Triggers from "./pages/Triggers";
 import Notifications from "./pages/Notifications";
 import AISearch from "./pages/AISearch";
@@ -21,10 +23,11 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+      <BulkChunksProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -36,6 +39,11 @@ const App = () => {
           <Route path="/companies/:isin" element={
             <ProtectedRoute>
               <CompanyDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="/expert-interviews/:id" element={
+            <ProtectedRoute>
+              <ExpertInterviewDetails />
             </ProtectedRoute>
           } />
           <Route path="/triggers" element={
@@ -57,8 +65,9 @@ const App = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+        </TooltipProvider>
+      </BulkChunksProvider>
+    </QueryClientProvider>
   );
 };
 

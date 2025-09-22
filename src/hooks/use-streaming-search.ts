@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { SearchParameters } from '@/hooks/use-advanced-settings'
+import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
 
 interface StreamEvent {
-  type: 'metadata' | 'content' | 'usage' | 'done' | 'error'
+  type: 'metadata' | 'content' | 'usage' | 'done' | 'error' | 'reference_mapping'
   data: any
 }
 
@@ -10,6 +11,7 @@ interface UseStreamingSearchReturn {
   isStreaming: boolean
   streamedContent: string
   metadata: any
+  referenceMapping: Record<string, string> | null
   error: string | null
   startStreaming: (query: string, debug: boolean, parameters: SearchParameters) => void
   stopStreaming: () => void
@@ -47,10 +49,6 @@ function appendWithOverlap(prev: string, nextChunk: string, maxOverlap: number =
 
   if (chunkIdPattern.test(prev) && chunkIdContinuation.test(nextChunk)) {
     // We're likely in the middle of a chunk ID, don't apply overlap removal
-    console.log('Detected chunk ID split, preserving content:', {
-      prevEnd: prev.slice(-20),
-      nextStart: nextChunk.slice(0, 20)
-    })
     return prev + nextChunk
   }
 
@@ -70,7 +68,6 @@ function appendWithOverlap(prev: string, nextChunk: string, maxOverlap: number =
 
         // If the overlap is purely numeric and surrounded by other numbers, skip it
         if (/^\d+$/.test(overlap) && (/\d$/.test(beforeOverlap) || /^\d/.test(afterOverlap))) {
-          console.log('Skipping numeric overlap to preserve chunk ID:', overlap)
           continue
         }
 
@@ -94,7 +91,9 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamedContent, setStreamedContent] = useState('')
   const [metadata, setMetadata] = useState<any>(null)
+  const [referenceMapping, setReferenceMapping] = useState<Record<string, string> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { fetchChunks } = useBulkChunksContext()
 
   const lastQueryRef = useRef<{ query: string; debug: boolean; parameters: SearchParameters } | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -103,7 +102,6 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
   const stopStreaming = useCallback(() => {
     userStoppedRef.current = true // Mark that user manually stopped
     if (abortControllerRef.current) {
-      console.log('Aborting streaming request...')
       abortControllerRef.current.abort('User cancelled request')
       abortControllerRef.current = null
     }
@@ -124,6 +122,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     // Reset state
     setStreamedContent('')
     setMetadata(null)
+    setReferenceMapping(null)
     setError(null)
     setIsStreaming(true)
 
@@ -133,7 +132,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     try {
       // Use environment variables for API configuration
       const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005'
-      const apiUrl = `${apiBaseUrl}/global_search_streaming/stream`
+      const apiUrl = `${apiBaseUrl}/enhanced_global_search_streaming/stream`
 
       // Create abort controller for this request
       const abortController = new AbortController()
@@ -168,13 +167,11 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
           while (true) {
             // Check if we've been aborted before reading
             if (abortController.signal.aborted) {
-              console.log('Stream aborted before read')
               break
             }
 
             const { done, value } = await reader.read()
             if (done) {
-              console.log('Stream completed normally')
               break
             }
 
@@ -240,15 +237,35 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                         break
                       }
                         
+                      case 'reference_mapping':
+                        // Handle nested data structure: data.data.data contains the actual mapping
+                        const mappingData = data.data?.data || data.data
+                        setReferenceMapping(mappingData)
+
+                        // Preload all chunks from the reference mapping
+                        if (mappingData && typeof mappingData === 'object') {
+                          const chunkIds = Object.values(mappingData).filter(id =>
+                            typeof id === 'string' && (id.startsWith('e_') || id.startsWith('k_'))
+                          ) as string[]
+
+                          if (chunkIds.length > 0) {
+                            console.log('🚀 Preloading chunks from reference mapping:', chunkIds)
+                            fetchChunks(chunkIds).catch(err =>
+                              console.warn('Failed to preload chunks:', err)
+                            )
+                          }
+                        }
+                        break
+
                       case 'done':
                         setIsStreaming(false)
                         break
-                        
+
                       case 'error':
                         setError(data.data?.message || 'An error occurred during streaming')
                         setIsStreaming(false)
                         break
-                        
+
                       default:
                         console.warn('Unknown event type:', data.type)
                     }
@@ -308,15 +325,35 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                     break
                   }
                     
+                  case 'reference_mapping':
+                    // Handle nested data structure: data.data.data contains the actual mapping
+                    const mappingData = data.data?.data || data.data
+                    setReferenceMapping(mappingData)
+
+                    // Preload all chunks from the reference mapping
+                    if (mappingData && typeof mappingData === 'object') {
+                      const chunkIds = Object.values(mappingData).filter(id =>
+                        typeof id === 'string' && (id.startsWith('e_') || id.startsWith('k_'))
+                      ) as string[]
+
+                      if (chunkIds.length > 0) {
+                        console.log('🚀 Preloading chunks from reference mapping (buffer):', chunkIds)
+                        fetchChunks(chunkIds).catch(err =>
+                          console.warn('Failed to preload chunks:', err)
+                        )
+                      }
+                    }
+                    break
+
                   case 'done':
                     setIsStreaming(false)
                     break
-                    
+
                   case 'error':
                     setError(data.data?.message || 'An error occurred during streaming')
                     setIsStreaming(false)
                     break
-                    
+
                   default:
                     console.warn('Unknown event type:', data.type)
                 }
@@ -327,7 +364,6 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
           }
         } catch (streamError) {
           if (streamError instanceof Error && streamError.name === 'AbortError') {
-            console.log('Stream reading aborted by user')
             return
           }
           console.error('Stream reading error:', streamError)
@@ -344,7 +380,6 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Request was aborted, don't show error if user manually stopped
-        console.log('Streaming request aborted by user')
         return
       }
 
@@ -384,6 +419,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     isStreaming,
     streamedContent,
     metadata,
+    referenceMapping,
     error,
     startStreaming,
     stopStreaming,

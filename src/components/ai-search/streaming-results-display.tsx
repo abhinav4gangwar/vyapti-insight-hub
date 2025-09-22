@@ -1,17 +1,23 @@
 "use client"
 
-import { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { SourcePopup } from '@/components/ai-search/source-popup'
-import { AlertCircle, CheckCircle, RotateCcw, Copy } from 'lucide-react'
+import { AlertCircle, CheckCircle, RotateCcw, Copy, Filter } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 
 interface StreamingResultsDisplayProps {
   isStreaming: boolean
   onRetry?: () => void
   streamedContent?: string
   metadata?: any
+  referenceMapping?: Record<string, string> | null
   error?: string | null
 }
 
@@ -20,42 +26,122 @@ export function StreamingResultsDisplay({
   onRetry,
   streamedContent = '',
   metadata = null,
+  referenceMapping = null,
   error = null
 }: StreamingResultsDisplayProps) {
 
   const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
-  const [formattedParagraphs, setFormattedParagraphs] = useState<string[]>([])
-  const [citationInfo, setCitationInfo] = useState<Record<string, { company_name: string; call_date: string; company_ticker?: string }>>({})
+  const [citationInfo, setCitationInfo] = useState<Record<string, {
+    title: string;
+    subtitle: string;
+    date: string;
+    type: 'expert_interview' | 'earnings_call'
+  }>>({})
+  const [showDebug, setShowDebug] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews'>('all')
+  const [companyFilter, setCompanyFilter] = useState<string>('all')
+  const { getChunk } = useBulkChunksContext()
 
-  // Split content into paragraphs (blank line separated)
-  const paragraphs = useMemo(() => {
-    if (!streamedContent) return [] as string[]
-    return streamedContent.split(/\n\s*\n/).filter(p => p.trim())
-  }, [streamedContent])
+  // Get available companies from loaded chunks
+  const availableCompanies = useMemo(() => {
+    if (!referenceMapping) return []
 
-  // Format a single paragraph (headers, lists, basic typography)
-  const formatParagraph = (paragraph: string) => {
-    let formatted = paragraph
-    formatted = formatted.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">$1</h3>')
-    formatted = formatted.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">$1</h2>')
-    formatted = formatted.replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold text-gray-900 mt-8 mb-4">$1</h1>')
-    formatted = formatted.replace(/^- (.+)$/gm, '<li class="ml-4 mb-1">• $1</li>')
-    formatted = formatted.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 mb-1 list-decimal">$1</li>')
-    formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-    formatted = formatted.replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
-    return formatted
+    const companies = new Set<string>()
+    Object.values(referenceMapping).forEach(chunkId => {
+      const chunk = getChunk(chunkId.toString())
+      if (chunk) {
+        if (chunk.source_type === 'earnings_call') {
+          companies.add(chunk.company_name)
+        } else if (chunk.source_type === 'expert_interview') {
+          chunk.primary_companies.forEach(company => companies.add(company))
+        }
+      }
+    })
+    return Array.from(companies).sort()
+  }, [referenceMapping, getChunk])
+
+  // Filter references based on selected filters
+  const filteredReferences = useMemo(() => {
+    if (!referenceMapping) return []
+
+    return Object.entries(referenceMapping).filter(([refNumber, chunkId]) => {
+      const chunk = getChunk(chunkId.toString())
+      if (!chunk) return true // Show if chunk not loaded yet
+
+      // Source type filter
+      if (sourceFilter !== 'all') {
+        const expectedType = sourceFilter === 'earnings_calls' ? 'earnings_call' : 'expert_interview'
+        if (chunk.source_type !== expectedType) return false
+      }
+
+      // Company filter
+      if (companyFilter !== 'all') {
+        if (chunk.source_type === 'earnings_call') {
+          if (chunk.company_name !== companyFilter) return false
+        } else if (chunk.source_type === 'expert_interview') {
+          if (!chunk.primary_companies.includes(companyFilter)) return false
+        }
+      }
+
+      return true
+    })
+  }, [referenceMapping, sourceFilter, companyFilter, getChunk])
+
+  // Preprocess content to handle >> nested list syntax
+  const preprocessContent = (content: string): string => {
+    if (!content) return content
+
+    const lines = content.split('\n')
+    const processedLines: string[] = []
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      // Handle >> nested bullet points
+      if (line.match(/^(\s*)(>{2,})\s*(.+)$/)) {
+        const match = line.match(/^(\s*)(>{2,})\s*(.+)$/)
+        if (match) {
+          const [, leadingSpace, arrows, content] = match
+          const depth = arrows.length - 1 // >> = depth 1, >>> = depth 2, etc.
+          const indent = '  '.repeat(depth) // 2 spaces per depth level
+          processedLines.push(`${leadingSpace}${indent}- ${content}`)
+        }
+      } else {
+        processedLines.push(line)
+      }
+    }
+
+    return processedLines.join('\n')
   }
 
-  // During streaming: format completed paragraphs (all except the last)
-  useEffect(() => {
-    if (isStreaming) {
-      const completed = paragraphs.slice(0, -1)
-      setFormattedParagraphs(completed.map(formatParagraph))
-    } else {
-      // On completion: format all paragraphs (citations still added later in existing logic)
-      setFormattedParagraphs(paragraphs.map(formatParagraph))
+  // Extract citations from reference mapping and content
+  const citations = useMemo(() => {
+    if (isStreaming || !streamedContent || !referenceMapping) return [] as { chunkId: string; number: string }[]
+
+    const seen = new Set<string>()
+    const list: { chunkId: string; number: string }[] = []
+
+    // Find all [1] [2] [3] style references in the content
+    const referencePattern = /\[(\d+)\]/g
+    let match: RegExpExecArray | null
+
+    while ((match = referencePattern.exec(streamedContent)) !== null) {
+      const refNumber = match[1]
+      const chunkId = referenceMapping[refNumber]
+
+      if (chunkId && !seen.has(chunkId)) {
+        seen.add(chunkId)
+        list.push({ chunkId, number: refNumber })
+        console.log(`Found reference [${refNumber}] -> chunk ${chunkId}`)
+      }
     }
-  }, [paragraphs, isStreaming])
+
+    if (list.length > 0) {
+      console.log('Final parsed citations:', list)
+    }
+
+    return list
+  }, [isStreaming, streamedContent, referenceMapping])
 
   // Debug metadata
   useEffect(() => {
@@ -64,116 +150,29 @@ export function StreamingResultsDisplay({
     }
   }, [metadata])
 
-  // Validate chunk IDs when streaming completes
+  // Validate reference mapping when streaming completes
   useEffect(() => {
-    if (!isStreaming && streamedContent && streamedContent.trim()) {
-      // Always validate chunk IDs for debugging
-      validateChunkIds(streamedContent, metadata);
+    if (!isStreaming && streamedContent && referenceMapping) {
+      console.log('Reference mapping received:', referenceMapping)
+      console.log('Content sample:', streamedContent.slice(-200))
     }
-  }, [isStreaming, streamedContent, metadata])
-
-  // Utility function to validate chunk IDs against metadata
-  const validateChunkIds = (content: string, metadata: any) => {
-    if (!metadata || !content) return
-
-    // Extract chunk IDs from content
-    const contentChunkIds = new Set<string>()
-    const chunkPattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
-    let match: RegExpExecArray | null
-    while ((match = chunkPattern.exec(content)) !== null) {
-      if (match[1]) {
-        const ids = match[1].match(/\d+/g) || []
-        ids.forEach((id: string) => contentChunkIds.add(id))
-      } else if (match[2]) {
-        contentChunkIds.add(match[2])
-      }
-    }
-
-    // Extract doc_ids from metadata
-    const metadataDocIds = new Set<string>()
-    if (metadata.semantic_results) {
-      metadata.semantic_results.forEach((result: any) => {
-        result.hits?.forEach((hit: any) => {
-          if (hit.doc_id) metadataDocIds.add(hit.doc_id.toString())
-        })
-      })
-    }
-
-    // Check for mismatches
-    const mismatches: string[] = []
-    metadataDocIds.forEach(docId => {
-      if (!contentChunkIds.has(docId)) {
-        // Check if it might be a corrupted version (missing leading zeros)
-        const possibleCorrupted = docId.replace(/^0+/, '') // Remove leading zeros
-        if (contentChunkIds.has(possibleCorrupted)) {
-          mismatches.push(`${docId} -> ${possibleCorrupted} (leading zeros lost)`)
-        }
-      }
-    })
-
-    if (mismatches.length > 0) {
-      console.error('🚨 CHUNK ID CORRUPTION DETECTED:', mismatches)
-      console.log('Content chunk IDs:', Array.from(contentChunkIds))
-      console.log('Metadata doc IDs:', Array.from(metadataDocIds))
-    } else if (contentChunkIds.size > 0) {
-      console.log('✅ Chunk ID validation passed:', Array.from(contentChunkIds))
-    }
-  }
+  }, [isStreaming, streamedContent, referenceMapping])
 
 
 
-  // Build citations only AFTER streaming completes (supports numeric IDs and grouped forms)
-  const citations = useMemo(() => {
-    if (isStreaming || !streamedContent) return [] as { chunkId: string; number: number }[]
-    const seen = new Set<string>()
-    const list: { chunkId: string; number: number }[] = []
 
-    // Debug: Log the content being parsed for chunk IDs
-    if (streamedContent.includes('Chunk')) {
-      console.log('Parsing chunk IDs from final content. Sample:', streamedContent.slice(-500)) // Last 500 chars
-    }
-
-    // Combined pattern: either (Chunk|Chunks= ... ) group or single Chunk=123
-    const pattern = /\((?:Chunks?)\s*=\s*([^)]+)\)|Chunk\s*[:=]\s*(\d+)/gi
-    let m: RegExpExecArray | null
-    while ((m = pattern.exec(streamedContent)) !== null) {
-      if (m[1]) {
-        const ids = m[1].match(/\d+/g) || []
-        console.log('Found grouped chunk IDs:', ids, 'from match:', m[0])
-        for (const id of ids) {
-          if (!seen.has(id)) {
-            seen.add(id)
-            list.push({ chunkId: id, number: list.length + 1 })
-          }
-        }
-      } else if (m[2]) {
-        const id = m[2]
-        console.log('Found single chunk ID:', id, 'from match:', m[0])
-        if (!seen.has(id)) {
-          seen.add(id)
-          list.push({ chunkId: id, number: list.length + 1 })
-        }
-      }
-    }
-
-    if (list.length > 0) {
-      console.log('Final parsed chunk IDs:', list.map(c => c.chunkId))
-    }
-
-    return list
-  }, [isStreaming, streamedContent])
 
   // Prefetch citation info after streaming completes to show company name and date
   useEffect(() => {
-    if (!isStreaming && streamedContent) {
-      // Create a stable list of citation IDs to avoid infinite loops
-      const citationIds = citations.map(c => c.chunkId)
-      const newIds = citationIds.filter(id => !citationInfo[id])
+    if (!isStreaming && streamedContent && referenceMapping) {
+      // Get all chunk IDs from the reference mapping and convert to strings
+      const chunkIds = Object.values(referenceMapping).map(id => id.toString())
+      const newIds = chunkIds.filter(id => !citationInfo[id])
 
       if (newIds.length > 0) {
         let alive = true
         const fetchAll = async () => {
-          const entries: [string, { company_name: string; call_date: string }][] = []
+          const entries: [string, { title: string; subtitle: string; date: string; type: 'expert_interview' | 'earnings_call' }][] = []
           for (const id of newIds) {
             try {
               // Use backend API to get chunk info
@@ -181,8 +180,30 @@ export function StreamingResultsDisplay({
               const res = await fetch(`${apiBaseUrl}/api/chunks/${id}`)
               if (res.ok) {
                 const json = await res.json()
-                entries.push([id, { company_name: json.company_name, call_date: json.call_date }])
-                console.log('Fetched chunk info:', json)
+
+                // Determine chunk type and format metadata accordingly
+                const isExpertInterview = id.startsWith('k_')
+
+                if (isExpertInterview) {
+                  // Expert interview metadata - truncate title to 50 chars
+                  const title = json.title || 'Expert Interview'
+                  const truncatedTitle = title.length > 50 ? title.substring(0, 50) + '...' : title
+
+                  entries.push([id, {
+                    title: truncatedTitle,
+                    subtitle: `${json.expert_type || 'Expert'} • ${json.industry || 'Industry'}`,
+                    date: json.published_date || '',
+                    type: 'expert_interview'
+                  }])
+                } else {
+                  // Earnings call metadata
+                  entries.push([id, {
+                    title: json.company_name || 'Company',
+                    subtitle: `${json.primary_speaker || 'Speaker'} • ${json.quarter || ''} ${json.fiscal_year || ''}`,
+                    date: json.call_date || '',
+                    type: 'earnings_call'
+                  }])
+                }
               }
             } catch (e) {
               console.warn(`Failed to fetch chunk ${id}:`, e)
@@ -196,124 +217,202 @@ export function StreamingResultsDisplay({
         return () => { alive = false }
       }
     }
-  }, [isStreaming, streamedContent, citations.map(c => c.chunkId).join(',')]) // Use stable string of IDs
+  }, [isStreaming, streamedContent, referenceMapping, citationInfo])
 
-  // Replace grouped and single chunk refs with [n] clickable after done (same as ResultsDisplay)
-  const renderTextWithCitations = (text: string) => {
-    if (isStreaming) return <span>{text}</span>
+  // Custom component for rendering clickable references
+  const ReferenceLink = ({ children, refNumber }: { children: React.ReactNode; refNumber: string }) => {
+    const chunkId = referenceMapping?.[refNumber]
 
-    // If no citations parsed, still try to render text as-is
-    if (citations.length === 0) return <span>{text}</span>
-
-    // Grouped: (Chunk|Chunks= ...)
-    const groupRegex = /\((?:Chunks?)\s*=\s*([^)]+)\)/gi
-    const singleRegex = /Chunk\s*[:=]\s*(\d+)/gi
-
-    const parts: any[] = []
-    let lastIndex = 0
-
-    // 1) Replace grouped forms inline with concatenated [n]
-    let gm: RegExpExecArray | null
-    while ((gm = groupRegex.exec(text)) !== null) {
-      const start = gm.index
-      parts.push(text.substring(lastIndex, start))
-      const ids = gm[1].match(/\d+/g) || []
-      ids.forEach((id, idx) => {
-        const cite = citations.find(c => c.chunkId === id)
-        const n = cite?.number || 0
-        parts.push(
-          <button
-            key={`${start}-${id}-${idx}`}
-            className="text-blue-600 underline hover:text-blue-800 mx-1"
-            onClick={() => setSelectedChunk(id)}
-          >
-            [{n}]
-          </button>
-        )
-      })
-      lastIndex = groupRegex.lastIndex
+    if (!chunkId || isStreaming) {
+      // During streaming or if no mapping, show as plain text
+      return <span className="text-gray-600">{children}</span>
     }
 
-    // 2) Handle the tail and replace single Chunk=123 occurrences
-    let tail = text.substring(lastIndex)
-    const subparts: any[] = []
-    let subLast = 0
-    let sm: RegExpExecArray | null
-    while ((sm = singleRegex.exec(tail)) !== null) {
-      const start = sm.index
-      subparts.push(tail.substring(subLast, start))
-      const id = sm[1]
-      const cite = citations.find(c => c.chunkId === id)
-      const n = cite?.number || 0
-      subparts.push(
-        <button
-          key={`tail-${start}-${id}`}
-          className="text-blue-600 underline hover:text-blue-800 mx-1"
-          onClick={() => setSelectedChunk(id)}
-        >
-          [{n}]
-        </button>
-      )
-      subLast = singleRegex.lastIndex
-    }
-    subparts.push(tail.substring(subLast))
-
-    parts.push(...subparts)
-    return <span>{parts}</span>
+    return (
+      <button
+        className="text-blue-600 underline hover:text-blue-800 mx-1 font-medium"
+        onClick={() => setSelectedChunk(chunkId.toString())}
+        title={`View details for reference ${refNumber}`}
+      >
+        {children}
+      </button>
+    )
   }
 
-  // After done: format headers, lists, paragraphs
-  const formattedNodes = useMemo(() => {
-    if (isStreaming || !streamedContent) return null
-    const lines = streamedContent.split('\n')
-    const nodes: any[] = []
-    lines.forEach((line, idx) => {
-      if (line.startsWith('## ')) {
-        nodes.push(
-          <h2 key={`h2-${idx}`} className="text-2xl font-bold text-gray-900 mt-6 mb-3 border-b border-gray-200 pb-1">{line.substring(3)}</h2>
-        )
-        return
-      }
-      if (line.startsWith('### ')) {
-        nodes.push(
-          <h3 key={`h3-${idx}`} className="text-xl font-semibold text-gray-800 mt-4 mb-2">{line.substring(4)}</h3>
-        )
-        return
-      }
-      if (/^\d+\.\s/.test(line)) {
-        const num = line.match(/^\d+/)?.[0]
-        const rest = line.replace(/^\d+\.\s/, '')
-        nodes.push(
-          <div key={`ol-${idx}`} className="ml-4 mb-2">
-            <div className="flex items-start gap-2">
-              <span className="text-gray-700 font-medium min-w-[20px]">{num}.</span>
-              <div className="flex-1">{renderTextWithCitations(rest)}</div>
-            </div>
-          </div>
-        )
-        return
-      }
-      if (line.startsWith('- ')) {
-        nodes.push(
-          <div key={`li-${idx}`} className="ml-4 mb-2">
-            <div className="flex items-start gap-2">
-              <span className="text-gray-500 mt-2">•</span>
-              <div className="flex-1">{renderTextWithCitations(line.substring(2))}</div>
-            </div>
-          </div>
-        )
-        return
-      }
-      if (line.trim() === '') {
-        nodes.push(<div key={`sp-${idx}`} className="h-3" />)
-        return
-      }
-      nodes.push(
-        <p key={`p-${idx}`} className="text-gray-800 leading-relaxed mb-2">{renderTextWithCitations(line)}</p>
+  // Custom markdown components with reference processing and >> nested list support
+  const markdownComponents = useMemo(() => ({
+    // Handle [1] [2] [3] style references in paragraphs and >> nested lists
+    p: ({ children, ...props }: any) => {
+      // Process text content to make references clickable and handle >> nested lists
+      const processedChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string') {
+          // Check if this is a >> nested list item
+          const nestedListMatch = child.match(/^(>{2,})\s*(.*)$/)
+          if (nestedListMatch) {
+            const depth = nestedListMatch[1].length - 1 // >> = depth 1, >>> = depth 2, etc.
+            const content = nestedListMatch[2]
+            const marginLeft = depth * 1.5 // 1.5rem per level
+
+            // Process references in the nested content
+            const parts = content.split(/(\[\d+\])/)
+            const processedContent = parts.map((part, partIndex) => {
+              const match = part.match(/^\[(\d+)\]$/)
+              if (match) {
+                const refNumber = match[1]
+                return (
+                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                    [{refNumber}]
+                  </ReferenceLink>
+                )
+              }
+              return part
+            })
+
+            return (
+              <div
+                key={index}
+                className="flex items-start gap-2 my-1"
+                style={{ marginLeft: `${marginLeft}rem` }}
+              >
+                <span className="text-gray-600 mt-1">•</span>
+                <span className="flex-1">{processedContent}</span>
+              </div>
+            )
+          }
+
+          // Regular text processing for references
+          const parts = child.split(/(\[\d+\])/)
+          return parts.map((part, partIndex) => {
+            const match = part.match(/^\[(\d+)\]$/)
+            if (match) {
+              const refNumber = match[1]
+              return (
+                <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                  [{refNumber}]
+                </ReferenceLink>
+              )
+            }
+            return part
+          })
+        }
+        return child
+      })
+
+      // If this paragraph contains only >> nested items, render as div
+      const hasOnlyNestedItems = React.Children.toArray(processedChildren).every(child =>
+        React.isValidElement(child) && child.type === 'div'
       )
-    })
-    return nodes
-  }, [isStreaming, streamedContent, citations])
+
+      if (hasOnlyNestedItems) {
+        return <div {...props}>{processedChildren}</div>
+      }
+
+      return <p {...props}>{processedChildren}</p>
+    },
+
+    // Handle references in list items and flatten paragraph content
+    li: ({ children, ...props }: any) => {
+      // Recursively process children to flatten paragraphs and handle references
+      const flattenChildren = (children: any): any => {
+        return React.Children.map(children, (child, index) => {
+          if (typeof child === 'string') {
+            const parts = child.split(/(\[\d+\])/)
+            return parts.map((part, partIndex) => {
+              const match = part.match(/^\[(\d+)\]$/)
+              if (match) {
+                const refNumber = match[1]
+                return (
+                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                    [{refNumber}]
+                  </ReferenceLink>
+                )
+              }
+              return part
+            })
+          }
+          // If child is a paragraph element, extract and process its content
+          if (React.isValidElement(child) && child.type === 'p') {
+            return flattenChildren((child.props as any).children)
+          }
+          // If child is a nested list (ul/ol), keep it as is
+          if (React.isValidElement(child) && (child.type === 'ul' || child.type === 'ol')) {
+            return child
+          }
+          // For other React elements, recursively process their children
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child as any, {
+              key: child.key || index,
+              children: flattenChildren((child.props as any).children)
+            })
+          }
+          return child
+        })
+      }
+
+      const processedChildren = flattenChildren(children)
+
+      // Check if this li contains nested lists and adjust styling accordingly
+      const hasNestedList = React.Children.toArray(processedChildren).some(child =>
+        React.isValidElement(child) && (child.type === 'ul' || child.type === 'ol')
+      )
+
+      const className = hasNestedList ? "mb-2 leading-relaxed" : "mb-1 leading-relaxed"
+      return <li className={className} {...props}>{processedChildren}</li>
+    },
+    // Style headers appropriately
+    h1: ({ children, ...props }: any) => (
+      <h1 className="text-2xl font-bold text-gray-900 mt-8 mb-4" {...props}>{children}</h1>
+    ),
+    h2: ({ children, ...props }: any) => (
+      <h2 className="text-xl font-bold text-gray-900 mt-6 mb-3" {...props}>{children}</h2>
+    ),
+    h3: ({ children, ...props }: any) => (
+      <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2" {...props}>{children}</h3>
+    ),
+    // Style lists with proper nesting support
+    ul: ({ children, ...props }: any) => {
+      // Check if this is a nested list (inside an li)
+      const isNested = props.node?.parent?.tagName === 'li'
+      const className = isNested
+        ? "list-disc list-outside space-y-1 ml-6 mt-1 pl-2" // Nested list styling with more indentation
+        : "list-disc list-outside space-y-2 my-3 ml-4 pl-2" // Top-level list styling
+      return <ul className={className} {...props}>{children}</ul>
+    },
+    ol: ({ children, ...props }: any) => {
+      // Check if this is a nested list (inside an li)
+      const isNested = props.node?.parent?.tagName === 'li'
+      const className = isNested
+        ? "list-decimal list-outside space-y-1 ml-6 mt-1 pl-2" // Nested list styling with more indentation
+        : "list-decimal list-outside space-y-2 my-3 ml-4 pl-2" // Top-level list styling
+      return <ol className={className} {...props}>{children}</ol>
+    },
+    // Style emphasis
+    strong: ({ children, ...props }: any) => (
+      <strong className="font-semibold" {...props}>{children}</strong>
+    ),
+    em: ({ children, ...props }: any) => (
+      <em className="italic" {...props}>{children}</em>
+    ),
+  }), [referenceMapping, isStreaming])
+
+  // Render content with React Markdown (both streaming and completed)
+  const renderedContent = useMemo(() => {
+    if (!streamedContent) return null
+
+    const processedContent = preprocessContent(streamedContent)
+
+    return (
+      <div className="prose max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={markdownComponents}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
+    )
+  }, [streamedContent, referenceMapping, isStreaming])
 
   if (error) {
     return (
@@ -397,16 +496,24 @@ export function StreamingResultsDisplay({
           if (info) {
             const date = (() => {
               try {
-                return new Date(info.call_date).toLocaleDateString('en-US', {
+                const dateStr = info.date
+                if (!dateStr) return 'No date'
+
+                const parsedDate = new Date(dateStr)
+                if (isNaN(parsedDate.getTime())) {
+                  return dateStr // Return original if parsing fails
+                }
+
+                return parsedDate.toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric'
                 })
               } catch {
-                return info.call_date
+                return info.date || 'No date'
               }
             })()
-            cleanText += `[${c.number}] ${info.company_name} - ${date}\n`
+            cleanText += `[${c.number}] ${info.title} - ${date}\n`
           } else {
             cleanText += `[${c.number}] Chunk ${c.chunkId}\n`
           }
@@ -450,41 +557,51 @@ export function StreamingResultsDisplay({
               )}
             </CardTitle>
             {!isStreaming && streamedContent && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyToClipboard}
-                className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                <Copy className="w-4 h-4" />
-                Copy
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDebug(!showDebug)}
+                  className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  {showDebug ? 'Hide Debug' : 'Show Debug'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyToClipboard}
+                  className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
         <CardContent>
-          {isStreaming ? (
-            <div className="space-y-3">
-              {/* Render formatted completed paragraphs */}
-              {formattedParagraphs.map((html, i) => (
-                <div key={`fp-${i}`} className="prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
-              ))}
-              {/* Render the live last paragraph (raw) if any */}
-              {(() => {
-                const inProgress = paragraphs.slice(-1)
-                return inProgress.map((p, idx) => (
-                  <div key={`raw-${idx}`} className="whitespace-pre-wrap text-gray-800 bg-gray-50 p-4 rounded-md border-l-4 border-blue-400">
-                    {p}
-                    <span className="inline-block w-2 h-5 bg-blue-500 ml-1 animate-pulse"></span>
-                  </div>
-                ))
-              })()}
-            </div>
-          ) : (
-            <div className="prose max-w-none">{formattedNodes}</div>
-          )}
+          <div className="relative">
+            {renderedContent}
+            {isStreaming && (
+              <span className="inline-block w-2 h-5 bg-blue-500 ml-1 animate-pulse"></span>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Debug Section */}
+      {showDebug && !isStreaming && streamedContent && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Raw Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-md border overflow-auto max-h-96 font-mono">
+              {streamedContent}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cost Metrics (Bottom) */}
       {!isStreaming && metadata?.openai_usage?.length > 0 && (
@@ -531,42 +648,110 @@ export function StreamingResultsDisplay({
       )}
 
       {/* References */}
-      {!isStreaming && citations.length > 0 && (
+      {!isStreaming && referenceMapping && Object.keys(referenceMapping).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>References</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>References ({filteredReferences.length}/{Object.keys(referenceMapping).length})</CardTitle>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value as any)}
+                  className="text-xs border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="all">All Sources</option>
+                  <option value="earnings_calls">Earnings Calls</option>
+                  <option value="expert_interviews">Expert Interviews</option>
+                </select>
+                {availableCompanies.length > 0 && (
+                  <select
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                  >
+                    <option value="all">All Companies</option>
+                    {availableCompanies.map(company => (
+                      <option key={company} value={company}>{company}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {citations.map(c => (
-                <div key={c.chunkId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium text-gray-700">[{c.number}]</span>
-                    <span className="text-sm text-gray-700">
-                      {citationInfo[c.chunkId]?.company_name ? (
-                        <>
-                          {citationInfo[c.chunkId]?.company_name} • {(() => {
-                            try {
-                              return new Date(citationInfo[c.chunkId]?.call_date || '').toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })
-                            } catch {
-                              return citationInfo[c.chunkId]?.call_date
-                            }
-                          })()}
-                        </>
-                      ) : (
-                        <span className="font-mono text-sm text-gray-600">Chunk {c.chunkId}</span>
-                      )}
-                    </span>
+              {filteredReferences.map(([refNumber, chunkId]) => {
+                const chunkIdStr = chunkId.toString()
+                const chunk = getChunk(chunkIdStr)
+
+                return (
+                  <div key={chunkIdStr} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-gray-700">[{refNumber}]</span>
+
+                      <div className="text-sm text-gray-700">
+                        {citationInfo[chunkIdStr] ? (
+                          <div className="flex flex-col">
+                            <span className="font-medium">{citationInfo[chunkIdStr].title}</span>
+                            <span className="text-xs text-gray-500">
+                              {(() => {
+                                try {
+                                  const dateStr = citationInfo[chunkIdStr].date
+                                  if (!dateStr) return 'No date'
+                                  const date = new Date(dateStr)
+                                  if (isNaN(date.getTime())) {
+                                    return dateStr
+                                  }
+                                  return date.toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })
+                                } catch {
+                                  return citationInfo[chunkIdStr].date || 'No date'
+                                }
+                              })()}
+                            </span>
+
+                            {/* Tags below the date */}
+                            <div className="flex items-center gap-2 mt-1">
+                              {/* K/E Source Type Tag */}
+                              {chunkIdStr.startsWith('k_') && (
+                                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">K</Badge>
+                              )}
+                              {chunkIdStr.startsWith('e_') && (
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">E</Badge>
+                              )}
+
+                              {/* Company Name Tag */}
+                              {chunk && (
+                                <>
+                                  {chunk.source_type === 'earnings_call' && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {chunk.company_name}
+                                    </Badge>
+                                  )}
+                                  {chunk.source_type === 'expert_interview' && chunk.primary_companies[0] && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {chunk.primary_companies[0]}
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="font-mono text-sm text-gray-600">Chunk {chunkIdStr}</span>
+                        )}
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setSelectedChunk(chunkIdStr)}>
+                      View Details
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedChunk(c.chunkId)}>
-                    View Details
-                  </Button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
