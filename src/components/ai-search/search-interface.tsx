@@ -158,7 +158,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <Slider
                     value={[parameters.max_characters]}
                     onValueChange={(value) => updateParameter('max_characters', value[0])}
-                    max={250000}
+                    max={1000000}
                     min={10000}
                     step={5000}
                     className="w-full"
@@ -232,7 +232,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                         }}
                         className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
                       />
-                      Earnings Calls 2025
+                      Earnings Calls
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -278,7 +278,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   {Array.from(new Set([...parameters.bm25_sources, ...parameters.semantic_sources])).map((source) => (
                     <div key={source} className="p-3 border border-gray-200 rounded-lg bg-gray-50">
                       <div className="text-sm font-medium text-gray-700 mb-2">
-                        {source === 'earnings_calls_20_25' ? 'Earnings Calls 2025' :
+                        {source === 'earnings_calls_20_25' ? 'Earnings Calls' :
                          source === 'expert_interviews_embeddings' ? 'Expert Interviews' : source}
                       </div>
                       <div className="grid grid-cols-4 gap-2">

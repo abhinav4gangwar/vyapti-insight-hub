@@ -3,9 +3,11 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { SourcePopup } from '@/components/ai-search/source-popup'
-import { AlertCircle, CheckCircle, RotateCcw, Copy } from 'lucide-react'
+import { AlertCircle, CheckCircle, RotateCcw, Copy, Filter } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -36,6 +38,54 @@ export function StreamingResultsDisplay({
     type: 'expert_interview' | 'earnings_call'
   }>>({})
   const [showDebug, setShowDebug] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews'>('all')
+  const [companyFilter, setCompanyFilter] = useState<string>('all')
+  const { getChunk } = useBulkChunksContext()
+
+  // Get available companies from loaded chunks
+  const availableCompanies = useMemo(() => {
+    if (!referenceMapping) return []
+
+    const companies = new Set<string>()
+    Object.values(referenceMapping).forEach(chunkId => {
+      const chunk = getChunk(chunkId.toString())
+      if (chunk) {
+        if (chunk.source_type === 'earnings_call') {
+          companies.add(chunk.company_name)
+        } else if (chunk.source_type === 'expert_interview') {
+          chunk.primary_companies.forEach(company => companies.add(company))
+        }
+      }
+    })
+    return Array.from(companies).sort()
+  }, [referenceMapping, getChunk])
+
+  // Filter references based on selected filters
+  const filteredReferences = useMemo(() => {
+    if (!referenceMapping) return []
+
+    return Object.entries(referenceMapping).filter(([refNumber, chunkId]) => {
+      const chunk = getChunk(chunkId.toString())
+      if (!chunk) return true // Show if chunk not loaded yet
+
+      // Source type filter
+      if (sourceFilter !== 'all') {
+        const expectedType = sourceFilter === 'earnings_calls' ? 'earnings_call' : 'expert_interview'
+        if (chunk.source_type !== expectedType) return false
+      }
+
+      // Company filter
+      if (companyFilter !== 'all') {
+        if (chunk.source_type === 'earnings_call') {
+          if (chunk.company_name !== companyFilter) return false
+        } else if (chunk.source_type === 'expert_interview') {
+          if (!chunk.primary_companies.includes(companyFilter)) return false
+        }
+      }
+
+      return true
+    })
+  }, [referenceMapping, sourceFilter, companyFilter, getChunk])
 
   // Preprocess content to handle >> nested list syntax
   const preprocessContent = (content: string): string => {
@@ -601,34 +651,58 @@ export function StreamingResultsDisplay({
       {!isStreaming && referenceMapping && Object.keys(referenceMapping).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>References</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>References ({filteredReferences.length}/{Object.keys(referenceMapping).length})</CardTitle>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value as any)}
+                  className="text-xs border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="all">All Sources</option>
+                  <option value="earnings_calls">Earnings Calls</option>
+                  <option value="expert_interviews">Expert Interviews</option>
+                </select>
+                {availableCompanies.length > 0 && (
+                  <select
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                  >
+                    <option value="all">All Companies</option>
+                    {availableCompanies.map(company => (
+                      <option key={company} value={company}>{company}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {Object.entries(referenceMapping).map(([refNumber, chunkId]) => {
+              {filteredReferences.map(([refNumber, chunkId]) => {
                 const chunkIdStr = chunkId.toString()
+                const chunk = getChunk(chunkIdStr)
+
                 return (
                   <div key={chunkIdStr} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-gray-700">[{refNumber}]</span>
-                      <span className="text-sm text-gray-700">
+
+                      <div className="text-sm text-gray-700">
                         {citationInfo[chunkIdStr] ? (
                           <div className="flex flex-col">
                             <span className="font-medium">{citationInfo[chunkIdStr].title}</span>
                             <span className="text-xs text-gray-500">
                               {(() => {
                                 try {
-                                  // Handle different date formats for expert interviews vs earnings calls
                                   const dateStr = citationInfo[chunkIdStr].date
                                   if (!dateStr) return 'No date'
-
-                                  // For expert interviews, the date is in YYYY-MM-DD format
-                                  // For earnings calls, it might be in different format
                                   const date = new Date(dateStr)
                                   if (isNaN(date.getTime())) {
-                                    return dateStr // Return original if parsing fails
+                                    return dateStr
                                   }
-
                                   return date.toLocaleDateString('en-US', {
                                     year: 'numeric',
                                     month: 'short',
@@ -639,11 +713,38 @@ export function StreamingResultsDisplay({
                                 }
                               })()}
                             </span>
+
+                            {/* Tags below the date */}
+                            <div className="flex items-center gap-2 mt-1">
+                              {/* K/E Source Type Tag */}
+                              {chunkIdStr.startsWith('k_') && (
+                                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">K</Badge>
+                              )}
+                              {chunkIdStr.startsWith('e_') && (
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">E</Badge>
+                              )}
+
+                              {/* Company Name Tag */}
+                              {chunk && (
+                                <>
+                                  {chunk.source_type === 'earnings_call' && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {chunk.company_name}
+                                    </Badge>
+                                  )}
+                                  {chunk.source_type === 'expert_interview' && chunk.primary_companies[0] && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {chunk.primary_companies[0]}
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <span className="font-mono text-sm text-gray-600">Chunk {chunkIdStr}</span>
                         )}
-                      </span>
+                      </div>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => setSelectedChunk(chunkIdStr)}>
                       View Details
