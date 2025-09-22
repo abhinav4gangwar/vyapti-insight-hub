@@ -31,6 +31,7 @@ interface Trigger {
     created_at: string;
     date_of_listing: string;
     duration: string;
+    market_cap: string;
   };
   url: string;
 }
@@ -347,6 +348,12 @@ export default function Triggers() {
                                 className={`text-xs ${getSourceColor(trigger.json?.source || trigger.source)}`}
                               >
                                 {getSourceDisplayName(trigger.json?.source || trigger.source)}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className={`text-xs`}
+                              >Market Cap : 
+                                {trigger.json.market_cap}
                               </Badge>
                             </div>
                             <div className="financial-body text-xs text-muted-foreground flex items-center space-x-4">

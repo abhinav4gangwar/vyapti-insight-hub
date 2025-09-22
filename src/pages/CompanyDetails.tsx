@@ -99,6 +99,16 @@ export default function CompanyDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('documents');
   const [activeDocTab, setActiveDocTab] = useState('earnings_calls');
+  const [expertInterviewFilter, setExpertInterviewFilter] = useState<'k' | 't' | 'both'>('k');
+
+  // Helper function to get filtered expert interviews count
+  const getFilteredExpertInterviewsCount = () => {
+    if (!companyData?.expert_interviews) return 0;
+
+    // Since we only have K expert interviews currently
+    if (expertInterviewFilter === 't') return 0; // No T interviews yet
+    return companyData.expert_interviews.length; // K interviews or Both (same thing for now)
+  };
 
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -439,7 +449,7 @@ const formatDate = (dateString: string) => {
                       : 'financial-body text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  K Expert Interviews
+                  Expert Interviews
                 </button>
                 <button
                   onClick={() => setActiveDocTab('sebi_documents')}
@@ -637,13 +647,25 @@ const formatDate = (dateString: string) => {
             {activeDocTab === 'expert_interviews' && (
               <Card className="shadow-card border-0">
                 <CardHeader>
-                  <CardTitle className="financial-heading flex items-center">
-                    <FileText className="h-5 w-5 mr-2 text-accent" />
-                    K Expert Interviews
-                    <Badge variant="outline" className="ml-2 financial-body">
-                      {companyData.expert_interviews?.length || 0}
-                    </Badge>
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="financial-heading flex items-center">
+                      <FileText className="h-5 w-5 mr-2 text-accent" />
+                      Expert Interviews
+                      <Badge variant="outline" className="ml-2 financial-body">
+                        {getFilteredExpertInterviewsCount()}
+                      </Badge>
+                    </CardTitle>
+                    <Select value={expertInterviewFilter} onValueChange={(value: 'k' | 't' | 'both') => setExpertInterviewFilter(value)}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="both">Both K & T Interviews</SelectItem>
+                        <SelectItem value="k">K Expert Interviews</SelectItem>
+                        <SelectItem value="t">T Expert Interviews</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <CardDescription className="financial-body">
                     Expert interviews and industry insights
                   </CardDescription>
@@ -651,7 +673,15 @@ const formatDate = (dateString: string) => {
                 <CardContent>
                   {companyData.expert_interviews && companyData.expert_interviews.length > 0 ? (
                     <div className="space-y-3">
-                      {companyData.expert_interviews.map((interview) => (
+                      {expertInterviewFilter === 't' ? (
+                        // Show empty state for T interviews since they don't exist yet
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p className="financial-body">No T Expert Interviews available yet</p>
+                        </div>
+                      ) : (
+                        // Show K expert interviews (for both 'k' and 'both' filters)
+                        companyData.expert_interviews.map((interview) => (
                         <div
                           key={interview.id}
                           className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth cursor-pointer"
@@ -690,7 +720,8 @@ const formatDate = (dateString: string) => {
                             View
                           </Button>
                         </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-8">

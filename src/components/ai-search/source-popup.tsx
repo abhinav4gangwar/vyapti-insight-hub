@@ -261,74 +261,6 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
               </>
             )}
 
-
-            {chunkData.source_type === 'earnings_call' ? (
-              <>
-                {/* Primary Speaker */}
-                {(chunkData as EarningsCallChunkData).primary_speaker && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Speaker Information
-                    </h3>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="font-medium">Name:</span>
-                        <p className="text-gray-700">{(chunkData as EarningsCallChunkData).primary_speaker}</p>
-                      </div>
-                      {(chunkData as EarningsCallChunkData).primary_speaker_type && (
-                        <div>
-                          <span className="font-medium">Type:</span>
-                          <Badge variant="outline">{(chunkData as EarningsCallChunkData).primary_speaker_type}</Badge>
-                        </div>
-                      )}
-                      {(chunkData as EarningsCallChunkData).primary_speaker_role && (
-                        <div>
-                          <span className="font-medium">Role:</span>
-                          <p className="text-gray-700 text-sm">{(chunkData as EarningsCallChunkData).primary_speaker_role}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Earnings Call Text */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-lg mb-3">Transcript Text</h3>
-                  <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
-                    <p className="whitespace-pre-wrap text-gray-800">{(chunkData as EarningsCallChunkData).text}</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Expert Interview Briefs */}
-                {(chunkData as ExpertInterviewChunkData).briefs.length > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-lg mb-3">Key Points</h3>
-                    <div className="space-y-3">
-                      {(chunkData as ExpertInterviewChunkData).briefs.map((brief, index) => (
-                        <div key={brief.id} className="bg-white rounded p-3 border">
-                          <div className="flex items-start gap-2">
-                            <Badge variant="outline" className="text-xs mt-1">{index + 1}</Badge>
-                            <p className="text-gray-800 text-sm">{brief.point}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Expert Interview Content */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-lg mb-3">Interview Content</h3>
-                  <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
-                    <p className="whitespace-pre-wrap text-gray-800">{(chunkData as ExpertInterviewChunkData).table_with_content}</p>
-                  </div>
-                </div>
-              </>
-            )}
-
             {/* Document Actions */}
             <div className="flex items-center gap-4">
               {chunkData.source_type === 'earnings_call' ? (
@@ -372,7 +304,75 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                 })()
               )}
             </div>
-            
+
+            {chunkData.source_type === 'earnings_call' ? (
+              <>
+                {/* Primary Speaker */}
+                {(chunkData as EarningsCallChunkData).primary_speaker && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Speaker Information
+                    </h3>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-medium">Name:</span>
+                        <p className="text-gray-700">{(chunkData as EarningsCallChunkData).primary_speaker}</p>
+                      </div>
+                      {(chunkData as EarningsCallChunkData).primary_speaker_type && (
+                        <div>
+                          <span className="font-medium">Type:</span>
+                          <Badge variant="outline">{(chunkData as EarningsCallChunkData).primary_speaker_type}</Badge>
+                        </div>
+                      )}
+                      {(chunkData as EarningsCallChunkData).primary_speaker_role && (
+                        <div>
+                          <span className="font-medium">Role:</span>
+                          <p className="text-gray-700 text-sm">{(chunkData as EarningsCallChunkData).primary_speaker_role}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Earnings Call Text */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3">Transcript Text</h3>
+                  <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-gray-800">{(chunkData as EarningsCallChunkData).text}</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Expert Interview Content */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3">Interview Content</h3>
+                  <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-gray-800">{(chunkData as ExpertInterviewChunkData).table_with_content}</p>
+                  </div>
+                </div>
+                {/* Expert Interview Briefs */}
+                {(chunkData as ExpertInterviewChunkData).briefs.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3">Key Points</h3>
+                    <div className="space-y-3">
+                      {(chunkData as ExpertInterviewChunkData).briefs.map((brief, index) => (
+                        <div key={brief.id} className="bg-white rounded p-3 border">
+                          <div className="flex items-start gap-2">
+                            <Badge variant="outline" className="text-xs mt-1">{index + 1}</Badge>
+                            <p className="text-gray-800 text-sm">{brief.point}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+
+              </>
+            )}
+
             {/* Chunk Details */}
             {((chunkData as any).chunk_index !== undefined || (chunkData as any).num_chars || (chunkData as any).num_tokens) && (
               <div className="bg-gray-50 rounded-lg p-4">
