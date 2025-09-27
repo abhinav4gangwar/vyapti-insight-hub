@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CompanyDetails from "./pages/CompanyDetails";
 import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
+import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Triggers from "./pages/Triggers";
 import Notifications from "./pages/Notifications";
 import AISearch from "./pages/AISearch";
@@ -39,6 +40,11 @@ const App = () => {
           <Route path="/companies/:isin" element={
             <ProtectedRoute>
               <CompanyDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="/expert-interviews" element={
+            <ProtectedRoute>
+              <ExpertInterviewsList />
             </ProtectedRoute>
           } />
           <Route path="/expert-interviews/:id" element={
