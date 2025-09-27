@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Bell, Users, LogOut, Search, Building } from 'lucide-react';
+import { Bell, Users, LogOut, Search, Building, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { authService } from '@/lib/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -57,6 +57,10 @@ export const Navbar = () => {
     navigate('/dashboard');
   };
 
+  const handleExpertInterviews = () => {
+    navigate('/expert-interviews');
+  };
+
   // Helper function to determine if a route is active
   const isActiveRoute = (path: string) => {
     if (path === '/dashboard') {
@@ -100,6 +104,16 @@ export const Navbar = () => {
             >
               <Building className="h-4 w-4 mr-2" />
               Company Search
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExpertInterviews}
+              className={getButtonClasses('/expert-interviews')}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Expert Interviews
             </Button>
 
             <Button
