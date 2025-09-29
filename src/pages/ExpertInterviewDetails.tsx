@@ -316,7 +316,7 @@ export default function ExpertInterviewDetails() {
         </Card>
 
         {/* Company Tagging */}
-        <Card className="shadow-card border-0 mb-8 animate-slide-up">
+        {/* <Card className="shadow-card border-0 mb-8 animate-slide-up">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -373,7 +373,7 @@ export default function ExpertInterviewDetails() {
               </div>
             </CardContent>
           )}
-        </Card>
+        </Card> */}
 
         {/* Key Insights */}
         {interviewData.briefs && interviewData.briefs.length > 0 && (
