@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft, Filter, Copy } from 'lucide-react';
+import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft, Filter, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,10 +30,12 @@ interface Trigger {
     analysis_period: string;
     created_at: string;
     date_of_listing: string;
-    duration: string;
-    market_cap: string;
+    duration_from_listing_months?: number;
+    duration_since_last_call_months?: number;
+    date_of_previous_call?: string;
   };
   url: string;
+  market_cap: number | null;
 }
 
 interface PaginationInfo {
@@ -58,9 +60,23 @@ export default function Triggers() {
 
   // Filter states
   const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [durationFilter, setDurationFilter] = useState<string>('all');
+  const [triggerTypeFilter, setTriggerTypeFilter] = useState<string>('all');
+  const [resurrectionPeriodFilter, setResurrectionPeriodFilter] = useState<string>('all');
+  const [durationSinceListingFilter, setDurationSinceListingFilter] = useState<string>('all');
 
-  const fetchTriggers = async (page: number = 1, source: string = sourceFilter, duration: string = durationFilter) => {
+  // Sorting states
+  const [sortBy, setSortBy] = useState<string>('date');
+  const [sortOrder, setSortOrder] = useState<string>('desc');
+
+  const fetchTriggers = async (
+    page: number = 1,
+    source: string = sourceFilter,
+    triggerType: string = triggerTypeFilter,
+    resurrectionPeriod: string = resurrectionPeriodFilter,
+    durationSinceListing: string = durationSinceListingFilter,
+    sortByParam: string = sortBy,
+    sortOrderParam: string = sortOrder
+  ) => {
     setIsLoading(true);
     try {
       const client = authService.createAuthenticatedClient();
@@ -73,12 +89,22 @@ export default function Triggers() {
       if (source !== 'all') {
         params.append('source', source);
       }
-      if (duration !== 'all') {
-        params.append('duration', duration);
+      if (triggerType !== 'all') {
+        params.append('trigger_type', triggerType);
+      }
+      if (resurrectionPeriod !== 'all') {
+        params.append('resurrection_period', resurrectionPeriod);
+      }
+      if (durationSinceListing !== 'all') {
+        params.append('duration_since_listing', durationSinceListing);
       }
 
+      // Add sorting parameters
+      params.append('sort_by', sortByParam);
+      params.append('sort_order', sortOrderParam);
+
       const response = await client.get(`/triggers?${params.toString()}`);
-      setTriggers(response.data.triggers);
+      setTriggers(response.data.triggers || response.data);
       setPagination(response.data.pagination);
     } catch (error) {
       toast({
@@ -92,17 +118,88 @@ export default function Triggers() {
   };
 
   useEffect(() => {
-    fetchTriggers(currentPage, sourceFilter, durationFilter);
-  }, [currentPage, sourceFilter, durationFilter]);
+    fetchTriggers(currentPage, sourceFilter, triggerTypeFilter, resurrectionPeriodFilter, durationSinceListingFilter, sortBy, sortOrder);
+  }, [currentPage, sourceFilter, triggerTypeFilter, resurrectionPeriodFilter, durationSinceListingFilter, sortBy, sortOrder]);
 
   const handleSourceFilterChange = (value: string) => {
     setSourceFilter(value);
     setCurrentPage(1); // Reset to first page when filter changes
   };
 
-  const handleDurationFilterChange = (value: string) => {
-    setDurationFilter(value);
+  const handleTriggerTypeFilterChange = (value: string) => {
+    setTriggerTypeFilter(value);
     setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleResurrectionPeriodFilterChange = (value: string) => {
+    setResurrectionPeriodFilter(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleDurationSinceListingFilterChange = (value: string) => {
+    setDurationSinceListingFilter(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleSortChange = (newSortBy: string) => {
+    if (newSortBy === sortBy) {
+      // Toggle sort order if same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new sort field with default desc order
+      setSortBy(newSortBy);
+      setSortOrder('desc');
+    }
+    setCurrentPage(1); // Reset to first page when sort changes
+  };
+
+  // Utility function to format market cap
+  const formatMarketCap = (marketCap: number | null | undefined): string => {
+    if (!marketCap || marketCap === 0) {
+      return 'N/A';
+    }
+    if (marketCap >= 10000000000) { // 1000 crores
+      return `₹${(marketCap / 10000000000).toFixed(1)}K Cr`;
+    } else if (marketCap >= 10000000) { // 1 crore
+      return `₹${(marketCap / 10000000).toFixed(1)} Cr`;
+    } else if (marketCap >= 100000) { // 1 lakh
+      return `₹${(marketCap / 100000).toFixed(1)} L`;
+    } else {
+      return `₹${marketCap.toLocaleString()}`;
+    }
+  };
+
+  // Utility function to get trigger type from reason
+  const getTriggerType = (reason?: string): string => {
+    if (!reason) return 'Other';
+    if (reason.toLowerCase().includes('resurrected')) {
+      return 'Resurrected';
+    } else if (reason.toLowerCase().includes('first')) {
+      return 'First of Kind';
+    }
+    return 'Other';
+  };
+
+  // Utility function to format duration since last call
+  const formatDurationSinceLastCall = (months?: number): string => {
+    if (!months) return 'N/A';
+    if (months >= 12) {
+      const years = Math.floor(months / 12);
+      const remainingMonths = months % 12;
+      if (remainingMonths === 0) {
+        return `${years} year${years > 1 ? 's' : ''}`;
+      }
+      return `${years}y ${remainingMonths}m`;
+    }
+    return `${months} month${months > 1 ? 's' : ''}`;
+  };
+
+  // Utility function to get sort icon
+  const getSortIcon = (field: string) => {
+    if (sortBy !== field) {
+      return <ArrowUpDown className="h-4 w-4" />;
+    }
+    return sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
 
   const handlePageChange = (newPage: number) => {
@@ -252,11 +349,11 @@ export default function Triggers() {
               Filters
             </CardTitle>
             <CardDescription className="financial-body">
-              Filter triggers by source and duration
+              Filter and sort triggers by various criteria
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               <div className="space-y-2">
                 <label className="financial-subheading text-sm">Source</label>
                 <Select value={sourceFilter} onValueChange={handleSourceFilterChange}>
@@ -272,24 +369,84 @@ export default function Triggers() {
               </div>
 
               <div className="space-y-2">
+                <label className="financial-subheading text-sm">Trigger Type</label>
+                <Select value={triggerTypeFilter} onValueChange={handleTriggerTypeFilterChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select trigger type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="resurrected">Resurrected</SelectItem>
+                    <SelectItem value="first_of_kind">First of Kind</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="financial-subheading text-sm">Resurrection Period</label>
+                <Select value={resurrectionPeriodFilter} onValueChange={handleResurrectionPeriodFilterChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Periods</SelectItem>
+                    <SelectItem value="1year">1 Year</SelectItem>
+                    <SelectItem value="2years">2 Years</SelectItem>
+                    <SelectItem value="3years">3 Years</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <label className="financial-subheading text-sm">Duration Since Listing</label>
-                <Select value={durationFilter} onValueChange={handleDurationFilterChange}>
+                <Select value={durationSinceListingFilter} onValueChange={handleDurationSinceListingFilterChange}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Durations</SelectItem>
-                    <SelectItem value="<6months">Less than 6 months</SelectItem>
-                    <SelectItem value="6-12months">6-12 months</SelectItem>
-                    <SelectItem value=">12months">More than 12 months</SelectItem>
+                    <SelectItem value=">24months">&gt;24 months</SelectItem>
+                    <SelectItem value=">12months">&gt;12 months</SelectItem>
+                    <SelectItem value=">6months">&gt;6 months</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            {/* Sorting Buttons */}
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="financial-subheading text-sm">Sort by:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={sortBy === 'date' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleSortChange('date')}
+                  className="flex items-center gap-1"
+                >
+                  Date {getSortIcon('date')}
+                </Button>
+                <Button
+                  variant={sortBy === 'market_cap' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleSortChange('market_cap')}
+                  className="flex items-center gap-1"
+                >
+                  Market Cap {getSortIcon('market_cap')}
+                </Button>
+                <Button
+                  variant={sortBy === 'company_name' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleSortChange('company_name')}
+                  className="flex items-center gap-1"
+                >
+                  Company Name {getSortIcon('company_name')}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
-
-
 
         {/* Triggers List */}
         <Card className="shadow-card border-0 animate-slide-up">
@@ -352,9 +509,20 @@ export default function Triggers() {
                               <Badge
                                 variant="outline"
                                 className={`text-xs`}
-                              >Market Cap : 
-                                {trigger.json.market_cap}
+                              >
+                                {formatMarketCap(trigger.market_cap)}
                               </Badge>
+                              <Badge
+                                variant={getTriggerType(trigger.json?.reason) === 'Resurrected' ? 'default' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {getTriggerType(trigger.json?.reason)}
+                              </Badge>
+                              {trigger.json?.duration_since_last_call_months && (
+                                <Badge variant="outline" className="text-xs">
+                                  Gap: {formatDurationSinceLastCall(trigger.json.duration_since_last_call_months)}
+                                </Badge>
+                              )}
                             </div>
                             <div className="financial-body text-xs text-muted-foreground flex items-center space-x-4">
                               <span className="flex items-center">
@@ -401,11 +569,20 @@ export default function Triggers() {
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Timeline</h5>
                             <div className="space-y-1 financial-body text-xs">
-                              {trigger.json?.duration && (
+                              {trigger.json?.duration_from_listing_months && (
                                 <div className="flex items-center">
                                   <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
-                                  Duration: {trigger.json.duration}
+                                  Duration from Listing: {formatDurationSinceLastCall(trigger.json.duration_from_listing_months)}
                                 </div>
+                              )}
+                              {trigger.json?.duration_since_last_call_months && (
+                                <div className="flex items-center">
+                                  <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
+                                  Gap since Last Call: {formatDurationSinceLastCall(trigger.json.duration_since_last_call_months)}
+                                </div>
+                              )}
+                              {trigger.json?.date_of_previous_call && (
+                                <div>Previous Call Date: {formatDate(trigger.json.date_of_previous_call)}</div>
                               )}
                               <div>Trigger Date: {formatDate(trigger.date)}</div>
                               {trigger.json?.analysis_period && (

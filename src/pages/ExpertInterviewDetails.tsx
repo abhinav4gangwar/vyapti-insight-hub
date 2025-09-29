@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Building2, FileText, Calendar, Clock, ChevronDown, ChevronRight, Copy } from 'lucide-react';
+import { Building2, FileText, Calendar, Clock, ChevronDown, ChevronRight, Copy, Plus, X, Tag } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
+import { CompanySearch, Company } from '@/components/ui/company-search';
 
 interface Brief {
   id: number;
@@ -51,6 +52,9 @@ export default function ExpertInterviewDetails() {
   const [interviewData, setInterviewData] = useState<ExpertInterviewDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [openSections, setOpenSections] = useState<{ [key: number]: boolean }>({});
+  const [showCompanyTagging, setShowCompanyTagging] = useState(false);
+  const [isTagging, setIsTagging] = useState(false);
+  const [taggedCompanies, setTaggedCompanies] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchInterviewData = async () => {
@@ -60,6 +64,7 @@ export default function ExpertInterviewDetails() {
         const client = authService.createAuthenticatedClient();
         const response = await client.get(`/expert-interviews/${id}`);
         setInterviewData(response.data);
+        setTaggedCompanies(response.data.secondary_companies || []);
 
         // Set all sections to be expanded by default
         if (response.data.table_with_content) {
@@ -104,6 +109,92 @@ export default function ExpertInterviewDetails() {
       title: "Copied to clipboard",
       description: "Content has been copied to your clipboard",
     });
+  };
+
+  const handleCompanyTag = async (company: Company) => {
+    if (!id || taggedCompanies.includes(company.name)) {
+      return;
+    }
+
+    setIsTagging(true);
+    try {
+      const client = authService.createAuthenticatedClient();
+
+      // Prepare the request payload
+      const payload: { companies: string[]; isins?: string[] } = {
+        companies: [company.name]
+      };
+
+      // Add ISIN if available
+      if (company.isin) {
+        payload.isins = [company.isin];
+      }
+
+      await client.post(`/expert-interviews/${id}/tag-companies`, payload);
+
+      // Update local state
+      setTaggedCompanies(prev => [...prev, company.name]);
+
+      // Update interview data to reflect the change
+      if (interviewData) {
+        setInterviewData(prev => prev ? {
+          ...prev,
+          secondary_companies: [...prev.secondary_companies, company.name],
+          secondary_isins: company.isin && !prev.secondary_isins.includes(company.isin)
+            ? [...prev.secondary_isins, company.isin]
+            : prev.secondary_isins
+        } : null);
+      }
+
+      toast({
+        title: "Company tagged successfully",
+        description: `${company.name} has been tagged to this interview`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to tag company to interview",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTagging(false);
+    }
+  };
+
+  const removeCompanyTag = async (companyName: string) => {
+    if (!id) return;
+
+    setIsTagging(true);
+    try {
+      const client = authService.createAuthenticatedClient();
+      await client.post(`/expert-interviews/${id}/untag-companies`, {
+        companies: [companyName]
+      });
+
+      // Update local state
+      setTaggedCompanies(prev => prev.filter(name => name !== companyName));
+
+      // Update interview data to reflect the change
+      if (interviewData) {
+        setInterviewData(prev => prev ? {
+          ...prev,
+          secondary_companies: prev.secondary_companies.filter(name => name !== companyName)
+        } : null);
+      }
+
+      toast({
+        title: "Company tag removed",
+        description: `${companyName} has been removed from this interview`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove company tag",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTagging(false);
+    }
   };
 
   if (isLoading) {
@@ -203,9 +294,18 @@ export default function ExpertInterviewDetails() {
                   <h4 className="financial-subheading">Secondary Companies</h4>
                   <div className="flex flex-wrap gap-2">
                     {interviewData.secondary_companies.map((company, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
+                      <Badge key={index} variant="outline" className="text-xs group relative">
                         <Building2 className="h-3 w-3 mr-1" />
                         {company}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeCompanyTag(company)}
+                          disabled={isTagging}
+                          className="ml-1 h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </Badge>
                     ))}
                   </div>
@@ -213,6 +313,66 @@ export default function ExpertInterviewDetails() {
               )}
             </div>
           </CardContent>
+        </Card>
+
+        {/* Company Tagging */}
+        <Card className="shadow-card border-0 mb-8 animate-slide-up">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="financial-heading flex items-center">
+                  <Tag className="h-5 w-5 mr-2 text-accent" />
+                  Tag Companies
+                </CardTitle>
+                <CardDescription className="financial-body">
+                  Search and tag companies to associate them with this interview
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCompanyTagging(!showCompanyTagging)}
+                className="flex items-center gap-2"
+              >
+                {showCompanyTagging ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Add Companies
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          {showCompanyTagging && (
+            <CardContent>
+              <div className="space-y-4">
+                <CompanySearch
+                  placeholder="Search companies to tag to this interview..."
+                  onCompanySelect={handleCompanyTag}
+                  onClear={() => setShowCompanyTagging(false)}
+                  disabled={isTagging}
+                  maxResults={5}
+                  showClearButton={false}
+                />
+                {isTagging && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent"></div>
+                    Tagging company...
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  <p>• Companies will be added to the secondary companies list</p>
+                  <p>• If a company is not in our database, only the name will be tagged</p>
+                  <p>• You can remove tagged companies by hovering over them in the secondary companies section</p>
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
 
         {/* Key Insights */}
