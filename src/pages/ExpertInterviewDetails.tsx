@@ -167,8 +167,10 @@ export default function ExpertInterviewDetails() {
     setIsTagging(true);
     try {
       const client = authService.createAuthenticatedClient();
-      await client.post(`/expert-interviews/${id}/untag-companies`, {
-        companies: [companyName]
+      await client.delete(`/expert-interviews/${id}/tag-companies`, {
+        data: {
+          companies: [companyName]
+        }
       });
 
       // Update local state
