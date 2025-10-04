@@ -78,13 +78,33 @@ export default function ExpertInterviewsList() {
       if (industry !== 'all') {
         params.append('industry', industry);
       }
-      if (expertType !== 'all') {
-        params.append('expert_type', expertType);
-      }
+      // Never send expert_type to backend - handle filtering on frontend
 
       const response = await client.get(`/expert-interviews/?${params.toString()}`);
-      setInterviews(response.data.interviews || response.data);
-      setPagination(response.data.pagination);
+      const allInterviews = response.data.interviews || response.data;
+
+      // Frontend filtering for expert type
+      let filteredInterviews = allInterviews;
+      if (expertType === 't') {
+        // T Expert interviews don't exist yet, show empty
+        filteredInterviews = [];
+      }
+      // For 'all' and 'k', show all results
+
+      setInterviews(filteredInterviews);
+
+      // Update pagination to reflect filtered results
+      if (expertType === 't') {
+        setPagination({
+          ...response.data.pagination,
+          total_count: 0,
+          total_pages: 0,
+          has_next: false,
+          has_prev: false
+        });
+      } else {
+        setPagination(response.data.pagination);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -253,8 +273,8 @@ export default function ExpertInterviewsList() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    {/* <SelectItem value="K">K Expert</SelectItem>
-                    <SelectItem value="T">T Expert</SelectItem> */}
+                    <SelectItem value="k">K Expert</SelectItem>
+                    <SelectItem value="t">T Expert</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -341,12 +361,21 @@ export default function ExpertInterviewsList() {
                           {interview.est_read} min read
                         </div>
                       </div>
-                      <div className="text-xs">
+                      <div className="text-xs text-right">
+                        {/* Primary Company */}
                         {interview.primary_companies && interview.primary_companies.length > 0 && (
-                          <span>Companies: {interview.primary_companies.slice(0, 2).join(', ')}</span>
+                          <div className="font-medium">
+                            {interview.primary_companies[0]}
+                          </div>
                         )}
-                        {interview.primary_companies && interview.primary_companies.length > 2 && (
-                          <span> +{interview.primary_companies.length - 2} more</span>
+                        {/* Secondary Companies */}
+                        {interview.secondary_companies && interview.secondary_companies.length > 0 && (
+                          <div className="text-muted-foreground/70 mt-1">
+                            {interview.secondary_companies.slice(0, 2).join(', ')}
+                            {interview.secondary_companies.length > 2 && (
+                              <span> +{interview.secondary_companies.length - 2} more</span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>

@@ -106,7 +106,7 @@ export const Navbar = () => {
               Company Search
             </Button>
 
-            {/* <Button
+            <Button
               variant="ghost"
               size="sm"
               onClick={handleExpertInterviews}
@@ -114,7 +114,7 @@ export const Navbar = () => {
             >
               <FileText className="h-4 w-4 mr-2" />
               Expert Interviews
-            </Button> */}
+            </Button>
 
             <Button
               variant="ghost"
