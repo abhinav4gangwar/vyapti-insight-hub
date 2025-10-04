@@ -33,6 +33,8 @@ interface Trigger {
     duration_from_listing_months?: number;
     duration_since_last_call_months?: number;
     date_of_previous_call?: string;
+    duration_since_last_ppt_years?: number;
+    date_of_previous_ppt?: string;
   };
   url: string;
   market_cap: number | null;
@@ -180,18 +182,33 @@ export default function Triggers() {
     return 'Other';
   };
 
+  // Utility function to get gap duration in months for any trigger type
+  const getGapDurationInMonths = (trigger: Trigger): number | null => {
+    if (trigger.json?.duration_since_last_call_months) {
+      return trigger.json.duration_since_last_call_months;
+    }
+    if (trigger.json?.duration_since_last_ppt_years) {
+      return trigger.json.duration_since_last_ppt_years * 12; // Convert years to months
+    }
+    return null;
+  };
+
   // Utility function to format duration since last call
   const formatDurationSinceLastCall = (months?: number): string => {
     if (!months) return 'N/A';
-    if (months >= 12) {
-      const years = Math.floor(months / 12);
-      const remainingMonths = months % 12;
+
+    // Round to handle floating point precision issues
+    const roundedMonths = Math.round(months * 10) / 10; // Round to 1 decimal place
+
+    if (roundedMonths >= 12) {
+      const years = Math.floor(roundedMonths / 12);
+      const remainingMonths = Math.round(roundedMonths % 12);
       if (remainingMonths === 0) {
         return `${years} year${years > 1 ? 's' : ''}`;
       }
       return `${years}y ${remainingMonths}m`;
     }
-    return `${months} month${months > 1 ? 's' : ''}`;
+    return `${Math.round(roundedMonths)} month${Math.round(roundedMonths) > 1 ? 's' : ''}`;
   };
 
   // Utility function to get sort icon
@@ -390,7 +407,7 @@ export default function Triggers() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Periods</SelectItem>
-                    <SelectItem value="1year">1 Year</SelectItem>
+                    <SelectItem value="1years">1 Year</SelectItem>
                     <SelectItem value="2years">2 Years</SelectItem>
                     <SelectItem value="3years">3 Years</SelectItem>
                   </SelectContent>
@@ -518,9 +535,9 @@ export default function Triggers() {
                               >
                                 {getTriggerType(trigger.json?.reason)}
                               </Badge>
-                              {trigger.json?.duration_since_last_call_months && (
+                              {getGapDurationInMonths(trigger) && (
                                 <Badge variant="outline" className="text-xs">
-                                  Gap: {formatDurationSinceLastCall(trigger.json.duration_since_last_call_months)}
+                                  Gap: {formatDurationSinceLastCall(getGapDurationInMonths(trigger)!)}
                                 </Badge>
                               )}
                             </div>
@@ -575,14 +592,17 @@ export default function Triggers() {
                                   Duration from Listing: {formatDurationSinceLastCall(trigger.json.duration_from_listing_months)}
                                 </div>
                               )}
-                              {trigger.json?.duration_since_last_call_months && (
+                              {getGapDurationInMonths(trigger) && (
                                 <div className="flex items-center">
                                   <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
-                                  Gap since Last Call: {formatDurationSinceLastCall(trigger.json.duration_since_last_call_months)}
+                                  Gap since Last {trigger.json?.source === 'ppt' ? 'PPT' : 'Call'}: {formatDurationSinceLastCall(getGapDurationInMonths(trigger)!)}
                                 </div>
                               )}
                               {trigger.json?.date_of_previous_call && (
                                 <div>Previous Call Date: {formatDate(trigger.json.date_of_previous_call)}</div>
+                              )}
+                              {trigger.json?.date_of_previous_ppt && (
+                                <div>Previous PPT Date: {formatDate(trigger.json.date_of_previous_ppt)}</div>
                               )}
                               <div>Trigger Date: {formatDate(trigger.date)}</div>
                               {trigger.json?.analysis_period && (
