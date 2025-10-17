@@ -15,6 +15,8 @@ export interface SearchParameters {
     to_month: number
     to_year: number
   }>
+  enable_reranking: boolean
+  enable_weights: boolean
 }
 
 // Default settings
@@ -40,7 +42,9 @@ const DEFAULT_PARAMETERS: SearchParameters = {
       to_month: 6,
       to_year: 2024
     }
-  }
+  },
+  enable_reranking: false,
+  enable_weights: false
 }
 
 const STORAGE_KEY = 'ai-search-advanced-settings'

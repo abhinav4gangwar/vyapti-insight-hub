@@ -132,7 +132,7 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     try {
       // Use environment variables for API configuration
       const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005'
-      const apiUrl = `${apiBaseUrl}/enhanced_global_search_streaming/stream`
+      const apiUrl = `${apiBaseUrl}/enhanced_global_search_with_reranking/stream`
 
       // Create abort controller for this request
       const abortController = new AbortController()

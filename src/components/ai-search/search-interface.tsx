@@ -438,6 +438,44 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <div className="text-xs text-gray-500">The selected model will be sent to the backend with your request.</div>
                 </div>
 
+                {/* Enable Reranking Toggle */}
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Enable Reranking
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={parameters.enable_reranking}
+                      onCheckedChange={(checked) => updateParameter('enable_reranking', checked)}
+                    />
+                    <span className="text-sm text-gray-600">
+                      {parameters.enable_reranking ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Enable reranking of search results for improved relevance
+                  </div>
+                </div>
+
+                {/* Enable Weights Toggle */}
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Enable Weights
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={parameters.enable_weights}
+                      onCheckedChange={(checked) => updateParameter('enable_weights', checked)}
+                    />
+                    <span className="text-sm text-gray-600">
+                      {parameters.enable_weights ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Enable weighted scoring for search results
+                  </div>
+                </div>
+
                 {/* Reset to Defaults Button */}
                 {hasChanges && (
                   <div className="col-span-4 pt-4 border-t border-gray-200">
