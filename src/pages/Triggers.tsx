@@ -431,9 +431,10 @@ export default function Triggers() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Durations</SelectItem>
-                    <SelectItem value=">24months">&gt;24 months</SelectItem>
-                    <SelectItem value=">12months">&gt;12 months</SelectItem>
-                    <SelectItem value=">6months">&gt;6 months</SelectItem>
+                    <SelectItem value="0-6months">0-6 Months</SelectItem>
+                    <SelectItem value="6-12months">6-12 Months</SelectItem>
+                    <SelectItem value="12-24months">12-24 Months</SelectItem>
+                    <SelectItem value=">24months">&gt; 24 Months</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

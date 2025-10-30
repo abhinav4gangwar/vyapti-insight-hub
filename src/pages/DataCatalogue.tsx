@@ -49,6 +49,7 @@ interface FilterMetadata {
 export default function DataCatalogue() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo>({
     current_page: 1,
     page_size: 100,
@@ -126,7 +127,6 @@ export default function DataCatalogue() {
       if (selectedIndexed.length > 0) {
         params.append('indexed_status', selectedIndexed.join(','));
       }
-      console.log('Making request to:', client.defaults.baseURL + `/data-catalogue?${params.toString()}`);
       const response = await client.get(`/data-catalogue?${params.toString()}`);
       setDocuments(response.data.data || []);
       setPagination(response.data.pagination);
@@ -143,8 +143,20 @@ export default function DataCatalogue() {
   }, [dateFrom, dateTo, selectedSourceTypes, selectedCompanies, selectedIndexed, sortBy, sortOrder]);
 
   useEffect(() => {
-    fetchDocuments(1);
-  }, [fetchDocuments]);
+    fetchDocuments(currentPage);
+  }, [currentPage, fetchDocuments]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFrom, dateTo, selectedSourceTypes, selectedCompanies, selectedIndexed]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.total_pages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleAddCompany = (isin: string, name: string) => {
     if (!selectedCompanies.includes(isin)) {
@@ -514,14 +526,63 @@ export default function DataCatalogue() {
                     theme={themeQuartz}
                     rowData={documents}
                     columnDefs={columnDefs}
-                    pagination={true}
-                    paginationPageSize={100}
-                    suppressPaginationPanel={true}
+                    pagination={false}
                   />
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-border">
                   <div className="financial-body text-sm text-muted-foreground">
                     Showing {pagination.showing_from} to {pagination.showing_to} of {pagination.total_count} documents
+                  </div>
+
+                  {/* Pagination Controls */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || isLoading}
+                      className="h-8 px-3"
+                    >
+                      Previous
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                        let pageNum: number;
+                        if (pagination.total_pages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= pagination.total_pages - 2) {
+                          pageNum = pagination.total_pages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNum)}
+                            disabled={isLoading}
+                            className="h-8 w-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === pagination.total_pages || isLoading}
+                      className="h-8 px-3"
+                    >
+                      Next
+                    </Button>
                   </div>
                 </div>
               </div>
