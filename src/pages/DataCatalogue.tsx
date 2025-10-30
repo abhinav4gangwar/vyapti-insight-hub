@@ -11,7 +11,7 @@ import { authService } from '@/lib/auth';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 import { ColDef } from 'ag-grid-community';
-import { X, Search } from 'lucide-react';
+import { X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 
 // Register ag-grid modules
@@ -58,6 +58,9 @@ export default function DataCatalogue() {
     showing_from: 0,
     showing_to: 0,
   });
+
+  // Collapsible filter state
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
 
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
@@ -181,54 +184,62 @@ export default function DataCatalogue() {
 
   const columnDefs: ColDef<Document>[] = [
     {
-      field: 'title',
-      headerName: 'Title',
+      field: 'company_name',
+      headerName: 'Company',
       sortable: true,
-      flex: 1,
-      minWidth: 250,
+      width: 300,
       cellRenderer: (params: any) => (
-        <a
-          href={params.data.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
-        >
-          {params.value}
-        </a>
+        <span className="text-sm">{params.value}</span>
       ),
     },
+    // {
+    //   field: 'title',
+    //   headerName: 'Title',
+    //   sortable: true,
+    //   flex: 1,
+    //   minWidth: 250,
+    //   cellRenderer: (params: any) => (
+    //     <a
+    //       href={params.data.url}
+    //       target="_blank"
+    //       rel="noopener noreferrer"
+    //       className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+    //     >
+    //       {params.value}
+    //     </a>
+    //   ),
+    // },
     {
       field: 'source_type',
       headerName: 'Type',
       sortable: true,
-      width: 130,
+      width: 140,
       cellRenderer: (params: any) => (
         <Badge variant="outline" className="text-xs">
-          {params.value === 'earnings_call' ? 'Earnings Call' : 'Investor PPT'}
+              <a
+                href={params.data.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+              >
+                          {params.value === 'earnings_call' ? 'Earnings Call' : 'Investor PPT'}
+
+              </a>
         </Badge>
-      ),
-    },
-    {
-      field: 'company_name',
-      headerName: 'Company',
-      sortable: true,
-      width: 180,
-      cellRenderer: (params: any) => (
-        <span className="text-sm">{params.value}</span>
       ),
     },
     {
       field: 'date',
       headerName: 'Document Date',
       sortable: true,
-      width: 130,
+      width: 150,
       valueFormatter: (params) => format(new Date(params.value), 'MMM dd, yyyy'),
     },
     {
       field: 'ingestion_time',
       headerName: 'Ingestion Date',
       sortable: true,
-      width: 130,
+      width: 150,
       valueFormatter: (params) => format(new Date(params.value), 'MMM dd, yyyy'),
     },
     {
@@ -242,15 +253,17 @@ export default function DataCatalogue() {
         </Badge>
       ),
     },
-    {
-      field: 'file_type',
-      headerName: 'File Type',
-      sortable: true,
-      width: 100,
-      cellRenderer: (params: any) => (
-        <span className="text-sm font-medium">{params.value}</span>
-      ),
-    },
+    // File Type column - Hidden as per requirement
+    // Keep the code intact for future use
+    // {
+    //   field: 'file_type',
+    //   headerName: 'File Type',
+    //   sortable: true,
+    //   width: 100,
+    //   cellRenderer: (params: any) => (
+    //     <span className="text-sm font-medium">{params.value}</span>
+    //   ),
+    // },
     {
       field: 'indexed',
       headerName: 'Indexed',
@@ -268,7 +281,7 @@ export default function DataCatalogue() {
     return (
       <div className="min-h-screen bg-gradient-subtle">
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Skeleton className="h-96 w-full" />
         </main>
       </div>
@@ -314,12 +327,26 @@ export default function DataCatalogue() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <div className="min-h-screen bg-gradient-subtle flex flex-col">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-4">
+      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
+        <div className="flex gap-4 flex-1">
+          {/* Toggle Button for Filters */}
+          <div className="flex-shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+              className="h-10 w-10"
+              title={isFiltersExpanded ? "Collapse filters" : "Expand filters"}
+            >
+              {isFiltersExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+          </div>
+
           {/* Filter Sidebar */}
-          <div className="w-64 flex-shrink-0 space-y-5">
+          {isFiltersExpanded && (
+            <div className="w-64 flex-shrink-0 space-y-5">
             <div>
               <h3 className="financial-subheading mb-4 text-base">Filters</h3>
 
@@ -516,12 +543,13 @@ export default function DataCatalogue() {
               </Button>
             </div>
           </div>
+          )}
 
-          {/* Main Content */}
-          <div className="flex-1 flex flex-col">
+          {/* Main Content - Always visible */}
+          <div className="flex-1 flex flex-col min-w-0">
             {documents.length > 0 ? (
-              <div className="flex-1 flex flex-col space-y-4">
-                <div className="flex-1" style={{ height: '85vh' }}>
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 min-h-0">
                   <AgGridReact
                     theme={themeQuartz}
                     rowData={documents}
@@ -529,7 +557,7 @@ export default function DataCatalogue() {
                     pagination={false}
                   />
                 </div>
-                <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
                   <div className="financial-body text-sm text-muted-foreground">
                     Showing {pagination.showing_from} to {pagination.showing_to} of {pagination.total_count} documents
                   </div>
@@ -547,31 +575,71 @@ export default function DataCatalogue() {
                     </Button>
 
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
-                        let pageNum: number;
-                        if (pagination.total_pages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= pagination.total_pages - 2) {
-                          pageNum = pagination.total_pages - 4 + i;
+                      {(() => {
+                        const totalPages = pagination.total_pages;
+                        const pages: (number | string)[] = [];
+
+                        if (totalPages <= 7) {
+                          // Show all pages if 7 or fewer
+                          for (let i = 1; i <= totalPages; i++) {
+                            pages.push(i);
+                          }
                         } else {
-                          pageNum = currentPage - 2 + i;
+                          // Always show first page
+                          pages.push(1);
+
+                          if (currentPage <= 3) {
+                            // Near the beginning: 1 2 3 4 5 ... X
+                            for (let i = 2; i <= 5; i++) {
+                              pages.push(i);
+                            }
+                            pages.push('ellipsis-end');
+                            pages.push(totalPages);
+                          } else if (currentPage >= totalPages - 2) {
+                            // Near the end: 1 ... X-4 X-3 X-2 X-1 X
+                            pages.push('ellipsis-start');
+                            for (let i = totalPages - 4; i <= totalPages; i++) {
+                              pages.push(i);
+                            }
+                          } else {
+                            // In the middle: 1 ... current-1 current current+1 ... X
+                            pages.push('ellipsis-start');
+                            for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                              pages.push(i);
+                            }
+                            pages.push('ellipsis-end');
+                            pages.push(totalPages);
+                          }
                         }
 
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPage === pageNum ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => handlePageChange(pageNum)}
-                            disabled={isLoading}
-                            className="h-8 w-8 p-0"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
+                        return pages.map((page) => {
+                          if (typeof page === 'string') {
+                            // Render ellipsis
+                            return (
+                              <span
+                                key={page}
+                                className="px-2 text-muted-foreground"
+                              >
+                                ...
+                              </span>
+                            );
+                          }
+
+                          // Render page button
+                          return (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => handlePageChange(page)}
+                              disabled={isLoading}
+                              className="h-8 w-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          );
+                        });
+                      })()}
                     </div>
 
                     <Button
