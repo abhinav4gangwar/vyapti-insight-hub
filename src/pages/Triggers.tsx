@@ -18,26 +18,27 @@ interface Trigger {
   title: string;
   source: string;
   date: string;
-  json: {
-    screener_id: number;
+  url: string;
+  market_cap: number | null;
+  data: {
     isin: string;
     date: string;
     url: string;
-    local_filepath: string;
     source: string;
     reason: string;
+    trigger_type: string;
     detected_by: string;
-    analysis_period: string;
     created_at: string;
     date_of_listing: string;
     duration_from_listing_months?: number;
     duration_since_last_call_months?: number;
     date_of_previous_call?: string;
     duration_since_last_ppt_years?: number;
+    duration_since_last_ppt_months?: number;
     date_of_previous_ppt?: string;
+    market_cap?: number;
+    screener_id?: number;
   };
-  url: string;
-  market_cap: number | null;
 }
 
 interface PaginationInfo {
@@ -171,24 +172,28 @@ export default function Triggers() {
     }
   };
 
-  // Utility function to get trigger type from reason
-  const getTriggerType = (reason?: string): string => {
-    if (!reason) return 'Other';
-    if (reason.toLowerCase().includes('resurrected')) {
+  // Utility function to get trigger type
+  const getTriggerType = (trigger: Trigger): string => {
+    const triggerType = trigger.data?.trigger_type;
+    if (!triggerType) return 'Other';
+    if (triggerType === 'resurrected') {
       return 'Resurrected';
-    } else if (reason.toLowerCase().includes('first')) {
+    } else if (triggerType === 'first_of_a_kind') {
       return 'First of Kind';
     }
-    return 'Other';
+    return triggerType;
   };
 
   // Utility function to get gap duration in months for any trigger type
   const getGapDurationInMonths = (trigger: Trigger): number | null => {
-    if (trigger.json?.duration_since_last_call_months) {
-      return trigger.json.duration_since_last_call_months;
+    if (trigger.data?.duration_since_last_call_months) {
+      return trigger.data.duration_since_last_call_months;
     }
-    if (trigger.json?.duration_since_last_ppt_years) {
-      return trigger.json.duration_since_last_ppt_years * 12; // Convert years to months
+    if (trigger.data?.duration_since_last_ppt_months) {
+      return trigger.data.duration_since_last_ppt_months;
+    }
+    if (trigger.data?.duration_since_last_ppt_years) {
+      return trigger.data.duration_since_last_ppt_years * 12; // Convert years to months
     }
     return null;
   };
@@ -269,10 +274,12 @@ export default function Triggers() {
   };
 
   const getSourceColor = (source: string) => {
-    switch (source.toLowerCase()) {
+    switch (source?.toLowerCase()) {
+      case 'earnings_call':
       case 'earnings_calls':
         return 'bg-blue-500/10 text-blue-700 border-blue-200';
       case 'ppt':
+      case 'investor_ppt':
         return 'bg-green-500/10 text-green-700 border-green-200';
       default:
         return 'bg-gray-500/10 text-gray-700 border-gray-200';
@@ -280,10 +287,12 @@ export default function Triggers() {
   };
 
   const getSourceDisplayName = (source: string) => {
-    switch (source.toLowerCase()) {
+    switch (source?.toLowerCase()) {
+      case 'earnings_call':
       case 'earnings_calls':
         return 'Earnings Calls';
       case 'ppt':
+      case 'investor_ppt':
         return 'Investor PPT';
       default:
         return source;
@@ -519,9 +528,9 @@ export default function Triggers() {
                               </button>
                               <Badge
                                 variant="outline"
-                                className={`text-xs ${getSourceColor(trigger.json?.source || trigger.source)}`}
+                                className={`text-xs ${getSourceColor(trigger.data?.source || trigger.source)}`}
                               >
-                                {getSourceDisplayName(trigger.json?.source || trigger.source)}
+                                {getSourceDisplayName(trigger.data?.source || trigger.source)}
                               </Badge>
                               <Badge
                                 variant="outline"
@@ -530,10 +539,10 @@ export default function Triggers() {
                                 {formatMarketCap(trigger.market_cap)}
                               </Badge>
                               <Badge
-                                variant={getTriggerType(trigger.json?.reason) === 'Resurrected' ? 'default' : 'secondary'}
+                                variant={getTriggerType(trigger) === 'Resurrected' ? 'default' : 'secondary'}
                                 className="text-xs"
                               >
-                                {getTriggerType(trigger.json?.reason)}
+                                {getTriggerType(trigger)}
                               </Badge>
                               {getGapDurationInMonths(trigger) && (
                                 <Badge variant="outline" className="text-xs">
@@ -563,11 +572,11 @@ export default function Triggers() {
                                 <Building2 className="h-3 w-3 mr-2 text-muted-foreground" />
                                 {trigger.company_name}
                               </div>
-                              <div>ISIN: {trigger.json?.isin || trigger.company_isin || 'N/A'}</div>
-                              {trigger.json?.date_of_listing && (
+                              <div>ISIN: {trigger.data?.isin || trigger.company_isin || 'N/A'}</div>
+                              {trigger.data?.date_of_listing && (
                                 <div className="flex items-center">
                                   <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
-                                  Listed: {formatDate(trigger.json.date_of_listing)}
+                                  Listed: {formatDate(trigger.data.date_of_listing)}
                                 </div>
                               )}
                             </div>
@@ -576,38 +585,35 @@ export default function Triggers() {
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Trigger Information</h5>
                             <div className="space-y-1 financial-body text-xs">
-                              <div>Source: {getSourceDisplayName(trigger.json?.source || trigger.source)}</div>
+                              <div>Source: {getSourceDisplayName(trigger.data?.source || trigger.source)}</div>
                               <div>Title: {trigger.title}</div>
-                              <div>Reason: {trigger.json?.reason || 'N/A'}</div>
-                              <div>Detected by: {trigger.json?.detected_by || 'N/A'}</div>
+                              <div>Reason: {trigger.data?.reason || 'N/A'}</div>
+                              <div>Detected by: {trigger.data?.detected_by || 'N/A'}</div>
                             </div>
                           </div>
 
                           <div className="space-y-2">
                             <h5 className="financial-subheading text-sm">Timeline</h5>
                             <div className="space-y-1 financial-body text-xs">
-                              {trigger.json?.duration_from_listing_months && (
+                              {trigger.data?.duration_from_listing_months && (
                                 <div className="flex items-center">
                                   <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
-                                  Duration from Listing: {formatDurationSinceLastCall(trigger.json.duration_from_listing_months)}
+                                  Duration from Listing: {formatDurationSinceLastCall(trigger.data.duration_from_listing_months)}
                                 </div>
                               )}
                               {getGapDurationInMonths(trigger) && (
                                 <div className="flex items-center">
                                   <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
-                                  Gap since Last {trigger.json?.source === 'ppt' ? 'PPT' : 'Call'}: {formatDurationSinceLastCall(getGapDurationInMonths(trigger)!)}
+                                  Gap since Last {trigger.data?.source === 'ppt' ? 'PPT' : 'Call'}: {formatDurationSinceLastCall(getGapDurationInMonths(trigger)!)}
                                 </div>
                               )}
-                              {trigger.json?.date_of_previous_call && (
-                                <div>Previous Call Date: {formatDate(trigger.json.date_of_previous_call)}</div>
+                              {trigger.data?.date_of_previous_call && (
+                                <div>Previous Call Date: {formatDate(trigger.data.date_of_previous_call)}</div>
                               )}
-                              {trigger.json?.date_of_previous_ppt && (
-                                <div>Previous PPT Date: {formatDate(trigger.json.date_of_previous_ppt)}</div>
+                              {trigger.data?.date_of_previous_ppt && (
+                                <div>Previous PPT Date: {formatDate(trigger.data.date_of_previous_ppt)}</div>
                               )}
                               <div>Trigger Date: {formatDate(trigger.date)}</div>
-                              {trigger.json?.analysis_period && (
-                                <div>Analysis Period: {trigger.json.analysis_period}</div>
-                              )}
                             </div>
                           </div>
                         </div>
