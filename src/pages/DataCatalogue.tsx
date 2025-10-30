@@ -215,17 +215,19 @@ export default function DataCatalogue() {
       sortable: true,
       width: 140,
       cellRenderer: (params: any) => (
-        <Badge variant="outline" className="text-xs">
               <a
                 href={params.data.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
               >
+        <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium">
+
                           {params.value === 'earnings_call' ? 'Earnings Call' : 'Investor PPT'}
+        </Badge>
+
 
               </a>
-        </Badge>
       ),
     },
     {
