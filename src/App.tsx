@@ -14,6 +14,7 @@ import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Triggers from "./pages/Triggers";
 import Notifications from "./pages/Notifications";
 import AISearch from "./pages/AISearch";
+import DataCatalogue from "./pages/DataCatalogue";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,11 @@ const App = () => {
           <Route path="/ai-search" element={
             <ProtectedRoute>
               <AISearch />
+            </ProtectedRoute>
+          } />
+          <Route path="/data-catalogue" element={
+            <ProtectedRoute>
+              <DataCatalogue />
             </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
