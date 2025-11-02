@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Navbar } from "@/components/layout/navbar";
 import { SearchInterface, SearchParameters } from "@/components/ai-search/search-interface";
 import { ResultsDisplay } from "@/components/ai-search/results-display";
 import { StreamingResultsDisplay } from "@/components/ai-search/streaming-results-display";
@@ -175,8 +174,6 @@ Notes and caveats
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      
       {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-6">

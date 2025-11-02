@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -282,7 +281,6 @@ export default function DataCatalogue() {
   if (isLoading && documents.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
-        <Navbar />
         <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Skeleton className="h-96 w-full" />
         </main>
@@ -330,7 +328,6 @@ export default function DataCatalogue() {
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
-      <Navbar />
       <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
         <div className="flex gap-4 flex-1">
           {/* Toggle Button for Filters */}
