@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ui/protected-route";
 import { useTokenExpiration } from "@/hooks/use-token-expiration";
 import { BulkChunksProvider } from "@/contexts/BulkChunksContext";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CompanyDetails from "./pages/CompanyDetails";
@@ -35,42 +36,58 @@ const App = () => {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardLayout>
+                <Dashboard />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/companies/:isin" element={
             <ProtectedRoute>
-              <CompanyDetails />
+              <DashboardLayout>
+                <CompanyDetails />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/expert-interviews" element={
             <ProtectedRoute>
-              <ExpertInterviewsList />
+              <DashboardLayout>
+                <ExpertInterviewsList />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/expert-interviews/:id" element={
             <ProtectedRoute>
-              <ExpertInterviewDetails />
+              <DashboardLayout>
+                <ExpertInterviewDetails />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/triggers" element={
             <ProtectedRoute>
-              <Triggers />
+              <DashboardLayout>
+                <Triggers />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/notifications" element={
             <ProtectedRoute>
-              <Notifications />
+              <DashboardLayout>
+                <Notifications />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/ai-search" element={
             <ProtectedRoute>
-              <AISearch />
+              <DashboardLayout>
+                <AISearch />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/data-catalogue" element={
             <ProtectedRoute>
-              <DataCatalogue />
+              <DashboardLayout>
+                <DataCatalogue />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
