@@ -5,12 +5,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SourcePopup } from '@/components/ai-search/source-popup'
-import { AlertCircle, CheckCircle, RotateCcw, Copy, Filter } from 'lucide-react'
+import { AlertCircle, CheckCircle, RotateCcw, Copy, Filter, Zap } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+
+interface ComponentStatus {
+  component: string
+  status: string
+  execution_time_ms: number
+  timestamp: number
+}
+
+interface QueriesData {
+  extracted_query: string
+  bm25_queries: string[]
+  semantic_queries: string[]
+  expansion_metadata: {
+    num_bm25: number
+    num_semantic: number
+  }
+}
 
 interface StreamingResultsDisplayProps {
   isStreaming: boolean
@@ -19,6 +36,8 @@ interface StreamingResultsDisplayProps {
   metadata?: any
   referenceMapping?: Record<string, string> | null
   error?: string | null
+  queries?: QueriesData | null
+  componentStatuses?: ComponentStatus[]
 }
 
 export function StreamingResultsDisplay({
@@ -27,7 +46,9 @@ export function StreamingResultsDisplay({
   streamedContent = '',
   metadata = null,
   referenceMapping = null,
-  error = null
+  error = null,
+  queries = null,
+  componentStatuses = []
 }: StreamingResultsDisplayProps) {
 
   const [selectedChunk, setSelectedChunk] = useState<string | null>(null)
@@ -38,6 +59,7 @@ export function StreamingResultsDisplay({
     type: 'expert_interview' | 'earnings_call'
   }>>({})
   const [showDebug, setShowDebug] = useState(false)
+  const [showQueries, setShowQueries] = useState(false)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews'>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const { getChunk } = useBulkChunksContext()
@@ -537,6 +559,98 @@ export function StreamingResultsDisplay({
 
   return (
     <div className="space-y-6">
+      {/* Queries Section */}
+      {queries && (
+        <Card>
+          <CardHeader>
+            <button
+              onClick={() => setShowQueries(!showQueries)}
+              className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
+            >
+              <CardTitle className="flex items-center gap-2 text-lg">
+                {/* <Zap className="w-5 h-5 text-amber-500" /> */}
+                Search Queries
+              </CardTitle>
+              <span className="text-gray-500">
+                {showQueries ? '▼' : '▶'}
+              </span>
+            </button>
+          </CardHeader>
+          {showQueries && (
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">Extracted Query</h4>
+                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">{queries.extracted_query}</p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                  BM25 Queries ({queries.expansion_metadata.num_bm25})
+                </h4>
+                <div className="space-y-2">
+                  {queries.bm25_queries.map((query, idx) => (
+                    <div key={idx} className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md border border-blue-100">
+                      {query}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                  Semantic Queries ({queries.expansion_metadata.num_semantic})
+                </h4>
+                <div className="space-y-2">
+                  {queries.semantic_queries.map((query, idx) => (
+                    <div key={idx} className="text-sm text-gray-600 bg-purple-50 p-2 rounded-md border border-purple-100">
+                      {query}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* Component Status Section */}
+      {componentStatuses.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              {/* <Zap className="w-5 h-5 text-blue-500" /> */}
+              Processing Pipeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {componentStatuses.map((status, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="flex-shrink-0">
+                      {status.status === 'completed' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{status.component}</p>
+                      <p className="text-xs text-gray-500">{status.status}</p>
+                    </div>
+                  </div>
+                  {status.execution_time_ms > 0 && (
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{status.execution_time_ms.toFixed(0)}ms</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Answer Section */}
       <Card>
         <CardHeader>

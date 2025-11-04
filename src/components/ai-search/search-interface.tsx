@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Loader2, ChevronDown, ChevronRight, Settings, RotateCcw, AlertTriangle } from "lucide-react"
 import { useAdvancedSettings, type SearchParameters } from "@/hooks/use-advanced-settings"
@@ -399,43 +400,41 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                 </div>
 
                 {/* Model selector */}
-                <div className="space-y-2 col-span-4">
+                <div className="space-y-2 col-span-2">
                   <Label className="text-sm font-medium text-gray-700">
                     Model
                   </Label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name="model"
-                        value="gpt-5-2025-08-07"
-                        checked={parameters.model === 'gpt-5-2025-08-07'}
-                        onChange={(e) => updateParameter('model', e.target.value)}
-                      />
-                      GPT 5 (very expensive)
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name="model"
-                        value="gpt-5-mini-2025-08-07"
-                        checked={parameters.model === 'gpt-5-mini-2025-08-07'}
-                        onChange={(e) => updateParameter('model', e.target.value)}
-                      />
-                      GPT 5 Mini (Moderate)
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name="model"
-                        value="gpt-5-nano-2025-08-07"
-                        checked={parameters.model === 'gpt-5-nano-2025-08-07'}
-                        onChange={(e) => updateParameter('model', e.target.value)}
-                      />
-                      GPT 5 Nano (Cheap)
-                    </label>
-                  </div>
+                  <Select value={parameters.model || 'gpt-5-nano-2025-08-07'} onValueChange={(value) => updateParameter('model', value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gpt-5-2025-08-07">GPT 5 (very expensive)</SelectItem>
+                      <SelectItem value="gpt-5-mini-2025-08-07">GPT 5 Mini (Moderate)</SelectItem>
+                      <SelectItem value="gpt-5-nano-2025-08-07">GPT 5 Nano (Cheap)</SelectItem>
+                      <SelectItem value="us.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
+                      <SelectItem value="us.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="text-xs text-gray-500">The selected model will be sent to the backend with your request.</div>
+                </div>
+                {/* Enable Query Extraction Toggle */}
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Enable Query Extraction
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={parameters.enable_query_extraction}
+                      onCheckedChange={(checked) => updateParameter('enable_query_extraction', checked)}
+                    />
+                    <span className="text-sm text-gray-600">
+                      {parameters.enable_query_extraction ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Skip LLM refinement and show query expansions
+                  </div>
                 </div>
 
                 {/* Enable Reranking Toggle */}
@@ -475,6 +474,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                     Enable weighted scoring for search results
                   </div>
                 </div>
+
 
                 {/* Reset to Defaults Button */}
                 {hasChanges && (
