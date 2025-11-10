@@ -16,6 +16,9 @@ import Triggers from "./pages/Triggers";
 import Notifications from "./pages/Notifications";
 import AISearch from "./pages/AISearch";
 import DataCatalogue from "./pages/DataCatalogue";
+import Settings from "./pages/Settings";
+import ChangePassword from "./pages/ChangePassword";
+import ActivityLogs from "./pages/ActivityLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +90,27 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <DataCatalogue />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Settings />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/change-password" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <ChangePassword />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/activity-logs" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <ActivityLogs />
               </DashboardLayout>
             </ProtectedRoute>
           } />

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { SearchParameters } from '@/hooks/use-advanced-settings'
 import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
+import { authService } from '@/lib/auth'
 
 interface StreamEvent {
   type: 'metadata' | 'content' | 'usage' | 'done' | 'error' | 'reference_mapping' | 'queries' | 'component_status'
@@ -162,11 +163,18 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
       abortControllerRef.current = abortController
 
       // Use fetch with streaming instead of EventSource
+      const token = authService.getAccessToken()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           text: query,
           debug,

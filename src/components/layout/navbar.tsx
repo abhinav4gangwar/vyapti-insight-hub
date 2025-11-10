@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Bell, Users, LogOut, Search, Building, FileText, Database } from 'lucide-react';
+import { Bell, Users, LogOut, Search, Building, FileText, Database, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { authService } from '@/lib/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -63,6 +63,10 @@ export const Navbar = () => {
 
   const handleDataCatalogue = () => {
     navigate('/data-catalogue');
+  };
+
+  const handleSettings = () => {
+    navigate('/settings');
   };
 
   // Helper function to determine if a route is active
@@ -165,6 +169,15 @@ export const Navbar = () => {
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </Badge>
               )}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSettings}
+              className={getButtonClasses('/settings')}
+            >
+              <Settings className="h-4 w-4" />
             </Button>
 
             <Button

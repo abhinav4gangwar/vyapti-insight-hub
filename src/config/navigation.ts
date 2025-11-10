@@ -1,4 +1,4 @@
-import { Building2, FileText, Search, BellRing, Database, Bell, LucideIcon } from 'lucide-react';
+import { Building2, FileText, Search, BellRing, Database, Bell, Settings, LucideIcon } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -43,6 +43,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Notifications',
     href: '/notifications',
     icon: Bell,
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    href: '/settings',
+    icon: Settings,
   },
 ] as const;
 
