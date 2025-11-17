@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Navbar } from '@/components/layout/navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -202,7 +201,6 @@ export default function ExpertInterviewDetails() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
-        <Navbar />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card className="shadow-card border-0">
             <CardContent className="text-center py-16">
@@ -219,7 +217,6 @@ export default function ExpertInterviewDetails() {
   if (!interviewData) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
-        <Navbar />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card className="shadow-card border-0">
             <CardContent className="text-center py-16">
@@ -235,8 +232,6 @@ export default function ExpertInterviewDetails() {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      <Navbar />
-      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Interview Header */}
         <Card className="shadow-card border-0 mb-8 animate-fade-in">

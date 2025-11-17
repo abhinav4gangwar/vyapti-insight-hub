@@ -17,6 +17,7 @@ export interface SearchParameters {
   }>
   enable_reranking: boolean
   enable_weights: boolean
+  enable_query_extraction: boolean
 }
 
 // Default settings
@@ -44,7 +45,8 @@ const DEFAULT_PARAMETERS: SearchParameters = {
     }
   },
   enable_reranking: false,
-  enable_weights: false
+  enable_weights: false,
+  enable_query_extraction: false
 }
 
 const STORAGE_KEY = 'ai-search-advanced-settings'

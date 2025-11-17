@@ -1,10 +1,28 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { SearchParameters } from '@/hooks/use-advanced-settings'
 import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
+import { authService } from '@/lib/auth'
 
 interface StreamEvent {
-  type: 'metadata' | 'content' | 'usage' | 'done' | 'error' | 'reference_mapping'
+  type: 'metadata' | 'content' | 'usage' | 'done' | 'error' | 'reference_mapping' | 'queries' | 'component_status'
   data: any
+}
+
+interface ComponentStatus {
+  component: string
+  status: string
+  execution_time_ms: number
+  timestamp: number
+}
+
+interface QueriesData {
+  extracted_query: string
+  bm25_queries: string[]
+  semantic_queries: string[]
+  expansion_metadata: {
+    num_bm25: number
+    num_semantic: number
+  }
 }
 
 interface UseStreamingSearchReturn {
@@ -13,6 +31,8 @@ interface UseStreamingSearchReturn {
   metadata: any
   referenceMapping: Record<string, string> | null
   error: string | null
+  queries: QueriesData | null
+  componentStatuses: ComponentStatus[]
   startStreaming: (query: string, debug: boolean, parameters: SearchParameters) => void
   stopStreaming: () => void
   retry: () => void
@@ -93,6 +113,8 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
   const [metadata, setMetadata] = useState<any>(null)
   const [referenceMapping, setReferenceMapping] = useState<Record<string, string> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [queries, setQueries] = useState<QueriesData | null>(null)
+  const [componentStatuses, setComponentStatuses] = useState<ComponentStatus[]>([])
   const { fetchChunks } = useBulkChunksContext()
 
   const lastQueryRef = useRef<{ query: string; debug: boolean; parameters: SearchParameters } | null>(null)
@@ -124,6 +146,8 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     setMetadata(null)
     setReferenceMapping(null)
     setError(null)
+    setQueries(null)
+    setComponentStatuses([])
     setIsStreaming(true)
 
     // Store query for retry
@@ -139,11 +163,18 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
       abortControllerRef.current = abortController
 
       // Use fetch with streaming instead of EventSource
+      const token = authService.getAccessToken()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           text: query,
           debug,
@@ -190,6 +221,25 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                     const data: StreamEvent = JSON.parse(jsonStr)
                     
                     switch (data.type) {
+                      case 'queries':
+                        setQueries(data.data)
+                        break
+
+                      case 'component_status': {
+                        const status: ComponentStatus = data.data
+                        setComponentStatuses(prev => {
+                          // Update or add component status
+                          const existing = prev.findIndex(s => s.component === status.component)
+                          if (existing >= 0) {
+                            const updated = [...prev]
+                            updated[existing] = status
+                            return updated
+                          }
+                          return [...prev, status]
+                        })
+                        break
+                      }
+
                       case 'metadata':
                         setMetadata(data.data)
                         break
@@ -285,6 +335,24 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
                 const data: StreamEvent = JSON.parse(jsonStr)
                 
                 switch (data.type) {
+                  case 'queries':
+                    setQueries(data.data)
+                    break
+
+                  case 'component_status': {
+                    const status: ComponentStatus = data.data
+                    setComponentStatuses(prev => {
+                      const existing = prev.findIndex(s => s.component === status.component)
+                      if (existing >= 0) {
+                        const updated = [...prev]
+                        updated[existing] = status
+                        return updated
+                      }
+                      return [...prev, status]
+                    })
+                    break
+                  }
+
                   case 'metadata':
                     setMetadata(data.data)
                     break
@@ -421,6 +489,8 @@ export function useStreamingSearch(): UseStreamingSearchReturn {
     metadata,
     referenceMapping,
     error,
+    queries,
+    componentStatuses,
     startStreaming,
     stopStreaming,
     retry

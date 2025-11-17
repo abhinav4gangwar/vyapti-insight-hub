@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Navbar } from '@/components/layout/navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -249,7 +248,6 @@ const formatDate = (dateString: string) => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
-        <Navbar />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-6">
             <Skeleton className="h-32 w-full" />
@@ -263,7 +261,6 @@ const formatDate = (dateString: string) => {
   if (!companyData) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
-        <Navbar />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card className="shadow-card border-0">
             <CardContent className="text-center py-16">
@@ -283,8 +280,6 @@ const formatDate = (dateString: string) => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      <Navbar />
-      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Company Header */}
         <Card className="shadow-card border-0 mb-8 animate-fade-in">

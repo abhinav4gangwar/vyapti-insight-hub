@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Navbar } from "@/components/layout/navbar";
 import { SearchInterface, SearchParameters } from "@/components/ai-search/search-interface";
 import { ResultsDisplay } from "@/components/ai-search/results-display";
 import { StreamingResultsDisplay } from "@/components/ai-search/streaming-results-display";
-import { LoadingSteps } from "@/components/ai-search/loading-steps";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { isStreamingEnabled, getAIApiBaseUrl, parseSourceReferences } from "@/lib/ai-search-utils";
@@ -46,8 +44,6 @@ const AISearch = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
   const [useStreaming, setUseStreaming] = useState(true);
-  const [currentLoadingStep, setCurrentLoadingStep] = useState(0);
-  const [hasReachedStep5, setHasReachedStep5] = useState(false);
 
   // Streaming search hook
   const {
@@ -56,6 +52,8 @@ const AISearch = () => {
     metadata,
     referenceMapping,
     error: streamingError,
+    queries,
+    componentStatuses,
     startStreaming,
     stopStreaming,
     retry: retryStreaming
@@ -125,8 +123,6 @@ Notes and caveats
   };
 
   const handleSearch = async (text: string, debug: boolean, parameters: SearchParameters) => {
-    setHasReachedStep5(false);
-
     if (useStreaming) {
       // Use streaming search
       startStreaming(text, debug, parameters);
@@ -166,17 +162,8 @@ Notes and caveats
     }
   };
 
-  const handleStepChange = (step: number) => {
-    setCurrentLoadingStep(step);
-    if (step >= 5) {
-      setHasReachedStep5(true);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      
       {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -212,14 +199,8 @@ Notes and caveats
             />
           </Card>
 
-          {/* Loading Steps */}
-          <LoadingSteps
-            isVisible={(useStreaming && isStreaming && !streamedContent) || (!useStreaming && isLoading)}
-            onStepChange={handleStepChange}
-          />
-
           {/* Streaming Controls */}
-          {useStreaming && isStreaming && hasReachedStep5 && (
+          {useStreaming && isStreaming && (
             <Card className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -289,7 +270,7 @@ Notes and caveats
 
           {/* Results */}
           {useStreaming ? (
-            hasReachedStep5 && (
+            (isStreaming || streamedContent) && (
               <StreamingResultsDisplay
                 isStreaming={isStreaming}
                 onRetry={retryStreaming}
@@ -297,6 +278,8 @@ Notes and caveats
                 metadata={metadata}
                 referenceMapping={referenceMapping}
                 error={streamingError}
+                queries={queries}
+                componentStatuses={componentStatuses}
               />
             )
           ) : (
