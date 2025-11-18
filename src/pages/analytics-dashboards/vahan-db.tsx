@@ -1,10 +1,11 @@
+import CustomTableBuilder from "@/components/vahan-components/CustomTableBuilder";
 import VahanGridTable from "@/components/vahan-components/VahangridTable";
 import { apiClient } from "@/lib/vahan-api-utils";
+import { RefreshCcw } from "lucide-react";
 import { useState } from "react";
 
-
 export default function VahanDashboardPage() {
-  const [metricType, setMetricType] = useState("maker_vs_fuel");
+  const [activeTab, setActiveTab] = useState("maker_vs_fuel");
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [cachedData, setCachedData] = useState<any>({});
   const [scraping, setScraping] = useState(false);
@@ -23,10 +24,18 @@ export default function VahanDashboardPage() {
     }
   };
 
+  const tabs = [
+    { key: "maker_vs_vehicle_class", label: "Vehicle Class View" },
+    { key: "maker_vs_fuel", label: "Fuel View" },
+    { key: "custom", label: "Custom Table Builder" },
+  ];
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
+    <div className="p-6 space-y-4">
+      
+      <div className="flex justify-between items-center">
         <h1 className="text-xl font-semibold">Vahan Dashboard</h1>
+
         <button
           onClick={triggerScrape}
           className="px-4 py-2 border rounded bg-black text-white disabled:opacity-50"
@@ -36,33 +45,44 @@ export default function VahanDashboardPage() {
         </button>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        {["maker_vs_fuel", "maker_vs_vehicle_class"].map(key => (
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-2 border-b pb-2">
+        {tabs.map(tab => (
           <button
-            key={key}
-            onClick={() => setMetricType(key)}
-            className={`px-4 py-2 border rounded ${
-              metricType === key ? "bg-black text-white" : ""
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 rounded border-b-2 transition-all ${
+              activeTab === tab.key
+                ? "border-black font-semibold"
+                : "border-transparent hover:bg-gray-100"
             }`}
           >
-            {key.replace(/_/g, " ").toUpperCase()}
+            {tab.label}
           </button>
         ))}
 
-        <button
-          onClick={() => setReloadTrigger(prev => prev + 1)}
-          className="px-4 py-2 border rounded"
-        >
-          Refresh Data
-        </button>
+        {activeTab !== "custom" && (
+          <button
+            onClick={() => setReloadTrigger(prev => prev + 1)}
+            className="ml-auto p-2 hover:bg-gray-100 rounded"
+            title="Refresh Data"
+          >
+            <RefreshCcw size={18} />
+          </button>
+        )}
       </div>
 
-      <VahanGridTable
-        metricType={metricType}
-        cachedData={cachedData}
-        setCachedData={setCachedData}
-        reloadTrigger={reloadTrigger}
-      />
+      {/* RENDER CONTENT */}
+      {activeTab === "maker_vs_fuel" || activeTab === "maker_vs_vehicle_class" ? (
+        <VahanGridTable
+          metricType={activeTab}
+          cachedData={cachedData}
+          setCachedData={setCachedData}
+          reloadTrigger={reloadTrigger}
+        />
+      ) : (
+        <CustomTableBuilder />
+      )}
     </div>
   );
 }
