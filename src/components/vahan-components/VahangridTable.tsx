@@ -49,19 +49,28 @@ const MONTH_INDEX: Record<string, number> = {
   DEC: 12
 };
 
-const sortPeriods = (keys: string[]) => {
+const extractYears = (keys: string[]) => {
+  const years = new Set<number>();
+  keys.forEach(k => {
+    const y = Number(k.slice(-2));
+    if (!isNaN(y)) years.add(y);
+  });
+  return Array.from(years).sort();
+};
+
+const orderPeriods = (keys: string[], selectedYears: number[]) => {
   return keys
+    .filter(k => selectedYears.includes(Number(k.slice(-2))))
     .map(k => {
-      const prefix = k.slice(0, k.length - 2);
+      const prefix = k.replace(/\d+$/, "");
       const year = Number(k.slice(-2));
-      const month = MONTH_INDEX[prefix] ?? 99;
-      return { k, prefix, year, month };
+      return { k, prefix, year };
     })
     .sort((a, b) => {
       if (a.year !== b.year) return a.year - b.year;
-      return a.month - b.month;
+      return MONTH_INDEX[a.prefix] - MONTH_INDEX[b.prefix];
     })
-    .map(x => x.k);
+    .map(v => v.k);
 };
 
 export default function VahanGridTable({
@@ -72,7 +81,7 @@ export default function VahanGridTable({
 }: {
   metricType: string;
   cachedData: Record<string, FlattenedRow[]>;
-  setCachedData: (data: any) => void;
+  setCachedData: (v: any) => void;
   reloadTrigger: number;
 }) {
   const [localData, setLocalData] = useState<FlattenedRow[]>([]);
@@ -81,9 +90,11 @@ export default function VahanGridTable({
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState<string>("group_label");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selectedYears, setSelectedYears] = useState<number[]>([]);
+  const [showYoy, setShowYoy] = useState(false);
 
   const PER_PAGE = 15;
-  const IS_FUEL_VIEW = metricType === "maker_vs_fuel";
+  const IS_FUEL = metricType === "maker_vs_fuel";
 
   useEffect(() => {
     if (!reloadTrigger && cachedData[metricType]) {
@@ -94,65 +105,77 @@ export default function VahanGridTable({
     setLoading(true);
     fetchHierarchyData(metricType)
       .then(res => {
-        const rows: FlattenedRow[] = [];
-        let groupId = 0;
+        const flat: FlattenedRow[] = [];
+        let gid = 0;
 
-        if (IS_FUEL_VIEW) {
+        if (IS_FUEL) {
           res.forEach((fuelObj: FuelEntry) => {
-            groupId++;
+            gid++;
             fuelObj.makers.forEach(m => {
               const row: FlattenedRow = {
                 group_label: fuelObj.fuel,
-                group_id: groupId,
+                group_id: gid,
                 sub_label: m.name
               };
-
-              const ordered = sortPeriods(Object.keys(m.period_values));
-              ordered.forEach(p => {
-                row[p] = m.period_values[p] ?? 0;
+              Object.entries(m.period_values).forEach(([k, v]) => {
+                row[k] = v ?? 0;
               });
-
-              rows.push(row);
+              flat.push(row);
             });
           });
         } else {
           res.forEach((makerObj: MakerCategoryEntry) => {
-            groupId++;
+            gid++;
             makerObj.categories.forEach(cat => {
               const row: FlattenedRow = {
                 group_label: makerObj.maker,
-                group_id: groupId,
+                group_id: gid,
                 sub_label: cat.name
               };
-
-              const ordered = sortPeriods(Object.keys(cat.period_values));
-              ordered.forEach(p => {
-                row[p] = cat.period_values[p] ?? 0;
+              Object.entries(cat.period_values).forEach(([k, v]) => {
+                row[k] = v ?? 0;
               });
-
-              rows.push(row);
+              flat.push(row);
             });
           });
         }
 
-        setCachedData((prev: any) => ({ ...prev, [metricType]: rows }));
-        setLocalData(rows);
+        const keys = Object.keys(flat[0] || {});
+        const years = extractYears(keys);
+        setSelectedYears(years);
+
+        setCachedData((p: any) => ({ ...p, [metricType]: flat }));
+        setLocalData(flat);
       })
       .finally(() => setLoading(false));
   }, [metricType, reloadTrigger]);
+  
+const allColumns = useMemo(() => {
+  if (localData.length === 0) return [];
 
-  const allColumns = useMemo(() => {
-    if (localData.length === 0) return [];
-    const cols = new Set<string>();
-    localData.forEach(row => {
-      Object.keys(row).forEach(k => {
-        if (!["group_label", "group_id", "sub_label"].includes(k)) {
-          cols.add(k);
-        }
-      });
+  const keySet = new Set<string>();
+
+  localData.forEach(row => {
+    Object.keys(row).forEach(k => {
+      if (!["group_label", "group_id", "sub_label"].includes(k)) {
+        keySet.add(k);
+      }
     });
-    return sortPeriods(Array.from(cols));
-  }, [localData]);
+  });
+
+  const keys = Array.from(keySet).filter(k => !k.endsWith("_YOY"));
+
+  const ordered = orderPeriods(keys, selectedYears);
+
+  if (!showYoy) return ordered;
+
+  const yoyCols = ordered
+    .filter(k => k.startsWith("FULL"))
+    .map(k => k + "_YOY");
+
+  return [...ordered, ...yoyCols];
+}, [localData, selectedYears, showYoy]);
+
 
   const filtered = useMemo(() => {
     const s = searchValue.toLowerCase();
@@ -175,17 +198,43 @@ export default function VahanGridTable({
 
   const paginated = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const handleSort = (col: string) => {
-    setSortCol(col);
-    setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
-  };
+  const toggleYear = (y: number) =>
+    setSelectedYears(p =>
+      p.includes(y) ? p.filter(v => v !== y) : [...p, y].sort()
+    );
 
-  const firstCol = IS_FUEL_VIEW ? "Fuel" : "Maker";
-  const secondCol = IS_FUEL_VIEW ? "Manufacturer" : "Category";
+  const firstCol = IS_FUEL ? "Fuel" : "Maker";
+  const secondCol = IS_FUEL ? "Manufacturer" : "Category";
 
   return (
     <>
       <FilterBar searchValue={searchValue} setSearchValue={setSearchValue} />
+
+      {localData.length > 0 && (
+        <div className="flex items-center gap-4 mb-3">
+          <div className="flex items-center gap-2">
+            {extractYears(Object.keys(localData[0])).map(y => (
+              <label key={y} className="text-sm flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={selectedYears.includes(y)}
+                  onChange={() => toggleYear(y)}
+                />
+                {2000 + y}
+              </label>
+            ))}
+          </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={showYoy}
+              onChange={() => setShowYoy(v => !v)}
+            />
+            Show YoY (FULL only)
+          </label>
+        </div>
+      )}
 
       {loading ? (
         <TableLoader />
@@ -194,13 +243,17 @@ export default function VahanGridTable({
           <table className="min-w-full text-sm border-collapse">
             <thead className="sticky top-0 bg-gray-100 border-b">
               <tr>
-                <th className="border px-3 py-3 text-left">{firstCol}</th>
-                <th className="border px-3 py-3 text-left">{secondCol}</th>
+                <th className="border px-3 py-3">{firstCol}</th>
+                <th className="border px-3 py-3">{secondCol}</th>
+
                 {allColumns.map(col => (
                   <th
                     key={col}
-                    className="border px-3 py-3 text-center whitespace-nowrap cursor-pointer hover:bg-gray-200"
-                    onClick={() => handleSort(col)}
+                    className="border px-3 py-3 text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap"
+                    onClick={() => {
+                      setSortCol(col);
+                      setSortDir(d => (d === "asc" ? "desc" : "asc"));
+                    }}
                   >
                     {col}
                     {sortCol === col ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
@@ -210,35 +263,51 @@ export default function VahanGridTable({
             </thead>
 
             <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={allColumns.length + 2} className="text-center p-6 text-gray-500">
-                    No results found
+              {paginated.map((row, idx) => (
+                <tr
+                  key={idx}
+                  className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}
+                >
+                  <td className="border px-3 font-medium">
+                    {idx === 0 ||
+                    paginated[idx - 1].group_id !== row.group_id
+                      ? row.group_label
+                      : ""}
                   </td>
-                </tr>
-              ) : (
-                paginated.map((row, idx) => (
-                  <tr key={idx} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                    <td className="border px-3 font-medium">
-                      {idx === 0 || paginated[idx - 1].group_id !== row.group_id
-                        ? row.group_label
-                        : ""}
-                    </td>
-                    <td className="border px-3">{row.sub_label}</td>
-                    {allColumns.map(col => (
-                      <td key={col} className="border px-2 text-right">
-                        {row[col] || 0}
+
+                  <td className="border px-3">{row.sub_label}</td>
+
+                  {allColumns.map(col => {
+                    const isYoy = col.endsWith("_YOY");
+                    const baseCol = col.replace("_YOY", "");
+                    return (
+                      <td key={col} className="border px-2 text-right leading-tight">
+                        {!isYoy ? (
+                          <>
+                            <div>{row[col] || 0}</div>
+                            {showYoy && row[baseCol + "_YOY"] != null && (
+                              <div className="text-xs text-gray-500">
+                                ({row[baseCol + "_YOY"]}%)
+                              </div>
+                            )}
+                          </>
+                        ) : null}
                       </td>
-                    ))}
-                  </tr>
-                ))
-              )}
+                    );
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
 
-      <Pagination page={page} setPage={setPage} total={filtered.length} perPage={PER_PAGE} />
+      <Pagination
+        page={page}
+        setPage={setPage}
+        total={filtered.length}
+        perPage={15}
+      />
     </>
   );
 }
