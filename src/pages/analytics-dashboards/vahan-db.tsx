@@ -35,13 +35,13 @@ export default function VahanDashboardPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-semibold">Vahan Dashboard</h1>
 
-        <button
+        {/* <button
           onClick={triggerScrape}
           className="px-4 py-2 border rounded bg-black text-white disabled:opacity-50"
           disabled={scraping}
         >
           {scraping ? "Scraping..." : "Run Scraper"}
-        </button>
+        </button> */}
       </div>
 
       {/* Tab Navigation */}
