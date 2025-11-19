@@ -14,14 +14,23 @@ interface FlattenedRow {
   group_label: string;
   group_id: number;
   sub_label: string;
-  [key: string]: string | number;
+  [key: string]: any;
 }
 
-const PERIOD_ORDER = [
-  "FULL_YEAR",
-  "JAN","FEB","MAR","APR","MAY","JUN",
-  "JUL","AUG","SEP","OCT","NOV","DEC"
-];
+const MONTH_INDEX: Record<string, number> = {
+  JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6,
+  JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12
+};
+
+function parsePeriod(key: string) {
+  const full = key.match(/^FULL(\d{2})$/);
+  if (full) return { year: 2000 + parseInt(full[1]), month: null };
+
+  const m1 = key.match(/^([A-Z]{3})(\d{2})$/);
+  if (m1) return { year: 2000 + parseInt(m1[2]), month: m1[1] };
+
+  return null;
+}
 
 export default function VahanGridTable({
   metricType,
@@ -31,14 +40,14 @@ export default function VahanGridTable({
 }: {
   metricType: string;
   cachedData: Record<string, FlattenedRow[]>;
-  setCachedData: (data: any) => void;
+  setCachedData: (d: any) => void;
   reloadTrigger: number;
 }) {
   const [localData, setLocalData] = useState<FlattenedRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
-  const [sortCol, setSortCol] = useState<string>("group_label");
+  const [sortCol, setSortCol] = useState<string>("");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const PER_PAGE = 15;
@@ -53,7 +62,7 @@ export default function VahanGridTable({
     setLoading(true);
     fetchHierarchyData(metricType)
       .then(res => {
-        const flat: FlattenedRow[] = [];
+        const rows: FlattenedRow[] = [];
         let gid = 0;
 
         if (IS_FUEL_VIEW) {
@@ -65,11 +74,10 @@ export default function VahanGridTable({
                 group_id: gid,
                 sub_label: m.name
               };
-              PERIOD_ORDER.forEach(per => {
-                const key = Object.keys(m.period_values).find(k => k.endsWith(per));
-                row[per] = key ? m.period_values[key] ?? 0 : 0;
+              Object.entries(m.period_values).forEach(([k, v]) => {
+                row[k] = v;
               });
-              flat.push(row);
+              rows.push(row);
             });
           });
         } else {
@@ -81,49 +89,81 @@ export default function VahanGridTable({
                 group_id: gid,
                 sub_label: cat.name
               };
-              PERIOD_ORDER.forEach(per => {
-                const key = Object.keys(cat.period_values).find(k => k.endsWith(per));
-                row[per] = key ? cat.period_values[key] ?? 0 : 0;
+              Object.entries(cat.period_values).forEach(([k, v]) => {
+                row[k] = v;
               });
-              flat.push(row);
+              rows.push(row);
             });
           });
         }
 
-        setCachedData((prev: any) => ({ ...prev, [metricType]: flat }));
-        setLocalData(flat);
+        setCachedData((p: any) => ({ ...p, [metricType]: rows }));
+        setLocalData(rows);
       })
       .finally(() => setLoading(false));
   }, [metricType, reloadTrigger]);
 
-  const filtered = useMemo(() => {
-    const s = searchValue.toLowerCase();
-    return localData.filter(
-      row =>
-        row.group_label.toLowerCase().includes(s) ||
-        row.sub_label.toLowerCase().includes(s)
-    );
-  }, [localData, searchValue]);
+  const PERIOD_COLUMNS = useMemo(() => {
+    const allKeys = new Set<string>();
 
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const av = a[sortCol] ?? 0;
-      const bv = b[sortCol] ?? 0;
-      if (av < bv) return sortDir === "asc" ? -1 : 1;
-      if (av > bv) return sortDir === "asc" ? 1 : -1;
-      return 0;
+    localData.forEach(r => {
+      Object.keys(r).forEach(k => {
+        if (!["group_label", "group_id", "sub_label"].includes(k)) allKeys.add(k);
+      });
     });
-  }, [filtered, sortCol, sortDir]);
+
+    const parsed = Array.from(allKeys)
+      .map(k => ({ key: k, p: parsePeriod(k) }))
+      .filter(o => o.p !== null);
+
+    const byYear: Record<number, typeof parsed> = {};
+    parsed.forEach(obj => {
+      const y = obj.p!.year;
+      byYear[y] = byYear[y] || [];
+      byYear[y].push(obj);
+    });
+
+    const result: string[] = [];
+    const sortedYears = Object.keys(byYear).map(Number).sort((a, b) => a - b);
+
+    sortedYears.forEach(y => {
+      const items = byYear[y];
+
+      const full = items.filter(o => o.p!.month === null).map(o => o.key);
+      const months = items
+        .filter(o => o.p!.month !== null)
+        .sort((a, b) => MONTH_INDEX[a.p!.month!] - MONTH_INDEX[b.p!.month!])
+        .map(o => o.key);
+
+      result.push(...full, ...months);
+    });
+
+    return result;
+  }, [localData]);
+
+  const filtered = localData.filter(r =>
+    r.group_label.toLowerCase().includes(searchValue.toLowerCase()) ||
+    r.sub_label.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  const sorted = [...filtered].sort((a, b) => {
+    const av = a[sortCol] ?? "";
+    const bv = b[sortCol] ?? "";
+    if (typeof av === "string") {
+      return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    return sortDir === "asc" ? av - bv : bv - av;
+  });
 
   const paginated = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const handleSort = (col: string) => {
-    setSortCol(col);
-    setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
-  };
-
   const firstCol = IS_FUEL_VIEW ? "Fuel" : "Maker";
   const secondCol = IS_FUEL_VIEW ? "Manufacturer" : "Category";
+
+  const handleSort = (k: string) => {
+    setSortCol(k);
+    setSortDir(d => (d === "asc" ? "desc" : "asc"));
+  };
 
   return (
     <>
@@ -132,54 +172,42 @@ export default function VahanGridTable({
       {loading ? (
         <TableLoader />
       ) : (
-        <div className="overflow-auto rounded-md border bg-white shadow-sm">
-          <table className="min-w-full border-collapse text-sm">
-            <thead className="sticky top-0 bg-gray-100 border-b">
+        <div className="overflow-auto rounded border bg-white shadow-sm">
+          <table className="min-w-full text-sm border-collapse">
+            <thead className="bg-gray-100 sticky top-0">
               <tr>
-                <th className="border px-3 py-3 text-left font-semibold">{firstCol}</th>
-                <th className="border px-3 py-3 text-left font-semibold">{secondCol}</th>
-                {PERIOD_ORDER.map(p => (
+                <th className="border px-3 py-3">{firstCol}</th>
+                <th className="border px-3 py-3">{secondCol}</th>
+
+                {PERIOD_COLUMNS.map(k => (
                   <th
-                    key={p}
-                    className="border px-3 py-3 text-center whitespace-nowrap cursor-pointer hover:bg-gray-200"
-                    onClick={() => handleSort(p)}
+                    key={k}
+                    className="border px-3 py-3 cursor-pointer"
+                    onClick={() => handleSort(k)}
                   >
-                    <span className="inline-block px-2 py-1 rounded bg-gray-200 text-xs font-semibold">
-                      {p}
-                    </span>
-                    {sortCol === p ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+                    {k} {sortCol === k ? (sortDir === "asc" ? "↑" : "↓") : ""}
                   </th>
                 ))}
               </tr>
             </thead>
 
             <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={15} className="text-center p-6 text-gray-500">
-                    No matching results
+              {paginated.map((row, i) => (
+                <tr key={i} className={i % 2 === 0 ? "bg-gray-50" : ""}>
+                  <td className="border px-3 font-medium">
+                    {i === 0 || paginated[i - 1].group_id !== row.group_id
+                      ? row.group_label
+                      : ""}
                   </td>
-                </tr>
-              ) : (
-                paginated.map((row, idx) => (
-                  <tr key={idx} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                    <td className="border px-3 font-medium sticky left-0 bg-inherit">
-                      {idx === 0 || paginated[idx - 1].group_id !== row.group_id
-                        ? row.group_label
-                        : ""}
+                  <td className="border px-3">{row.sub_label}</td>
+
+                  {PERIOD_COLUMNS.map(k => (
+                    <td key={k} className="border px-2 text-right">
+                      {row[k] ?? 0}
                     </td>
-                    <td className="border px-3">{row.sub_label}</td>
-                    {PERIOD_ORDER.map(per => (
-                      <td
-                        key={per}
-                        className="border px-2 text-right font-medium"
-                      >
-                        {row[per] || 0}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
