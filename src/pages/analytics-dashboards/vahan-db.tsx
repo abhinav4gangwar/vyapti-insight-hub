@@ -1,7 +1,6 @@
 import CustomTableBuilder from "@/components/vahan-components/CustomTableBuilder";
 import VahanGridTable from "@/components/vahan-components/VahangridTable";
 import { apiClient } from "@/lib/vahan-api-utils";
-import { RefreshCcw } from "lucide-react";
 import { useState } from "react";
 
 export default function VahanDashboardPage() {
@@ -61,15 +60,7 @@ export default function VahanDashboardPage() {
           </button>
         ))}
 
-        {activeTab !== "custom" && (
-          <button
-            onClick={() => setReloadTrigger(prev => prev + 1)}
-            className="ml-auto p-2 hover:bg-gray-100 rounded"
-            title="Refresh Data"
-          >
-            <RefreshCcw size={18} />
-          </button>
-        )}
+        
       </div>
 
       {/* RENDER CONTENT */}
