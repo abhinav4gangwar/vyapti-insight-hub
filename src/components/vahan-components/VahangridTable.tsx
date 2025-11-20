@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import FilterBar from "./FilterBar";
 import TableLoader from "./loader";
 import Pagination from "./Pagination";
+import { exportToExcel } from "./utils/excel-export";
+
 
 type PeriodMap = Record<string, number>;
 
@@ -150,32 +152,31 @@ export default function VahanGridTable({
       .finally(() => setLoading(false));
   }, [metricType, reloadTrigger]);
   
-const allColumns = useMemo(() => {
-  if (localData.length === 0) return [];
+  const allColumns = useMemo(() => {
+    if (localData.length === 0) return [];
 
-  const keySet = new Set<string>();
+    const keySet = new Set<string>();
 
-  localData.forEach(row => {
-    Object.keys(row).forEach(k => {
-      if (!["group_label", "group_id", "sub_label"].includes(k)) {
-        keySet.add(k);
-      }
+    localData.forEach(row => {
+      Object.keys(row).forEach(k => {
+        if (!["group_label", "group_id", "sub_label"].includes(k)) {
+          keySet.add(k);
+        }
+      });
     });
-  });
 
-  const keys = Array.from(keySet).filter(k => !k.endsWith("_YOY"));
+    const keys = Array.from(keySet).filter(k => !k.endsWith("_YOY"));
 
-  const ordered = orderPeriods(keys, selectedYears);
+    const ordered = orderPeriods(keys, selectedYears);
 
-  if (!showYoy) return ordered;
+    if (!showYoy) return ordered;
 
-  const yoyCols = ordered
-    .filter(k => k.startsWith("FULL"))
-    .map(k => k + "_YOY");
+    const yoyCols = ordered
+      .filter(k => k.startsWith("FULL"))
+      .map(k => k + "_YOY");
 
-  return [...ordered, ...yoyCols];
-}, [localData, selectedYears, showYoy]);
-
+    return [...ordered, ...yoyCols];
+  }, [localData, selectedYears, showYoy]);
 
   const filtered = useMemo(() => {
     const s = searchValue.toLowerCase();
@@ -203,12 +204,31 @@ const allColumns = useMemo(() => {
       p.includes(y) ? p.filter(v => v !== y) : [...p, y].sort()
     );
 
+  const handleExport = () => {
+    if (filtered.length === 0) {
+      alert("No data to export!");
+      return;
+    }
+    
+    exportToExcel(filtered, metricType, selectedYears);
+  };
+
   const firstCol = IS_FUEL ? "Fuel" : "Maker";
   const secondCol = IS_FUEL ? "Manufacturer" : "Category";
 
   return (
     <>
-      <FilterBar searchValue={searchValue} setSearchValue={setSearchValue} />
+      <div className="flex justify-between items-center mb-3">
+        <FilterBar searchValue={searchValue} setSearchValue={setSearchValue} />
+        
+        <button
+          onClick={handleExport}
+          disabled={loading || localData.length === 0}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          Export to Excel
+        </button>
+      </div>
 
       {localData.length > 0 && (
         <div className="flex items-center gap-4 mb-3">
