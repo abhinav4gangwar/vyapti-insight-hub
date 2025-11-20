@@ -116,14 +116,12 @@ export const exportToExcel = (
   const firstColLabel = isFuel ? "Fuel" : "Maker";
   const secondColLabel = isFuel ? "Manufacturer" : "Category";
   
-
   const periodColumns = getAllPeriodColumns(data, selectedYears);
   
-
   const groupedData = groupDataByCategory(data);
   
-
   const workbook = XLSX.utils.book_new();
+  const usedSheetNames = new Set<string>();
 
   groupedData.forEach((rows, groupLabel) => {
     const sheetData = createSheetData(
@@ -136,20 +134,31 @@ export const exportToExcel = (
     // Create worksheet
     const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
     
-   
+    // Set column widths
     const colWidths = [
       { wch: 20 }, 
       { wch: 25 }, 
-      ...periodColumns.map(() => ({ wch: 15 })) // Period columns
+      ...periodColumns.map(() => ({ wch: 15 }))
     ];
     worksheet["!cols"] = colWidths;
     
-  
-    let sheetName = groupLabel.substring(0, 31); 
-    sheetName = sheetName.replace(/[:\\/?*[\]]/g, "_"); 
     
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    let sheetName = groupLabel.substring(0, 31); 
+    sheetName = sheetName.replace(/[:\\/?*[\]]/g, "_");
+    
+   
+    let finalSheetName = sheetName;
+    let counter = 1;
+    while (usedSheetNames.has(finalSheetName)) {
+      const suffix = `_${counter}`;
+      const maxLength = 31 - suffix.length;
+      finalSheetName = sheetName.substring(0, maxLength) + suffix;
+      counter++;
+    }
+    usedSheetNames.add(finalSheetName);
+    
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, finalSheetName);
   });
   
   // Generate filename
