@@ -41,9 +41,10 @@ export async function handleBulkChunks(request: BulkChunksRequest): Promise<Bulk
       // Validate chunk ID format
       const isExpertInterview = chunkId.startsWith('k_')
       const isEarningsCall = chunkId.startsWith('e_')
-      
-      if (!isExpertInterview && !isEarningsCall) {
-        throw new Error('Invalid chunk ID format. Expected k_ or e_ prefix.')
+      const isSebiChunk = chunkId.startsWith('d_')
+
+      if (!isExpertInterview && !isEarningsCall && !isSebiChunk) {
+        throw new Error('Invalid chunk ID format. Expected k_, e_, or d_ prefix.')
       }
       
       // Fetch individual chunk
@@ -59,7 +60,8 @@ export async function handleBulkChunks(request: BulkChunksRequest): Promise<Bulk
       // Add source_type to the data
       const chunkWithType = {
         ...chunkData,
-        source_type: isExpertInterview ? 'expert_interview' : 'earnings_call'
+        source_type: isExpertInterview ? 'expert_interview' :
+                    isEarningsCall ? 'earnings_call' : 'sebi_chunk'
       }
       
       return { chunkId, data: chunkWithType, error: null }
