@@ -5,7 +5,7 @@ import type { BulkChunksResponse } from '@/api/chunks/bulk'
 // Base interface for common fields
 interface BaseChunkData {
   id: string | number
-  source_type: 'earnings_call' | 'expert_interview'
+  source_type: 'earnings_call' | 'expert_interview' | 'sebi_chunk'
 }
 
 // Earnings call chunk data (e_ prefix)
@@ -64,7 +64,24 @@ export interface ExpertInterviewChunkData extends BaseChunkData {
   interview_id?: number
 }
 
-export type ChunkData = EarningsCallChunkData | ExpertInterviewChunkData
+// SEBI chunk data (d_ prefix)
+export interface SebiChunkData extends BaseChunkData {
+  source_type: 'sebi_chunk'
+  text: string
+  section_number: string
+  section_title: string
+  chunk_index: number
+  num_tokens: number
+  sebi_id: number
+  company_isin: string
+  date: string
+  title: string
+  url: string
+  pdf_url: string
+  created_at: string
+}
+
+export type ChunkData = EarningsCallChunkData | ExpertInterviewChunkData | SebiChunkData
 
 interface UseBulkChunksReturn {
   chunks: Record<string, ChunkData>

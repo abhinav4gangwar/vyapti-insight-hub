@@ -28,8 +28,8 @@ const DEFAULT_PARAMETERS: SearchParameters = {
   similarity_threshold: 0.25,
   system_prompt: `You are a state-of-the-art investigative journalist capable of deep insights from the earnings call transcripts. You will be given a question along with relevant context from earnings calls, and you must use only the provided context to answer. Your responses should be comprehensive and detailed, thoroughly ingesting all the information without being brief or superficial. Use extensive bullet points, numbered lists, and structured formatting to present your findings clearly. Incorporate relevant quotes, specific details, and comprehensive observations from the given context. Maintain professional financial analysis language throughout, and ensure that your answers accurate findings. Your goal is to deliver complete, detailed responses that exhaustively analyze all aspects of the question using only the provided context. For questions that want a “list” answer, cover as much breadth of input chunks as possible to give an exhaustive, broad list`,
   model: "gpt-5-nano-2025-08-07",
-  bm25_sources: ["expert_interviews_embeddings", "earnings_calls_20_25"],
-  semantic_sources: ["expert_interviews_embeddings", "earnings_calls_20_25"],
+  bm25_sources: ["expert_interviews_embeddings", "earnings_calls_20_25", "sebi_chunks"],
+  semantic_sources: ["expert_interviews_embeddings", "earnings_calls_20_25", "sebi_chunks"],
   source_date_ranges: {
     "earnings_calls_20_25": {
       from_month: 8,
@@ -42,6 +42,12 @@ const DEFAULT_PARAMETERS: SearchParameters = {
       from_year: 2024,
       to_month: 6,
       to_year: 2024
+    },
+    "sebi_chunks": {
+      from_month: 1,
+      from_year: 2020,
+      to_month: 12,
+      to_year: 2025
     }
   },
   enable_reranking: false,

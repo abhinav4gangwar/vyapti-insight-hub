@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Calendar, Building, User, ExternalLink, Copy } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
-import type { ChunkData, EarningsCallChunkData, ExpertInterviewChunkData } from '@/hooks/use-bulk-chunks'
+import type { ChunkData, EarningsCallChunkData, ExpertInterviewChunkData, SebiChunkData } from '@/hooks/use-bulk-chunks'
 
 interface DocumentInfo {
   exchange: string
@@ -42,9 +42,10 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
         // Determine chunk type based on prefix
         const isExpertInterview = chunkId.startsWith('k_')
         const isEarningsCall = chunkId.startsWith('e_')
+        const isSebiChunk = chunkId.startsWith('d_')
 
-        if (!isExpertInterview && !isEarningsCall) {
-          throw new Error('Invalid chunk ID format. Expected k_ or e_ prefix.')
+        if (!isExpertInterview && !isEarningsCall && !isSebiChunk) {
+          throw new Error('Invalid chunk ID format. Expected k_, e_, or d_ prefix.')
         }
 
         const apiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8005'
@@ -61,7 +62,7 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
         // Add source_type to the data
         const chunkWithType: ChunkData = {
           ...chunk,
-          source_type: isExpertInterview ? 'expert_interview' : 'earnings_call'
+          source_type: isExpertInterview ? 'expert_interview' : isEarningsCall ? 'earnings_call' : 'sebi_chunk'
         }
 
         setChunkData(chunkWithType)
@@ -201,7 +202,7 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                   </div>
                 </div>
               </>
-            ) : (
+            ) : chunkData.source_type === 'expert_interview' ? (
               // Expert Interview Content
               <>
                 {/* Expert Interview Information */}
@@ -259,6 +260,54 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                   </div>
                 </div>
               </>
+            ) : (
+              // SEBI Chunk Content
+              <>
+                {/* SEBI Document Information */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    DRHP Document
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="font-medium">Company:</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-gray-700">{(chunkData as SebiChunkData).title}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard((chunkData as SebiChunkData).title)}
+                          className="h-6 w-6 p-0 hover:bg-gray-200"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="font-medium">Date:</span>
+                        <p className="text-gray-700 flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {formatDate((chunkData as SebiChunkData).date)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="font-medium">ISIN:</span>
+                        <p className="text-gray-700">{(chunkData as SebiChunkData).company_isin}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Section:</span>
+                        <Badge variant="secondary">{(chunkData as SebiChunkData).section_number} - {(chunkData as SebiChunkData).section_title}</Badge>
+                      </div>
+                      <div>
+                        <span className="font-medium">Chunk:</span>
+                        <p className="text-gray-700">{(chunkData as SebiChunkData).chunk_index}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Document Actions */}
@@ -280,7 +329,7 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                     Document not available
                   </div>
                 )
-              ) : (
+              ) : chunkData.source_type === 'expert_interview' ? (
                 // Expert Interview Document Button
                 (() => {
                   const expertChunk = chunkData as ExpertInterviewChunkData;
@@ -302,6 +351,21 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                     </div>
                   );
                 })()
+              ) : (
+                // SEBI Document Button
+                (chunkData as SebiChunkData).pdf_url ? (
+                  <Button
+                    onClick={() => window.open((chunkData as SebiChunkData).pdf_url, '_blank')}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    View Full DRHP
+                  </Button>
+                ) : (
+                  <div className="text-sm text-gray-500 italic">
+                    Document not available
+                  </div>
+                )
               )}
             </div>
 
@@ -343,7 +407,7 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                   </div>
                 </div>
               </>
-            ) : (
+            ) : chunkData.source_type === 'expert_interview' ? (
               <>
                 {/* Expert Interview Content */}
                 <div className="bg-gray-50 rounded-lg p-4">
@@ -370,6 +434,16 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                 )}
 
 
+              </>
+            ) : (
+              <>
+                {/* SEBI Document Content */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3">Document Text</h3>
+                  <div className="bg-white rounded p-4 border max-h-60 overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-gray-800">{(chunkData as SebiChunkData).text}</p>
+                  </div>
+                </div>
               </>
             )}
 
