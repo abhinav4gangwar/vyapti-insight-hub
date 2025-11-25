@@ -443,8 +443,8 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <SelectItem value="gpt-5-2025-08-07">GPT 5 (very expensive)</SelectItem>
                       <SelectItem value="gpt-5-mini-2025-08-07">GPT 5 Mini (Moderate)</SelectItem>
                       <SelectItem value="gpt-5-nano-2025-08-07">GPT 5 Nano (Cheap)</SelectItem>
-                      {/* <SelectItem value="global.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
-                      <SelectItem value="global.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem> */}
+                      <SelectItem value="global.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
+                      <SelectItem value="global.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-gray-500">The selected model will be sent to the backend with your request.</div>
