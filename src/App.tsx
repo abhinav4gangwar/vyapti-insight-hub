@@ -20,6 +20,8 @@ import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Triggers from "./pages/Triggers";
+import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
+import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-page";
 import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
 
 const queryClient = new QueryClient();
@@ -122,6 +124,20 @@ const App = () => {
               </DashboardLayout>
             </ProtectedRoute>
           }/>
+          <Route path="/dgtr-db" element= {
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DGTRDashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }/>
+          <Route path="/dgtr-db/:slug" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <InvestigationPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
