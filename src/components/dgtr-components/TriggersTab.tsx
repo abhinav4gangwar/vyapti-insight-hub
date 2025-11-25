@@ -1,5 +1,4 @@
-// src/components/dgtr/TriggersTab.tsx
-// FINAL VERSION – Loads ALL Triggers (Auto-Pagination, No Limits)
+
 
 import { useEffect, useState } from "react";
 
@@ -61,7 +60,7 @@ export default function TriggersTab() {
     setLoading(true);
     const allTriggers: Trigger[] = [];
     let page = 1;
-    const pageSize = 100; // max allowed by backend
+    const pageSize = 100; 
 
     try {
       while (true) {
@@ -76,10 +75,10 @@ export default function TriggersTab() {
         const res = await dgtrApiClient.get(`/api/v1/triggers?${params}`);
         const items: Trigger[] = res.data.items || [];
 
-        if (items.length === 0) break; // no more data
+        if (items.length === 0) break; 
 
         allTriggers.push(...items);
-        if (items.length < pageSize) break; // last page
+        if (items.length < pageSize) break; 
 
         page++;
       }
