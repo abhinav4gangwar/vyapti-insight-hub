@@ -131,7 +131,7 @@ const App = () => {
               </DashboardLayout>
             </ProtectedRoute>
           }/>
-          <Route path="/dgtr-db/:slug" element={
+          <Route path="/dgtr-db/:uuid" element={
             <ProtectedRoute>
               <DashboardLayout>
                 <InvestigationPage />

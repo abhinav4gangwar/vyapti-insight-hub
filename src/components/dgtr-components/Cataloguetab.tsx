@@ -1,47 +1,10 @@
-
-
-import { useEffect, useState } from "react";
-
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { dgtrApiClient } from "@/lib/dgtr-api-utils";
 import { ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-
-
-const getCleanStatus = (rawStatus: string | null | undefined): "Ongoing" | "Concluded" => {
-  if (!rawStatus) return "Ongoing";
-  const s = rawStatus.toString().toLowerCase();
-
-  
-  if (
-    s.includes("concluded") ||
-    s.includes("terminated") ||
-    s.includes("withdrawn") ||
-    s.includes("final finding") ||
-    s.includes("final findings") ||
-    s.includes("duty imposed") ||
-    s.includes("recommendation")
-  ) {
-    return "Concluded";
-  }
-
-  
-  if (
-    s.includes("ongoing") ||
-    s.includes("investigationanti") ||
-    s.includes("initiated") ||
-    s.includes("initiation") ||
-    s.includes("oral hearing") ||
-    s.startsWith("2 -") ||
-    s.startsWith("3 -")
-  ) {
-    return "Ongoing";
-  }
-
-  return "Ongoing"; 
-};
 
 export default function CatalogueTab() {
   const [investigations, setInvestigations] = useState<any[]>([]);
@@ -51,15 +14,16 @@ export default function CatalogueTab() {
 
   const [search, setSearch] = useState("");
   const [countryFilter, setCountryFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "ongoing" | "concluded">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "Ongoing" | "Concluded">("all");
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
   const fetchCountries = async () => {
     try {
-      const res = await dgtrApiClient.get("/api/v1/distincts/countries");
+      const res = await dgtrApiClient.get("/dgtr/investigations/meta/countries");
       setCountries((res.data.countries || []).filter(Boolean).sort());
     } catch (err) {
+      console.error("Failed to fetch countries:", err);
       setCountries([]);
     }
   };
@@ -71,30 +35,18 @@ export default function CatalogueTab() {
       page_size: pageSize.toString(),
     });
 
-    if (search) params.append("q", search);
-    if (countryFilter !== "all") params.append("country", countryFilter);
+    if (search) params.append("search", search);
+    if (countryFilter !== "all") params.append("countries", countryFilter);
+    if (statusFilter !== "all") params.append("status", statusFilter);
 
     try {
-      const res = await dgtrApiClient.get(`/api/v1/investigations?${params}`);
-      const rawItems = res.data.items || [];
+      const res = await dgtrApiClient.get(`/dgtr/investigations?${params}`);
+      const rawItems = res.data.data || [];
 
-      // Apply status filter client-side
-      const filtered = rawItems.filter((item: any) => {
-        const clean = getCleanStatus(item.status);
-        if (statusFilter === "ongoing") return clean === "Ongoing";
-        if (statusFilter === "concluded") return clean === "Concluded";
-        return true;
-      });
-
-      const processed = filtered.map((item: any) => ({
-        ...item,
-        cleanStatus: getCleanStatus(item.status),
-      }));
-
-      setInvestigations(processed);
-      setTotal(res.data.meta?.total || 0);
+      setInvestigations(rawItems);
+      setTotal(res.data.total || 0);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch investigations:", err);
       setInvestigations([]);
       setTotal(0);
     } finally {
@@ -102,7 +54,6 @@ export default function CatalogueTab() {
     }
   };
 
-  
   useEffect(() => {
     setPage(1);
   }, [search, countryFilter, statusFilter]);
@@ -148,8 +99,8 @@ export default function CatalogueTab() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="ongoing">Ongoing Investigations</SelectItem>
-            <SelectItem value="concluded">Concluded / Terminated</SelectItem>
+            <SelectItem value="Ongoing">Ongoing Investigations</SelectItem>
+            <SelectItem value="Concluded">Concluded / Terminated</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -169,6 +120,7 @@ export default function CatalogueTab() {
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">S.No.</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Title</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Country</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">Product</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Action</th>
               </tr>
@@ -176,45 +128,48 @@ export default function CatalogueTab() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-gray-500">
+                  <td colSpan={6} className="text-center py-12 text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : investigations.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-gray-500">
+                  <td colSpan={6} className="text-center py-12 text-gray-500">
                     No investigations found.
                   </td>
                 </tr>
               ) : (
                 investigations.map((inv, i) => (
-                  <tr key={inv.id} className="hover:bg-gray-50">
+                  <tr key={inv.uuid} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-600">
                       {(page - 1) * pageSize + i + 1}
                     </td>
                     <td className="px-6 py-4 max-w-2xl">
                       <Link
-                        to={`/dgtr-db/${inv.slug}`}
+                        to={`/dgtr-db/${inv.uuid}`}
                         className="text-blue-600 hover:underline font-medium line-clamp-2"
                       >
                         {inv.title}
                       </Link>
                     </td>
-                    <td className="px-6 py-4">{inv.country}</td>
+                    <td className="px-6 py-4">{inv.country || "—"}</td>
+                    <td className="px-6 py-4 max-w-xs">
+                      <span className="line-clamp-2">{inv.product || "—"}</span>
+                    </td>
                     <td className="px-6 py-4">
                       <Badge
-                        variant={inv.cleanStatus === "Ongoing" ? "default" : "destructive"}
-                        className={inv.cleanStatus === "Ongoing" ? "bg-green-600" : "bg-red-600"}
+                        variant={inv.status === "Ongoing" ? "default" : "destructive"}
+                        className={inv.status === "Ongoing" ? "bg-green-600" : "bg-red-600"}
                       >
-                        {inv.cleanStatus}
+                        {inv.status || "Unknown"}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-4">
-                        <Link to={`/dgtr-db/${inv.slug}`} className="text-blue-600 hover:underline text-sm">
+                        <Link to={`/dgtr-db/${inv.uuid}`} className="text-blue-600 hover:underline text-sm">
                           View
                         </Link>
-                        <a href={inv.detail_page_url} target="_blank" rel="noopener noreferrer">
+                        <a href={inv.url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="w-4 h-4 text-gray-500 hover:text-gray-700" />
                         </a>
                       </div>
@@ -227,7 +182,7 @@ export default function CatalogueTab() {
         </div>
       </div>
 
-      {/* Pagination — NOW WORKING */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 mt-8">
           <button
