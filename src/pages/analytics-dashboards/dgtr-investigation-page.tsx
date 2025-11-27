@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { dgtrApiClient } from "@/lib/dgtr-api-utils";
 import { ArrowLeft, ExternalLink, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
 interface PDFLink {
   id: number;
@@ -24,7 +25,8 @@ interface Investigation {
   pdf_links: PDFLink[];
 }
 
-export default function InvestigationDetailPage({ uuid }: { uuid: string }) {
+export default function InvestigationDetailPage() {
+  const { uuid } = useParams<{ uuid: string }>();
   const [inv, setInv] = useState<Investigation | null>(null);
   const [loading, setLoading] = useState(true);
 
