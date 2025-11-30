@@ -10,6 +10,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CompanyDetails from "./pages/CompanyDetails";
+import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Triggers from "./pages/Triggers";
@@ -48,6 +49,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <CompanyDetails />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/companies/unlisted/:companyName" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <UnlistedCompanyDetails />
               </DashboardLayout>
             </ProtectedRoute>
           } />

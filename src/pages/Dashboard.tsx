@@ -31,7 +31,11 @@ export default function Dashboard() {
   }, []);
 
   const handleCompanySelect = (company: Company) => {
-    navigate(`/companies/${company.isin}`);
+    if (company.isListed && company.isin) {
+      navigate(`/companies/${company.isin}`);
+    } else {
+      navigate(`/companies/unlisted/${encodeURIComponent(company.name)}`);
+    }
   };
 
   return (

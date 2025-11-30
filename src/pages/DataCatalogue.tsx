@@ -71,7 +71,7 @@ export default function DataCatalogue() {
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedIndexed, setSelectedIndexed] = useState<string[]>(['true', 'false']);
   const [companySearch, setCompanySearch] = useState('');
-  const [companyOptions, setCompanyOptions] = useState<Array<{ isin: string; name: string }>>([]);
+  const [companyOptions, setCompanyOptions] = useState<Array<{ isin: string; name: string; isListed: boolean }>>([]);
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [filterMetadata, setFilterMetadata] = useState<FilterMetadata>({
     source_types: [],
@@ -89,7 +89,13 @@ export default function DataCatalogue() {
       try {
         const client = authService.createAuthenticatedClient();
         const response = await client.get('/companies/names');
-        setCompanyOptions(response.data || []);
+        // Transform to match new interface - these are all listed companies
+        const listedCompanies = (response.data || []).map((company: any) => ({
+          isin: company.isin,
+          name: company.name,
+          isListed: true
+        }));
+        setCompanyOptions(listedCompanies);
       } catch (error) {
         console.error('Failed to fetch companies:', error);
       }

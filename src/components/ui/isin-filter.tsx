@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 export interface Company {
   isin: string;
   name: string;
+  isListed: boolean;
 }
 
 interface ISINFilterProps {
@@ -36,13 +37,19 @@ export function ISINFilter({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedCompanyName, setSelectedCompanyName] = useState(value);
 
-  // Fetch companies list on component mount
+  // Fetch companies list on component mount (only listed companies for ISIN filter)
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
         const client = authService.createAuthenticatedClient();
         const response = await client.get('/companies/names');
-        setCompanies(response.data);
+        // Transform to match new interface - these are all listed companies
+        const listedCompanies: Company[] = response.data.map((company: any) => ({
+          isin: company.isin,
+          name: company.name,
+          isListed: true
+        }));
+        setCompanies(listedCompanies);
       } catch (error) {
         toast({
           title: "Error",
