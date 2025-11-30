@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Search as SearchIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Sidebar,
   SidebarContent,
@@ -12,11 +12,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { NAVIGATION_ITEMS } from '@/config/navigation';
 import { authService } from '@/lib/auth';
-import { Badge } from '@/components/ui/badge';
+import { ChevronLeft, ChevronRight, Search as SearchIcon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export const AppSidebar = () => {
   const location = useLocation();
@@ -147,6 +147,36 @@ export const AppSidebar = () => {
                   {state === 'expanded' ? 'No results found' : ''}
                 </div>
               )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => handleNavigation("/dgtr-db")}
+                        className="relative"
+                      >
+                        <span>DGTR Dashboard</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                
+            </SidebarMenu>
+
+            <SidebarMenu>
+              
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => handleNavigation("/vahan-db")}
+                        className="relative"
+                      >
+                        <span>Vahan Dashboard</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

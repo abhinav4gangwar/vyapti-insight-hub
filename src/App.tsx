@@ -1,26 +1,29 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ProtectedRoute } from "@/components/ui/protected-route";
-import { useTokenExpiration } from "@/hooks/use-token-expiration";
-import { BulkChunksProvider } from "@/contexts/BulkChunksContext";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
+import { ProtectedRoute } from "@/components/ui/protected-route";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { BulkChunksProvider } from "@/contexts/BulkChunksContext";
+import { useTokenExpiration } from "@/hooks/use-token-expiration";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import AISearch from "./pages/AISearch";
+import ActivityLogs from "./pages/ActivityLogs";
+import ChangePassword from "./pages/ChangePassword";
 import CompanyDetails from "./pages/CompanyDetails";
 import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
+import Dashboard from "./pages/Dashboard";
+import DataCatalogue from "./pages/DataCatalogue";
 import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import ExpertInterviewsList from "./pages/ExpertInterviewsList";
-import Triggers from "./pages/Triggers";
-import Notifications from "./pages/Notifications";
-import AISearch from "./pages/AISearch";
-import DataCatalogue from "./pages/DataCatalogue";
-import Settings from "./pages/Settings";
-import ChangePassword from "./pages/ChangePassword";
-import ActivityLogs from "./pages/ActivityLogs";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
+import Triggers from "./pages/Triggers";
+import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
+import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-page";
+import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
 
 const queryClient = new QueryClient();
 
@@ -119,6 +122,27 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <ActivityLogs />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/vahan-db" element= {
+            <ProtectedRoute>
+              <DashboardLayout>
+                <VahanDashboardPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }/>
+          <Route path="/dgtr-db" element= {
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DGTRDashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }/>
+          <Route path="/dgtr-db/:uuid" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <InvestigationPage />
               </DashboardLayout>
             </ProtectedRoute>
           } />
