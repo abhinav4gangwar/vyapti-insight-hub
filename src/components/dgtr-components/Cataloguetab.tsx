@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { dgtrApiClient } from "@/lib/dgtr-api-utils";
-import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -16,7 +15,7 @@ export default function CatalogueTab() {
   const [countryFilter, setCountryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "Ongoing" | "Concluded">("all");
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = 50;
 
   const fetchCountries = async () => {
     try {
@@ -122,7 +121,7 @@ export default function CatalogueTab() {
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Country</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Product</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">Action</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">Vyapti Link</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -148,6 +147,7 @@ export default function CatalogueTab() {
                       <Link
                         to={`/dgtr-db/${inv.uuid}`}
                         className="text-blue-600 hover:underline font-medium line-clamp-2"
+                        target="_blank"
                       >
                         {inv.title}
                       </Link>
@@ -166,12 +166,10 @@ export default function CatalogueTab() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-4">
-                        <Link to={`/dgtr-db/${inv.uuid}`} className="text-blue-600 hover:underline text-sm">
+                        <Link to={`/dgtr-db/${inv.uuid}`} target="_blank" className="text-blue-600 hover:underline text-sm">
                           View
                         </Link>
-                        <a href={inv.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 text-gray-500 hover:text-gray-700" />
-                        </a>
+                        
                       </div>
                     </td>
                   </tr>
