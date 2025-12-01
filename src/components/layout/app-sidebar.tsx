@@ -150,36 +150,6 @@ export const AppSidebar = () => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => handleNavigation("/dgtr-db")}
-                        className="relative"
-                      >
-                        <span>DGTR Dashboard</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                
-            </SidebarMenu>
-
-            <SidebarMenu>
-              
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => handleNavigation("/vahan-db")}
-                        className="relative"
-                      >
-                        <span>Vahan Dashboard</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   );
