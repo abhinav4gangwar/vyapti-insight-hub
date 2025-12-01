@@ -1,4 +1,4 @@
-import { Building2, FileText, Search, BellRing, Database, Bell, Settings, LucideIcon } from 'lucide-react';
+import { Bell, BellRing, Building2, Clipboard, Database, FileText, LucideIcon, Search, Settings } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -37,6 +37,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Data Catalogue',
     href: '/data-catalogue',
     icon: Database,
+  },
+  {
+    key:'anti-dumping-duties',
+    label:"Anti Dumping Duties",
+    href:"/dgtr-db",
+    icon: Clipboard,
   },
   {
     key: 'notifications',
