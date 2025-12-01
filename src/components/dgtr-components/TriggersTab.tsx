@@ -42,6 +42,8 @@ export default function TriggersTab() {
   const [page, setPage] = useState(1);
   const [totalDays, setTotalDays] = useState(0);
   const [dateFilter, setDateFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [markerFilter, setMarkerFilter] = useState("");
   const pageSize = 10;
 
   const toggleDay = (date: string): void => {
@@ -86,11 +88,9 @@ export default function TriggersTab() {
         setDays(daysList);
         setTotalDays(res.data.total_days || 0);
         
-        // Auto-open first day with changes
-        const firstDayWithChanges = daysList.find((d: DayData) => d.change_detected);
-        if (firstDayWithChanges) {
-          setOpenDays(new Set([firstDayWithChanges.date]));
-        }
+        // Open all days by default
+        const allDates = daysList.map((d: DayData) => d.date);
+        setOpenDays(new Set(allDates));
       }
     } catch (err) {
       console.error("Failed to load triggers:", err);
@@ -118,20 +118,65 @@ export default function TriggersTab() {
     if (marker === "status_changed") {
       return <Badge className="bg-amber-600 text-xs">Status Changed</Badge>;
     }
+    if (marker === "new_pdf") {
+      return <Badge className="bg-purple-600 text-xs">New PDF</Badge>;
+    }
     return null;
+  };
+
+  // Frontend filtering function
+  const filterEvents = (events: DayEvent[]) => {
+    return events.filter(event => {
+      const inv = event.investigation;
+      
+      const markers = inv.markers.length === 0 ? ["new_pdf"] : inv.markers;
+      
+      // Status filter
+      if (statusFilter && inv.status !== statusFilter) {
+        return false;
+      }
+      
+      // Marker filter
+      if (markerFilter && !markers.includes(markerFilter)) {
+        return false;
+      }
+      
+      return true;
+    });
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-900">Daily Triggers & New PDFs</h2>
-        <Input
-          type="date"
-          placeholder="Filter by date (YYYY-MM-DD)"
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          className="w-64"
-        />
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h2 className="text-2xl font-bold text-gray-900">Triggers</h2>
+        <div className="flex items-center gap-3">
+          <Input
+            type="date"
+            placeholder="Filter by date (YYYY-MM-DD)"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-64"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Statuses</option>
+            <option value="Ongoing">Ongoing</option>
+            <option value="Concluded">Concluded</option>
+          </select>
+          <select
+            value={markerFilter}
+            onChange={(e) => setMarkerFilter(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Markers</option>
+            <option value="new_investigation">New Investigation</option>
+            <option value="status_changed">Status Changed</option>
+            <option value="new_pdf">New PDF</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -148,6 +193,10 @@ export default function TriggersTab() {
           {days.map((day) => {
             const isOpen = openDays.has(day.date);
             const displayDate = formatDate(day.date);
+            
+            // Apply frontend filtering
+            const filteredEvents = day.new_pdfs ? filterEvents(day.new_pdfs) : [];
+            const hasFilteredEvents = filteredEvents.length > 0;
 
             return (
               <div key={day.date} className="border rounded-xl overflow-hidden shadow-md bg-white">
@@ -157,12 +206,12 @@ export default function TriggersTab() {
                 >
                   <div className="flex items-center gap-4">
                     <h3 className="text-xl font-bold text-gray-800">{displayDate}</h3>
-                    {day.change_detected && day.new_pdfs && (
+                    {day.change_detected && hasFilteredEvents && (
                       <Badge variant="secondary" className="text-sm">
-                        {day.new_pdfs.length} change{day.new_pdfs.length > 1 ? "s" : ""}
+                        {filteredEvents.length} change{filteredEvents.length > 1 ? "s" : ""}
                       </Badge>
                     )}
-                    {!day.change_detected && (
+                    {(!day.change_detected || !hasFilteredEvents) && (
                       <Badge variant="outline" className="text-sm">
                         No changes
                       </Badge>
@@ -171,7 +220,7 @@ export default function TriggersTab() {
                   {isOpen ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
                 </button>
 
-                {isOpen && day.change_detected && day.new_pdfs && (
+                {isOpen && day.change_detected && hasFilteredEvents && (
                   <div className="border-t">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
@@ -181,14 +230,17 @@ export default function TriggersTab() {
                             <th className="px-6 py-4 text-left font-semibold text-gray-700">Investigation</th>
                             <th className="px-6 py-4 text-left font-semibold text-gray-700">Country</th>
                             <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Markers</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Action</th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Trigger Type</th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Vyapti Link</th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700">DGTR Link</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {day.new_pdfs.map((event) => {
+                          {filteredEvents.map((event) => {
                             const inv = event.investigation;
                             const pdf = event.pdf;
+                            
+                            const displayMarkers = inv.markers.length === 0 ? ["new_pdf"] : inv.markers;
 
                             return (
                               <tr key={pdf.id} className="hover:bg-gray-50">
@@ -210,6 +262,7 @@ export default function TriggersTab() {
                                 <td className="px-6 py-4 max-w-lg">
                                   <a
                                     href={`/dgtr-db/${inv.uuid}`}
+                                    target="_blank"
                                     className="text-blue-600 hover:underline font-medium line-clamp-2"
                                   >
                                     {inv.title}
@@ -233,19 +286,24 @@ export default function TriggersTab() {
                                     {inv.status || "Unknown"}
                                   </Badge>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-2 py-4">
                                   <div className="flex flex-wrap gap-1">
-                                    {inv.markers.map((marker, idx) => (
+                                    {displayMarkers.map((marker, idx) => (
                                       <div key={idx}>{getMarkerBadge(marker)}</div>
                                     ))}
                                   </div>
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-4">
-                                    <a href={`/dgtr-db/${inv.uuid}`} className="text-blue-600 hover:underline text-sm font-medium">
+                                    <a href={`/dgtr-db/${inv.uuid}`} target="_blank" className="text-blue-600 hover:underline text-sm font-medium">
                                       View Details
                                     </a>
-                                    <a
+                                    
+                                  </div>
+                                </td>
+
+                                <td className="px-6 py-4">
+                                  <a
                                       href={inv.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
@@ -253,7 +311,6 @@ export default function TriggersTab() {
                                     >
                                       <ExternalLink className="w-4 h-4" />
                                     </a>
-                                  </div>
                                 </td>
                               </tr>
                             );
@@ -264,9 +321,9 @@ export default function TriggersTab() {
                   </div>
                 )}
 
-                {isOpen && !day.change_detected && (
+                {isOpen && (!day.change_detected || !hasFilteredEvents) && (
                   <div className="p-8 text-center text-gray-500">
-                    {day.message || "No changes detected on this day."}
+                    {!hasFilteredEvents && day.change_detected ? "No changes match the selected filters." : (day.message || "No changes detected on this day.")}
                   </div>
                 )}
               </div>

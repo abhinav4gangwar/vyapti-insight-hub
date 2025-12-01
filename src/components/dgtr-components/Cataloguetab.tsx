@@ -2,31 +2,20 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { dgtrApiClient } from "@/lib/dgtr-api-utils";
-import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 export default function CatalogueTab() {
-  const [investigations, setInvestigations] = useState<any[]>([]);
-  const [countries, setCountries] = useState<string[]>([]);
+  const [investigations, setInvestigations] = useState([]);
+  const [allInvestigations, setAllInvestigations] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [countryFilter, setCountryFilter] = useState("all");
+  const [countrySearch, setCountrySearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "Ongoing" | "Concluded">("all");
   const [page, setPage] = useState(1);
-  const pageSize = 20;
-
-  const fetchCountries = async () => {
-    try {
-      const res = await dgtrApiClient.get("/dgtr/investigations/meta/countries");
-      setCountries((res.data.countries || []).filter(Boolean).sort());
-    } catch (err) {
-      console.error("Failed to fetch countries:", err);
-      setCountries([]);
-    }
-  };
+  const pageSize = 50;
 
   const fetchInvestigations = async () => {
     setLoading(true);
@@ -36,37 +25,47 @@ export default function CatalogueTab() {
     });
 
     if (search) params.append("search", search);
-    if (countryFilter !== "all") params.append("countries", countryFilter);
     if (statusFilter !== "all") params.append("status", statusFilter);
 
     try {
       const res = await dgtrApiClient.get(`/dgtr/investigations?${params}`);
       const rawItems = res.data.data || [];
 
-      setInvestigations(rawItems);
+      setAllInvestigations(rawItems);
       setTotal(res.data.total || 0);
     } catch (err) {
       console.error("Failed to fetch investigations:", err);
-      setInvestigations([]);
+      setAllInvestigations([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
+  // Frontend filtering for country search
   useEffect(() => {
-    setPage(1);
-  }, [search, countryFilter, statusFilter]);
+    if (!countrySearch.trim()) {
+      setInvestigations(allInvestigations);
+    } else {
+      const searchTerm = countrySearch.toLowerCase().trim();
+      const filtered = allInvestigations.filter(inv => {
+        const country = (inv.country || "").toLowerCase();
+        return country.includes(searchTerm);
+      });
+      setInvestigations(filtered);
+    }
+  }, [countrySearch, allInvestigations]);
 
   useEffect(() => {
-    fetchCountries();
-  }, []);
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchInvestigations();
-  }, [page, search, countryFilter, statusFilter]);
+  }, [page, search, statusFilter]);
 
   const totalPages = Math.ceil(total / pageSize);
+  const displayCount = countrySearch ? investigations.length : total;
 
   return (
     <div className="space-y-6">
@@ -79,19 +78,12 @@ export default function CatalogueTab() {
           className="md:w-96"
         />
 
-        <Select value={countryFilter} onValueChange={setCountryFilter}>
-          <SelectTrigger className="w-72">
-            <SelectValue placeholder="All Countries" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Countries</SelectItem>
-            {countries.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Input
+          placeholder="Search by country..."
+          value={countrySearch}
+          onChange={(e) => setCountrySearch(e.target.value)}
+          className="md:w-72"
+        />
 
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
           <SelectTrigger className="w-56">
@@ -107,8 +99,9 @@ export default function CatalogueTab() {
 
       {/* Count */}
       <div className="text-sm text-gray-600">
-        Showing {investigations.length} of {total} investigations
+        Showing {investigations.length} of {displayCount} investigations
         {statusFilter !== "all" && ` (${statusFilter})`}
+        {countrySearch && ` matching "${countrySearch}"`}
       </div>
 
       {/* Table */}
@@ -122,7 +115,7 @@ export default function CatalogueTab() {
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Country</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Product</th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">Action</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">Vyapti Link</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -148,6 +141,7 @@ export default function CatalogueTab() {
                       <Link
                         to={`/dgtr-db/${inv.uuid}`}
                         className="text-blue-600 hover:underline font-medium line-clamp-2"
+                        target="_blank"
                       >
                         {inv.title}
                       </Link>
@@ -166,12 +160,10 @@ export default function CatalogueTab() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-4">
-                        <Link to={`/dgtr-db/${inv.uuid}`} className="text-blue-600 hover:underline text-sm">
+                        <Link to={`/dgtr-db/${inv.uuid}`} target="_blank" className="text-blue-600 hover:underline text-sm">
                           View
                         </Link>
-                        <a href={inv.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 text-gray-500 hover:text-gray-700" />
-                        </a>
+                        
                       </div>
                     </td>
                   </tr>
@@ -183,7 +175,7 @@ export default function CatalogueTab() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {!countrySearch && totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 mt-8">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
