@@ -56,11 +56,11 @@ export function StreamingResultsDisplay({
     title: string;
     subtitle: string;
     date: string;
-    type: 'expert_interview' | 'earnings_call'
+    type: 'expert_interview' | 'earnings_call' | 'sebi_chunk'
   }>>({})
   const [showDebug, setShowDebug] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews'>('all')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews' | 'sebi_chunks'>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const { getChunk } = useBulkChunksContext()
 
@@ -76,6 +76,8 @@ export function StreamingResultsDisplay({
           companies.add(chunk.company_name)
         } else if (chunk.source_type === 'expert_interview') {
           chunk.primary_companies.forEach(company => companies.add(company))
+        } else if (chunk.source_type === 'sebi_chunk') {
+          companies.add(chunk.title) // Use company title for SEBI chunks
         }
       }
     })
@@ -86,13 +88,30 @@ export function StreamingResultsDisplay({
   const filteredReferences = useMemo(() => {
     if (!referenceMapping) return []
 
-    return Object.entries(referenceMapping).filter(([refNumber, chunkId]) => {
-      const chunk = getChunk(chunkId.toString())
-      if (!chunk) return true // Show if chunk not loaded yet
+    const allRefs = Object.entries(referenceMapping)
+
+    const filtered = allRefs.filter(([refNumber, chunkId]) => {
+      const chunkIdStr = chunkId.toString()
+      const chunk = getChunk(chunkIdStr)
+
+      if (!chunk) {
+        // If source filter is active and chunk not loaded, filter by chunk ID prefix
+        if (sourceFilter !== 'all') {
+          if (sourceFilter === 'earnings_calls' && !chunkIdStr.startsWith('e_')) return false
+          if (sourceFilter === 'expert_interviews' && !chunkIdStr.startsWith('k_')) return false
+          if (sourceFilter === 'sebi_chunks' && !chunkIdStr.startsWith('d_')) return false
+        }
+        return true // Show if chunk not loaded yet (but filtered by prefix if needed)
+      }
 
       // Source type filter
       if (sourceFilter !== 'all') {
-        const expectedType = sourceFilter === 'earnings_calls' ? 'earnings_call' : 'expert_interview'
+        let expectedType: string
+        if (sourceFilter === 'earnings_calls') expectedType = 'earnings_call'
+        else if (sourceFilter === 'expert_interviews') expectedType = 'expert_interview'
+        else if (sourceFilter === 'sebi_chunks') expectedType = 'sebi_chunk'
+        else expectedType = ''
+
         if (chunk.source_type !== expectedType) return false
       }
 
@@ -102,11 +121,15 @@ export function StreamingResultsDisplay({
           if (chunk.company_name !== companyFilter) return false
         } else if (chunk.source_type === 'expert_interview') {
           if (!chunk.primary_companies.includes(companyFilter)) return false
+        } else if (chunk.source_type === 'sebi_chunk') {
+          if (chunk.title !== companyFilter) return false
         }
       }
 
       return true
     })
+
+    return filtered
   }, [referenceMapping, sourceFilter, companyFilter, getChunk])
 
   // Preprocess content to handle >> nested list syntax
@@ -194,7 +217,7 @@ export function StreamingResultsDisplay({
       if (newIds.length > 0) {
         let alive = true
         const fetchAll = async () => {
-          const entries: [string, { title: string; subtitle: string; date: string; type: 'expert_interview' | 'earnings_call' }][] = []
+          const entries: [string, { title: string; subtitle: string; date: string; type: 'expert_interview' | 'earnings_call' | 'sebi_chunk' }][] = []
           for (const id of newIds) {
             try {
               // Use backend API to get chunk info
@@ -216,6 +239,14 @@ export function StreamingResultsDisplay({
                     subtitle: `${json.expert_type || 'Expert'} • ${json.industry || 'Industry'}`,
                     date: json.published_date || '',
                     type: 'expert_interview'
+                  }])
+                } else if (id.startsWith('d_')) {
+                  // SEBI chunk metadata
+                  entries.push([id, {
+                    title: json.title || 'DRHP Document',
+                    subtitle: `${json.section_title || 'Section'} • ${json.section_number || ''}`,
+                    date: json.date || '',
+                    type: 'sebi_chunk'
                   }])
                 } else {
                   // Earnings call metadata
@@ -772,17 +803,18 @@ export function StreamingResultsDisplay({
                 <select
                   value={sourceFilter}
                   onChange={(e) => setSourceFilter(e.target.value as any)}
-                  className="text-xs border border-gray-300 rounded px-2 py-1"
+                  className="text-xs border border-gray-300 rounded px-2 py-1 min-w-[120px] bg-white"
                 >
                   <option value="all">All Sources</option>
                   <option value="earnings_calls">Earnings Calls</option>
                   <option value="expert_interviews">Expert Interviews</option>
+                  <option value="sebi_chunks">DRHP Documents</option>
                 </select>
                 {availableCompanies.length > 0 && (
                   <select
                     value={companyFilter}
                     onChange={(e) => setCompanyFilter(e.target.value)}
-                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                    className="text-xs border border-gray-300 rounded px-2 py-1 min-w-[120px] bg-white"
                   >
                     <option value="all">All Companies</option>
                     {availableCompanies.map(company => (
@@ -830,12 +862,15 @@ export function StreamingResultsDisplay({
 
                             {/* Tags below the date */}
                             <div className="flex items-center gap-2 mt-1">
-                              {/* K/E Source Type Tag */}
+                              {/* K/E/D Source Type Tag */}
                               {chunkIdStr.startsWith('k_') && (
                                 <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">K</Badge>
                               )}
                               {chunkIdStr.startsWith('e_') && (
                                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">E</Badge>
+                              )}
+                              {chunkIdStr.startsWith('d_') && (
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">D</Badge>
                               )}
 
                               {/* Company Name Tag */}
@@ -849,6 +884,11 @@ export function StreamingResultsDisplay({
                                   {chunk.source_type === 'expert_interview' && chunk.primary_companies[0] && (
                                     <Badge variant="outline" className="text-xs">
                                       {chunk.primary_companies[0]}
+                                    </Badge>
+                                  )}
+                                  {chunk.source_type === 'sebi_chunk' && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {chunk.title}
                                     </Badge>
                                   )}
                                 </>

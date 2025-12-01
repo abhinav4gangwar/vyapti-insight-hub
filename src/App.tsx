@@ -13,6 +13,7 @@ import ChangePassword from "./pages/ChangePassword";
 import CompanyDetails from "./pages/CompanyDetails";
 import Dashboard from "./pages/Dashboard";
 import DataCatalogue from "./pages/DataCatalogue";
+import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Login from "./pages/Login";
@@ -51,6 +52,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <CompanyDetails />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/companies/unlisted/:companyName" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <UnlistedCompanyDetails />
               </DashboardLayout>
             </ProtectedRoute>
           } />

@@ -6,8 +6,9 @@ import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 
 export interface Company {
-  isin: string;
+  isin?: string;
   name: string;
+  isListed: boolean; // true for listed companies with ISIN, false for unlisted
 }
 
 interface CompanySearchProps {
@@ -40,8 +41,31 @@ export function CompanySearch({
     const fetchCompanies = async () => {
       try {
         const client = authService.createAuthenticatedClient();
-        const response = await client.get('/companies/names');
-        setCompanies(response.data);
+
+        // Fetch both listed and unlisted companies
+        const [listedResponse, unlistedResponse] = await Promise.all([
+          client.get('/companies/names'),
+          client.get('/companies/unlisted/names')
+        ]);
+
+        // Transform listed companies
+        const listedCompanies: Company[] = listedResponse.data.map((company: any) => ({
+          isin: company.isin,
+          name: company.name,
+          isListed: true
+        }));
+
+        // Transform unlisted companies
+        const unlistedCompanies: Company[] = unlistedResponse.data.map((company: any) => ({
+          name: company.name,
+          isListed: false
+        }));
+
+        // Combine and sort by name
+        const allCompanies = [...listedCompanies, ...unlistedCompanies]
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setCompanies(allCompanies);
       } catch (error) {
         toast({
           title: "Error",
@@ -66,12 +90,12 @@ export function CompanySearch({
     setIsSearching(true);
     const timer = setTimeout(() => {
       const filtered = companies
-        .filter(company => 
+        .filter(company =>
           company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          company.isin.toLowerCase().includes(searchQuery.toLowerCase())
+          (company.isin && company.isin.toLowerCase().includes(searchQuery.toLowerCase()))
         )
         .slice(0, maxResults);
-      
+
       setSearchResults(filtered);
       setIsSearching(false);
     }, 300);
@@ -118,17 +142,24 @@ export function CompanySearch({
         <div className="absolute top-full left-0 right-0 bg-card border border-border rounded-lg shadow-elevated mt-2 z-50 max-h-96 overflow-auto custom-scrollbar">
           {searchResults.map((company) => (
             <div
-              key={company.isin}
+              key={company.isListed ? company.isin : company.name}
               onClick={() => handleCompanySelect(company)}
               className="flex items-center p-4 hover:bg-secondary/50 cursor-pointer border-b border-border last:border-b-0 transition-fast"
             >
               <Building2 className="h-4 w-4 text-accent mr-3 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="financial-subheading text-sm truncate">
+                <div className="financial-subheading text-sm truncate flex items-center gap-2">
                   {company.name}
+                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                    company.isListed
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {company.isListed ? 'Listed' : 'Unlisted'}
+                  </span>
                 </div>
                 <div className="financial-data text-xs text-muted-foreground">
-                  {company.isin}
+                  {company.isListed ? company.isin : 'No ISIN'}
                 </div>
               </div>
             </div>

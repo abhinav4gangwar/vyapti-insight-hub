@@ -265,6 +265,36 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       />
                       Expert Interviews
                     </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={parameters.bm25_sources.includes('sebi_chunks') || parameters.semantic_sources.includes('sebi_chunks')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            updateParameter('bm25_sources', [...parameters.bm25_sources, 'sebi_chunks']);
+                            updateParameter('semantic_sources', [...parameters.semantic_sources, 'sebi_chunks']);
+
+                            // Add default date range if doesn't exist
+                            if (!parameters.source_date_ranges['sebi_chunks']) {
+                              updateParameter('source_date_ranges', {
+                                ...parameters.source_date_ranges,
+                                'sebi_chunks': {
+                                  from_month: 1,
+                                  from_year: 2020,
+                                  to_month: 12,
+                                  to_year: 2025
+                                }
+                              });
+                            }
+                          } else {
+                            updateParameter('bm25_sources', parameters.bm25_sources.filter(s => s !== 'sebi_chunks'));
+                            updateParameter('semantic_sources', parameters.semantic_sources.filter(s => s !== 'sebi_chunks'));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                      />
+                      DRHP Documents
+                    </label>
                   </div>
                   <div className="text-xs text-gray-500">
                     Select sources to include in search
@@ -280,7 +310,8 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                     <div key={source} className="p-3 border border-gray-200 rounded-lg bg-gray-50">
                       <div className="text-sm font-medium text-gray-700 mb-2">
                         {source === 'earnings_calls_20_25' ? 'Earnings Calls' :
-                         source === 'expert_interviews_embeddings' ? 'Expert Interviews' : source}
+                         source === 'expert_interviews_embeddings' ? 'Expert Interviews' :
+                         source === 'sebi_chunks' ? 'DRHP Documents' : source}
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         <div>
@@ -414,6 +445,9 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <SelectItem value="gpt-5-nano-2025-08-07">GPT 5 Nano (Cheap)</SelectItem>
                       <SelectItem value="global.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
                       <SelectItem value="global.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem>
+                      <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview</SelectItem>
+                      <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                      <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-gray-500">The selected model will be sent to the backend with your request.</div>

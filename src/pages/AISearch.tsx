@@ -2,11 +2,13 @@ import { useState } from "react";
 import { SearchInterface, SearchParameters } from "@/components/ai-search/search-interface";
 import { ResultsDisplay } from "@/components/ai-search/results-display";
 import { StreamingResultsDisplay } from "@/components/ai-search/streaming-results-display";
+import { MaintenanceMode } from "@/components/ai-search/maintenance-mode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { isStreamingEnabled, getAIApiBaseUrl, parseSourceReferences } from "@/lib/ai-search-utils";
 import { useStreamingSearch } from "@/hooks/use-streaming-search";
-import { Zap, FileText, Play, Square } from "lucide-react";
+import { useAIServiceStatus } from "@/hooks/use-ai-service-status";
+import { Zap, FileText, Play, Square, AlertTriangle } from "lucide-react";
 
 export interface OpenAIUsage {
   component: string;
@@ -44,6 +46,15 @@ const AISearch = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
   const [useStreaming, setUseStreaming] = useState(true);
+
+  // AI Service status hook
+  const {
+    serviceStatus,
+    isLoading: isServiceStatusLoading,
+    error: serviceStatusError,
+    isServiceLive,
+    checkStatus
+  } = useAIServiceStatus();
 
   // Streaming search hook
   const {
@@ -188,16 +199,37 @@ Notes and caveats
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="space-y-8">
-          {/* Search Interface */}
-          <Card className="p-6">
-            <SearchInterface
-              onSearch={handleSearch}
-              isLoading={useStreaming ? isStreaming : isLoading}
-              debugMode={debugMode}
-              onDebugModeChange={setDebugMode}
-            />
-          </Card>
+        {/* Service Status Loading */}
+        {isServiceStatusLoading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Checking AI service status...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Maintenance Mode */}
+        {!isServiceStatusLoading && !isServiceLive && (
+          <MaintenanceMode
+            serviceStatus={serviceStatus}
+            onRetry={checkStatus}
+            isRetrying={isServiceStatusLoading}
+          />
+        )}
+
+        {/* Normal AI Search Interface - Only show when service is live */}
+        {!isServiceStatusLoading && isServiceLive && (
+          <div className="space-y-8">
+            {/* Search Interface */}
+            <Card className="p-6">
+              <SearchInterface
+                onSearch={handleSearch}
+                isLoading={useStreaming ? isStreaming : isLoading}
+                debugMode={debugMode}
+                onDebugModeChange={setDebugMode}
+              />
+            </Card>
 
           {/* Streaming Controls */}
           {useStreaming && isStreaming && (
@@ -306,7 +338,8 @@ Notes and caveats
               </p>
             </Card>
           )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );

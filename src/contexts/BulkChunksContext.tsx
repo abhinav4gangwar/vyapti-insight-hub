@@ -25,8 +25,8 @@ export function BulkChunksProvider({ children }: BulkChunksProviderProps) {
   const preloadChunksFromReferences = (references: Array<{ entryId: string }>) => {
     const chunkIds = references
       .map(ref => ref.entryId)
-      .filter(id => id && (id.startsWith('e_') || id.startsWith('k_')))
-    
+      .filter(id => id && (id.startsWith('e_') || id.startsWith('k_') || id.startsWith('d_')))
+
     if (chunkIds.length > 0) {
       bulkChunks.fetchChunks(chunkIds)
     }

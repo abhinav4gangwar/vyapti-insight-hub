@@ -88,7 +88,7 @@ interface CompanyData {
   presentations: Presentation[];
   annual_reports: AnnualReport[];
   expert_interviews: ExpertInterview[];
-  sebi_documents: SEBIDocument[];
+  sebi_chunks: SEBIDocument[];
   total_documents: number;
 }
 
@@ -447,9 +447,9 @@ const formatDate = (dateString: string) => {
                   Expert Interviews
                 </button>
                 <button
-                  onClick={() => setActiveDocTab('sebi_documents')}
+                  onClick={() => setActiveDocTab('sebi_chunks')}
                   className={`pb-3 transition-smooth whitespace-nowrap ${
-                    activeDocTab === 'sebi_documents'
+                    activeDocTab === 'sebi_chunks'
                       ? 'border-b-2 border-accent financial-subheading'
                       : 'financial-body text-muted-foreground hover:text-foreground'
                   }`}
@@ -731,14 +731,14 @@ const formatDate = (dateString: string) => {
               </Card>
             )}
 
-            {activeDocTab === 'sebi_documents' && (
+            {activeDocTab === 'sebi_chunks' && (
               <Card className="shadow-card border-0">
                 <CardHeader>
                   <CardTitle className="financial-heading flex items-center">
                     <FileText className="h-5 w-5 mr-2 text-accent" />
                     SEBI Documents
                     <Badge variant="outline" className="ml-2 financial-body">
-                      {companyData.sebi_documents?.length || 0}
+                      {companyData.sebi_chunks?.length || 0}
                     </Badge>
                   </CardTitle>
                   <CardDescription className="financial-body">
@@ -746,9 +746,9 @@ const formatDate = (dateString: string) => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {companyData.sebi_documents && companyData.sebi_documents.length > 0 ? (
+                  {companyData.sebi_chunks && companyData.sebi_chunks.length > 0 ? (
                     <div className="space-y-3">
-                      {companyData.sebi_documents.map((document) => (
+                      {companyData.sebi_chunks.map((document) => (
                         <div
                           key={document.id}
                           className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
