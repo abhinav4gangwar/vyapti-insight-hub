@@ -171,7 +171,7 @@ export default function TriggersTab() {
             onChange={(e) => setMarkerFilter(e.target.value)}
             className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">All Markers</option>
+            <option value="">All Triggers</option>
             <option value="new_investigation">New Investigation</option>
             <option value="status_changed">Status Changed</option>
             <option value="new_pdf">New PDF</option>
@@ -225,16 +225,31 @@ export default function TriggersTab() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">PDF Title</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Investigation</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Country</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Trigger Type</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">Vyapti Link</th>
-                            <th className="px-6 py-4 text-left font-semibold text-gray-700">DGTR Link</th>
-                          </tr>
-                        </thead>
+  <tr>
+    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+      PDF Title
+    </th>
+    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+      Investigation
+    </th>
+    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+      Country
+    </th>
+    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+      Status
+    </th>
+    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+      Trigger Type
+    </th>
+    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+      Vyapti Link
+    </th>
+    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+      DGTR Link
+    </th>
+  </tr>
+</thead>
+
                         <tbody className="divide-y divide-gray-200">
                           {filteredEvents.map((event) => {
                             const inv = event.investigation;
@@ -286,7 +301,7 @@ export default function TriggersTab() {
                                     {inv.status || "Unknown"}
                                   </Badge>
                                 </td>
-                                <td className="px-2 py-4">
+                                <td className="px-4 py-4">
                                   <div className="flex flex-wrap gap-1">
                                     {displayMarkers.map((marker, idx) => (
                                       <div key={idx}>{getMarkerBadge(marker)}</div>
