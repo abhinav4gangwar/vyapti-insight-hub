@@ -453,7 +453,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <div className="text-xs text-gray-500">The selected model will be sent to the backend with your request.</div>
                 </div>
                 {/* Enable Query Extraction Toggle */}
-                {/* <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label className="text-sm font-medium text-gray-700">
                     Enable Query Extraction
                   </Label>
@@ -469,7 +469,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <div className="text-xs text-gray-500">
                     Skip LLM refinement and show query expansions
                   </div>
-                </div> */}
+                </div>
 
                 {/* Enable Reranking Toggle */}
                 <div className="space-y-2 col-span-2">
