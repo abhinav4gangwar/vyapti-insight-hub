@@ -443,17 +443,17 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <SelectItem value="gpt-5-2025-08-07">GPT 5 (very expensive)</SelectItem>
                       <SelectItem value="gpt-5-mini-2025-08-07">GPT 5 Mini (Moderate)</SelectItem>
                       <SelectItem value="gpt-5-nano-2025-08-07">GPT 5 Nano (Cheap)</SelectItem>
-                      <SelectItem value="global.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
+                      {/* <SelectItem value="global.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
                       <SelectItem value="global.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem>
                       <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview</SelectItem>
                       <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
-                      <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                      <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem> */}
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-gray-500">The selected model will be sent to the backend with your request.</div>
                 </div>
                 {/* Enable Query Extraction Toggle */}
-                <div className="space-y-2 col-span-2">
+                {/* <div className="space-y-2 col-span-2">
                   <Label className="text-sm font-medium text-gray-700">
                     Enable Query Extraction
                   </Label>
@@ -469,7 +469,7 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <div className="text-xs text-gray-500">
                     Skip LLM refinement and show query expansions
                   </div>
-                </div>
+                </div> */}
 
                 {/* Enable Reranking Toggle */}
                 <div className="space-y-2 col-span-2">
