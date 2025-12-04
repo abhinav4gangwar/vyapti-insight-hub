@@ -5,7 +5,6 @@ import TableLoader from "./loader";
 import Pagination from "./Pagination";
 import { exportToExcel } from "./utils/excel-export";
 
-
 type PeriodMap = Record<string, number>;
 
 interface MakerEntry {
@@ -151,6 +150,17 @@ export default function VahanGridTable({
       })
       .finally(() => setLoading(false));
   }, [metricType, reloadTrigger]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchValue]);
+
+  // Reset page and search when tab changes
+  useEffect(() => {
+    setPage(1);
+    setSearchValue("");
+  }, [metricType]);
   
   const allColumns = useMemo(() => {
     if (localData.length === 0) return [];
@@ -199,10 +209,12 @@ export default function VahanGridTable({
 
   const paginated = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const toggleYear = (y: number) =>
+  const toggleYear = (y: number) => {
     setSelectedYears(p =>
       p.includes(y) ? p.filter(v => v !== y) : [...p, y].sort()
     );
+    setPage(1);
+  };
 
   const handleExport = () => {
     if (filtered.length === 0) {
@@ -217,108 +229,143 @@ export default function VahanGridTable({
   const secondCol = IS_FUEL ? "Manufacturer" : "Category";
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-3">
+    <div className="space-y-6">
+      {/* Filters and Export */}
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
         <FilterBar searchValue={searchValue} setSearchValue={setSearchValue} />
         
         <button
           onClick={handleExport}
           disabled={loading || localData.length === 0}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           Export to Excel
         </button>
       </div>
 
+      {/* Year and YoY filters */}
       {localData.length > 0 && (
-        <div className="flex items-center gap-4 mb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">Years:</span>
             {extractYears(Object.keys(localData[0])).map(y => (
-              <label key={y} className="text-sm flex items-center gap-1">
+              <label key={y} className="text-sm flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={selectedYears.includes(y)}
                   onChange={() => toggleYear(y)}
+                  className="w-4 h-4 cursor-pointer"
                 />
-                {2000 + y}
+                <span>{2000 + y}</span>
               </label>
             ))}
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
+          <div className="h-6 w-px bg-gray-300" />
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
               type="checkbox"
               checked={showYoy}
               onChange={() => setShowYoy(v => !v)}
+              className="w-4 h-4 cursor-pointer"
             />
-            Show YoY (FULL only)
+            <span>Show YoY (FULL only)</span>
           </label>
         </div>
       )}
 
+      {/* Count */}
+      <div className="text-sm text-gray-600">
+        Showing {paginated.length} of {filtered.length} results
+      </div>
+
+      {/* Table */}
       {loading ? (
         <TableLoader />
       ) : (
-        <div className="overflow-auto border rounded bg-white shadow-sm">
-          <table className="min-w-full text-sm border-collapse">
-            <thead className="sticky top-0 bg-gray-100 border-b">
-              <tr>
-                <th className="border px-3 py-3">{firstCol}</th>
-                <th className="border px-3 py-3">{secondCol}</th>
-
-                {allColumns.map(col => (
-                  <th
-                    key={col}
-                    className="border px-3 py-3 text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap"
-                    onClick={() => {
-                      setSortCol(col);
-                      setSortDir(d => (d === "asc" ? "desc" : "asc"));
-                    }}
-                  >
-                    {col}
-                    {sortCol === col ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+        <div className="border rounded-lg overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="w-48 px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    {firstCol}
                   </th>
-                ))}
-              </tr>
-            </thead>
+                  <th className="w-48 px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    {secondCol}
+                  </th>
 
-            <tbody>
-              {paginated.map((row, idx) => (
-                <tr
-                  key={idx}
-                  className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}
-                >
-                  <td className="border px-3 font-medium">
-                    {idx === 0 ||
-                    paginated[idx - 1].group_id !== row.group_id
-                      ? row.group_label
-                      : ""}
-                  </td>
-
-                  <td className="border px-3">{row.sub_label}</td>
-
-                  {allColumns.map(col => {
-                    const isYoy = col.endsWith("_YOY");
-                    const baseCol = col.replace("_YOY", "");
-                    return (
-                      <td key={col} className="border px-2 text-right leading-tight">
-                        {!isYoy ? (
-                          <>
-                            <div>{row[col] || 0}</div>
-                            {showYoy && row[baseCol + "_YOY"] != null && (
-                              <div className="text-xs text-gray-500">
-                                ({row[baseCol + "_YOY"]}%)
-                              </div>
-                            )}
-                          </>
-                        ) : null}
-                      </td>
-                    );
-                  })}
+                  {allColumns.map(col => (
+                    <th
+                      key={col}
+                      className="w-32 px-6 py-4 text-center font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 whitespace-nowrap transition-colors"
+                      onClick={() => {
+                        setSortCol(col);
+                        setSortDir(d => (d === "asc" ? "desc" : "asc"));
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>{col}</span>
+                        {sortCol === col && (
+                          <span className="text-xs">
+                            {sortDir === "asc" ? "↑" : "↓"}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody className="divide-y divide-gray-200">
+                {paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={allColumns.length + 2} className="text-center py-12 text-gray-500">
+                      No data found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginated.map((row, idx) => (
+                    <tr
+                      key={idx}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="w-48 px-6 py-4 font-medium text-gray-900 truncate">
+                        {idx === 0 ||
+                        paginated[idx - 1].group_id !== row.group_id
+                          ? row.group_label
+                          : ""}
+                      </td>
+
+                      <td className="w-48 px-6 py-4 text-gray-700 truncate">
+                        {row.sub_label}
+                      </td>
+
+                      {allColumns.map(col => {
+                        const isYoy = col.endsWith("_YOY");
+                        const baseCol = col.replace("_YOY", "");
+                        return (
+                          <td key={col} className="w-32 px-6 py-4 text-right text-gray-700">
+                            {!isYoy ? (
+                              <div className="flex flex-col items-end">
+                                <div className="font-medium">{row[col] || 0}</div>
+                                {showYoy && row[baseCol + "_YOY"] != null && (
+                                  <div className="text-xs text-gray-500">
+                                    ({row[baseCol + "_YOY"]}%)
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -326,8 +373,8 @@ export default function VahanGridTable({
         page={page}
         setPage={setPage}
         total={filtered.length}
-        perPage={15}
+        perPage={PER_PAGE}
       />
-    </>
+    </div>
   );
 }
