@@ -104,11 +104,11 @@ export default function InvestigationDetailPage() {
         </div>
         <div>
           <strong className="text-gray-700">Created Date:</strong>
-          <p className="mt-1">{formatDate(inv.created_at)}</p>
+          <p className="mt-1">{inv.created_at || "Not available"}</p>
         </div>
         <div>
           <strong className="text-gray-700">Last Updated:</strong>
-          <p className="mt-1">{formatDate(inv.updated_at)}</p>
+          <p className="mt-1">{inv.updated_at || "Not available"}</p>
         </div>
         <div>
           <strong className="text-gray-700">Official Page:</strong>
@@ -136,37 +136,36 @@ export default function InvestigationDetailPage() {
                   <th className="px-6 py-3 text-left font-medium text-gray-700">S.No.</th>
                   <th className="px-6 py-3 text-left font-medium text-gray-700">Title</th>
                   <th className="px-6 py-3 text-left font-medium text-gray-700">Publish Date</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Added On</th>
                   <th className="px-6 py-3 text-left font-medium text-gray-700">Document</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {inv.pdf_links.map((pdf, i) => (
-                  <tr key={pdf.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-medium">{i + 1}</td>
-                    <td className="px-6 py-4 max-w-md">
-                      <p className="line-clamp-2">{pdf.title || "Untitled Document"}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      {pdf.publish_date || "—"}
-                    </td>
-                    <td className="px-6 py-4">
-                      {formatDate(pdf.created_at)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <a
-                        href={pdf.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-blue-600 hover:underline font-medium"
-                      >
-                        <FileText className="w-4 h-4" />
-                        View PDF
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+  {inv.pdf_links
+    .filter(pdf => pdf.title?.toLowerCase() !== "director general")
+    .map((pdf, i) => (
+      <tr key={pdf.id} className="hover:bg-gray-50 transition-colors">
+        <td className="px-6 py-4 font-medium">{i + 1}</td>
+        <td className="px-6 py-4 max-w-md">
+          <p className="line-clamp-2">{pdf.title || "Untitled Document"}</p>
+        </td>
+        <td className="px-6 py-4">
+          {pdf.publish_date || "—"}
+        </td>
+        <td className="px-6 py-4">
+          <a
+            href={pdf.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-blue-600 hover:underline font-medium"
+          >
+            <FileText className="w-4 h-4" />
+            View PDF
+          </a>
+        </td>
+      </tr>
+    ))}
+</tbody>
+
             </table>
           </div>
         </div>

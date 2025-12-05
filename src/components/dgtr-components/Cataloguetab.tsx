@@ -110,12 +110,14 @@ export default function CatalogueTab() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">S.No.</th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">Title</th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">Country</th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">Product</th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">Status</th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-700">Vyapti Link</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">S.No.</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">Title</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">Country</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">Product</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">Last Updated</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">DGTR Link</th>
+                
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -137,7 +139,7 @@ export default function CatalogueTab() {
                     <td className="px-6 py-4 text-gray-600">
                       {(page - 1) * pageSize + i + 1}
                     </td>
-                    <td className="px-6 py-4 max-w-2xl">
+                    <td className="px-6 py-4 max-w-3xl">
                       <Link
                         to={`/dgtr-db/${inv.uuid}`}
                         className="text-blue-600 hover:underline font-medium line-clamp-2"
@@ -158,10 +160,13 @@ export default function CatalogueTab() {
                         {inv.status || "Unknown"}
                       </Badge>
                     </td>
+                    <td className="px-6 py-4 max-w-xs">
+                      <span className="line-clamp-2">{inv.last_updated_date|| "—"}</span>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-4">
-                        <Link to={`/dgtr-db/${inv.uuid}`} target="_blank" className="text-blue-600 hover:underline text-sm">
-                          View
+                        <Link to={inv.url} target="_blank" className="text-blue-600 hover:underline text-sm whitespace-nowrap">
+                          View Details
                         </Link>
                         
                       </div>
