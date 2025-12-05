@@ -19,6 +19,7 @@ import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
+import PromptRegistry from "./pages/PromptRegistry";
 import Settings from "./pages/Settings";
 import Triggers from "./pages/Triggers";
 import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
@@ -122,6 +123,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <ActivityLogs />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/prompt-registry" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <PromptRegistry />
               </DashboardLayout>
             </ProtectedRoute>
           } />

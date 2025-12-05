@@ -149,6 +149,12 @@ class AuthService {
     return this.user;
   }
 
+  // Check if user is authorized for prompt registry
+  isPromptRegistryAuthorized(): boolean {
+    const authorizedUsers = ['admin', 'yajas', 'abhinav'];
+    return this.user ? authorizedUsers.includes(this.user.username) : false;
+  }
+
   // Create axios instance with auth headers
   createAuthenticatedClient() {
     const client = axios.create({

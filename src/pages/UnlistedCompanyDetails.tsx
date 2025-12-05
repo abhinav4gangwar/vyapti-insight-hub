@@ -1,10 +1,26 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, FileText, Calendar, Clock, Users, Tag } from 'lucide-react';
+import { Building2, FileText, Calendar, Clock, Users, Tag, ExternalLink } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
+
+interface EarningsCall {
+  id: number;
+  date: string;
+  url: string;
+  local_filepath: string;
+}
+
+interface Presentation {
+  id: number;
+  date: string;
+  url: string;
+  local_filepath: string;
+}
 
 interface ExpertInterview {
   id: number;
@@ -24,15 +40,29 @@ interface ExpertInterview {
   secondary_companies: string[];
 }
 
+interface SEBIDocument {
+  id: number;
+  date: string;
+  url: string;
+  title: string;
+  pdf_url: string;
+}
+
 interface UnlistedCompanyData {
   name: string;
+  earnings_calls: EarningsCall[];
+  presentations: Presentation[];
   expert_interviews: ExpertInterview[];
+  sebi_chunks: SEBIDocument[];
+  total_documents: number;
 }
 
 export default function UnlistedCompanyDetails() {
   const { companyName } = useParams<{ companyName: string }>();
+  const navigate = useNavigate();
   const [companyData, setCompanyData] = useState<UnlistedCompanyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeDocTab, setActiveDocTab] = useState('expert_interviews');
 
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -69,6 +99,33 @@ export default function UnlistedCompanyDetails() {
       return dateString;
     }
   };
+
+  const openDocument = (url: string) => {
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+
+  const getAllEarningsCalls = () => {
+    if (!companyData?.earnings_calls) return [];
+    return companyData.earnings_calls.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateB.getTime() - dateA.getTime();
+    });
+  };
+
+  const getAllPresentations = () => {
+    if (!companyData?.presentations) return [];
+    return companyData.presentations.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateB.getTime() - dateA.getTime();
+    });
+  };
+
+  const earningsCalls = getAllEarningsCalls();
+  const presentations = getAllPresentations();
 
   if (isLoading) {
     return (
@@ -122,53 +179,300 @@ export default function UnlistedCompanyDetails() {
           </CardHeader>
         </Card>
 
-        {/* Expert Interviews */}
-        <Card className="shadow-card border-0 mb-8">
-          <CardHeader>
-            <CardTitle className="financial-heading flex items-center">
-              <Users className="h-5 w-5 mr-2 text-accent" />
-              Expert Interviews ({companyData.expert_interviews.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {companyData.expert_interviews.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="financial-body">No expert interviews available for this company.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {companyData.expert_interviews.map((interview) => (
-                  <div key={interview.id} className="border border-border rounded-lg p-4 hover:bg-secondary/30 transition-colors">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="financial-subheading text-base font-medium pr-4">
-                        {interview.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(interview.published_date)}
+        {/* Document Sub Navigation */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex space-x-6 border-b border-border overflow-x-auto">
+            <button
+              onClick={() => setActiveDocTab('expert_interviews')}
+              className={`pb-3 transition-smooth whitespace-nowrap ${
+                activeDocTab === 'expert_interviews'
+                  ? 'border-b-2 border-accent financial-subheading'
+                  : 'financial-body text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Expert Interviews
+            </button>
+            <button
+              onClick={() => setActiveDocTab('earnings_calls')}
+              className={`pb-3 transition-smooth whitespace-nowrap ${
+                activeDocTab === 'earnings_calls'
+                  ? 'border-b-2 border-accent financial-subheading'
+                  : 'financial-body text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Earnings Calls
+            </button>
+            <button
+              onClick={() => setActiveDocTab('investor_presentations')}
+              className={`pb-3 transition-smooth whitespace-nowrap ${
+                activeDocTab === 'investor_presentations'
+                  ? 'border-b-2 border-accent financial-subheading'
+                  : 'financial-body text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Investor Presentations
+            </button>
+            <button
+              onClick={() => setActiveDocTab('sebi_chunks')}
+              className={`pb-3 transition-smooth whitespace-nowrap ${
+                activeDocTab === 'sebi_chunks'
+                  ? 'border-b-2 border-accent financial-subheading'
+                  : 'financial-body text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              SEBI Docs
+            </button>
+          </div>
+        </div>
+
+        {/* Expert Interviews Tab */}
+        {activeDocTab === 'expert_interviews' && (
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="financial-heading flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-accent" />
+                Expert Interviews
+                <Badge variant="outline" className="ml-2 financial-body">
+                  {companyData.expert_interviews?.length || 0}
+                </Badge>
+              </CardTitle>
+              <CardDescription className="financial-body">
+                Expert interviews and industry insights
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {companyData.expert_interviews && companyData.expert_interviews.length > 0 ? (
+                <div className="space-y-3">
+                  {companyData.expert_interviews.map((interview) => (
+                    <div
+                      key={interview.id}
+                      className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth cursor-pointer"
+                      onClick={() => navigate(`/expert-interviews/${interview.id}`)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="financial-subheading text-sm">
+                            {interview.title}
+                          </h4>
+                          <Badge variant="secondary" className="text-xs">
+                            {interview.expert_type}
+                          </Badge>
+                        </div>
+                        <div className="financial-body text-xs text-muted-foreground flex items-center gap-4">
+                          <div className="flex items-center">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {formatDate(interview.published_date)}
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {interview.est_read} min read
+                          </div>
+                          <div className="flex items-center">
+                            <Building2 className="h-3 w-3 mr-1" />
+                            {interview.industry}
+                          </div>
+                        </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="financial-body hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                      <div className="flex items-center gap-1">
-                        <Tag className="h-3 w-3" />
-                        {interview.expert_type}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="financial-subheading mb-2">No Expert Interviews Found</h3>
+                  <p className="financial-body">
+                    No expert interview documents found for this company
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Earnings Calls Tab */}
+        {activeDocTab === 'earnings_calls' && (
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="financial-heading flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-accent" />
+                Earnings Calls
+                <Badge variant="outline" className="ml-2 financial-body">
+                  {earningsCalls.length}
+                </Badge>
+              </CardTitle>
+              <CardDescription className="financial-body">
+                Transcripts and recordings from earnings calls
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {earningsCalls.length > 0 ? (
+                <div className="space-y-3">
+                  {earningsCalls.map((call, index) => (
+                    <div
+                      key={`${call.id}-${index}`}
+                      className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="financial-subheading text-sm">
+                            Earnings Call
+                          </h4>
+                        </div>
+                        <div className="financial-body text-xs text-muted-foreground flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {formatDate(call.date)}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {interview.est_read} min read
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Building2 className="h-3 w-3" />
-                        {interview.industry}
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openDocument(call.url)}
+                        className="financial-body hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="financial-subheading mb-2">No Earnings Calls Found</h3>
+                  <p className="financial-body">
+                    No earnings call documents found for this company
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Investor Presentations Tab */}
+        {activeDocTab === 'investor_presentations' && (
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="financial-heading flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-accent" />
+                Investor Presentations
+                <Badge variant="outline" className="ml-2 financial-body">
+                  {presentations.length}
+                </Badge>
+              </CardTitle>
+              <CardDescription className="financial-body">
+                Investor presentations and corporate communications
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {presentations.length > 0 ? (
+                <div className="space-y-3">
+                  {presentations.map((presentation, index) => (
+                    <div
+                      key={`${presentation.id}-${index}`}
+                      className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="financial-subheading text-sm">
+                            Investor Presentation
+                          </h4>
+                        </div>
+                        <div className="financial-body text-xs text-muted-foreground flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {formatDate(presentation.date)}
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openDocument(presentation.url)}
+                        className="financial-body hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="financial-subheading mb-2">No Presentations Found</h3>
+                  <p className="financial-body">
+                    No investor presentation documents found for this company
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* SEBI Documents Tab */}
+        {activeDocTab === 'sebi_chunks' && (
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="financial-heading flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-accent" />
+                SEBI Documents
+                <Badge variant="outline" className="ml-2 financial-body">
+                  {companyData.sebi_chunks?.length || 0}
+                </Badge>
+              </CardTitle>
+              <CardDescription className="financial-body">
+                SEBI filings and regulatory documents
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {companyData.sebi_chunks && companyData.sebi_chunks.length > 0 ? (
+                <div className="space-y-3">
+                  {companyData.sebi_chunks.map((document) => (
+                    <div
+                      key={document.id}
+                      className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-smooth"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="financial-subheading text-sm">
+                            {document.title}
+                          </h4>
+                        </div>
+                        <div className="financial-body text-xs text-muted-foreground flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {formatDate(document.date)}
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(document.pdf_url, '_blank')}
+                        className="financial-body hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        View PDF
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="financial-subheading mb-2">No SEBI Documents Found</h3>
+                  <p className="financial-body">
+                    No SEBI documents found for this company
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );

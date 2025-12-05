@@ -67,7 +67,7 @@ export default function DataCatalogue() {
   // Filter states
   const [dateFrom, setDateFrom] = useState<string>(getTodayDate());
   const [dateTo, setDateTo] = useState<string>(getTodayDate());
-  const [selectedSourceTypes, setSelectedSourceTypes] = useState<string[]>(['earnings_call', 'investor_ppt']);
+  const [selectedSourceTypes, setSelectedSourceTypes] = useState<string[]>(['earnings_call', 'investor_ppt', 'expert_interview', 'sebi_doc']);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedIndexed, setSelectedIndexed] = useState<string[]>(['true', 'false']);
   const [companySearch, setCompanySearch] = useState('');
@@ -88,14 +88,32 @@ export default function DataCatalogue() {
     const fetchAllCompanies = async () => {
       try {
         const client = authService.createAuthenticatedClient();
-        const response = await client.get('/companies/names');
-        // Transform to match new interface - these are all listed companies
-        const listedCompanies = (response.data || []).map((company: any) => ({
+
+        // Fetch both listed and unlisted companies
+        const [listedResponse, unlistedResponse] = await Promise.all([
+          client.get('/companies/names'),
+          client.get('/companies/unlisted/names')
+        ]);
+
+        // Transform listed companies
+        const listedCompanies = (listedResponse.data || []).map((company: any) => ({
           isin: company.isin,
           name: company.name,
           isListed: true
         }));
-        setCompanyOptions(listedCompanies);
+
+        // Transform unlisted companies
+        const unlistedCompanies = (unlistedResponse.data || []).map((company: any) => ({
+          isin: company.name, // Use name as identifier for unlisted companies
+          name: company.name,
+          isListed: false
+        }));
+
+        // Combine and sort by name
+        const allCompanies = [...listedCompanies, ...unlistedCompanies]
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setCompanyOptions(allCompanies);
       } catch (error) {
         console.error('Failed to fetch companies:', error);
       }
@@ -182,7 +200,7 @@ export default function DataCatalogue() {
     const today = getTodayDate();
     setDateFrom(today);
     setDateTo(today);
-    setSelectedSourceTypes(['earnings_call', 'investor_ppt']);
+    setSelectedSourceTypes(['earnings_call', 'investor_ppt', 'expert_interview', 'sebi_doc']);
     setSelectedCompanies([]);
     setSelectedIndexed(['true', 'false']);
   };
@@ -218,22 +236,41 @@ export default function DataCatalogue() {
       field: 'source_type',
       headerName: 'Type',
       sortable: true,
-      width: 140,
-      cellRenderer: (params: any) => (
-              <a
-                href={params.data.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
-              >
-        <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium">
+      width: 160,
+      cellRenderer: (params: any) => {
+        const getSourceTypeLabel = (type: string) => {
+          switch (type) {
+            case 'earnings_call':
+              return 'Earnings Call';
+            case 'investor_ppt':
+              return 'Investor PPT';
+            case 'expert_interview':
+              return 'Expert Interview';
+            case 'sebi_doc':
+              return 'SEBI Doc';
+            default:
+              return type;
+          }
+        };
 
-                          {params.value === 'earnings_call' ? 'Earnings Call' : 'Investor PPT'}
-        </Badge>
-
-
-              </a>
-      ),
+        return (
+          <a
+            href={params.data.url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+            onClick={(e) => {
+              if (!params.data.url) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium">
+              {getSourceTypeLabel(params.value)}
+            </Badge>
+          </a>
+        );
+      },
     },
     {
       field: 'date',
@@ -471,9 +508,19 @@ export default function DataCatalogue() {
                         <button
                           key={company.isin}
                           onClick={() => handleAddCompany(company.isin, company.name)}
-                          className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
+                          className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex items-center justify-between gap-2"
                         >
-                          {company.name}
+                          <span className="truncate">{company.name}</span>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs flex-shrink-0 ${
+                              company.isListed
+                                ? 'bg-green-100 text-green-700 border-green-300'
+                                : 'bg-blue-100 text-blue-700 border-blue-300'
+                            }`}
+                          >
+                            {company.isListed ? 'Listed' : 'Unlisted'}
+                          </Badge>
                         </button>
                       ))}
                     </div>
@@ -484,11 +531,25 @@ export default function DataCatalogue() {
                     {selectedCompanies.map((isin) => {
                       const company = companyOptions.find(c => c.isin === isin);
                       return (
-                        <div key={isin} className="flex items-center justify-between bg-muted px-2 py-1 rounded text-sm">
-                          <span>{company?.name || isin}</span>
+                        <div key={isin} className="flex items-center justify-between gap-2 bg-muted px-2 py-1 rounded text-sm">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="truncate">{company?.name || isin}</span>
+                            {company && (
+                              <Badge
+                                variant="outline"
+                                className={`text-xs flex-shrink-0 ${
+                                  company.isListed
+                                    ? 'bg-green-100 text-green-700 border-green-300'
+                                    : 'bg-blue-100 text-blue-700 border-blue-300'
+                                }`}
+                              >
+                                {company.isListed ? 'L' : 'U'}
+                              </Badge>
+                            )}
+                          </div>
                           <button
                             onClick={() => handleRemoveCompany(isin)}
-                            className="text-muted-foreground hover:text-foreground"
+                            className="text-muted-foreground hover:text-foreground flex-shrink-0"
                           >
                             <X className="h-3 w-3" />
                           </button>
