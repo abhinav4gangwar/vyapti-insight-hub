@@ -270,7 +270,7 @@ export default function VahanGridTable({
               onChange={() => setShowYoy(v => !v)}
               className="w-4 h-4 cursor-pointer"
             />
-            <span>Show YoY (FULL only)</span>
+            <span>Show YoY</span>
           </label>
         </div>
       )}
