@@ -49,6 +49,7 @@ export default function ExpertInterviewsList() {
   // Filter states
   const [isinFilter, setIsinFilter] = useState('');
   const [selectedCompanyName, setSelectedCompanyName] = useState('');
+  const [isSelectedCompanyListed, setIsSelectedCompanyListed] = useState(true);
   const [industryFilter, setIndustryFilter] = useState('all');
   const [expertTypeFilter, setExpertTypeFilter] = useState('all');
   const [pageSizeFilter, setPageSizeFilter] = useState('20');
@@ -60,7 +61,8 @@ export default function ExpertInterviewsList() {
     isin: string = isinFilter,
     industry: string = industryFilter,
     expertType: string = expertTypeFilter,
-    pageSize: string = pageSizeFilter
+    pageSize: string = pageSizeFilter,
+    isListed: boolean = isSelectedCompanyListed
   ) => {
     setIsLoading(true);
     try {
@@ -72,7 +74,13 @@ export default function ExpertInterviewsList() {
 
       // Add filter parameters if they're not default values
       if (isin.trim()) {
-        params.append('isin', isin.trim());
+        // For listed companies, use 'isin' parameter
+        // For unlisted companies, use 'company_name' parameter
+        if (isListed) {
+          params.append('isin', isin.trim());
+        } else {
+          params.append('company_name', isin.trim());
+        }
       }
       if (industry !== 'all') {
         params.append('industry', industry);
@@ -116,8 +124,8 @@ export default function ExpertInterviewsList() {
   };
 
   useEffect(() => {
-    fetchInterviews(currentPage, isinFilter, industryFilter, expertTypeFilter, pageSizeFilter);
-  }, [currentPage, isinFilter, industryFilter, expertTypeFilter, pageSizeFilter]);
+    fetchInterviews(currentPage, isinFilter, industryFilter, expertTypeFilter, pageSizeFilter, isSelectedCompanyListed);
+  }, [currentPage, isinFilter, industryFilter, expertTypeFilter, pageSizeFilter, isSelectedCompanyListed]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage !== currentPage && newPage >= 1 && newPage <= pagination.total_pages) {
@@ -129,15 +137,17 @@ export default function ExpertInterviewsList() {
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  const handleISINSelect = (isin: string, companyName: string) => {
+  const handleISINSelect = (isin: string, companyName: string, isListed: boolean) => {
     setIsinFilter(isin);
     setSelectedCompanyName(companyName);
+    setIsSelectedCompanyListed(isListed);
     handleFilterChange();
   };
 
   const handleISINClear = () => {
     setIsinFilter('');
     setSelectedCompanyName('');
+    setIsSelectedCompanyListed(true);
     handleFilterChange();
   };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Search, Building2, X } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
@@ -12,7 +13,7 @@ export interface Company {
 
 interface ISINFilterProps {
   placeholder?: string;
-  onISINSelect: (isin: string, companyName: string) => void;
+  onISINSelect: (isin: string, companyName: string, isListed: boolean) => void;
   onClear?: () => void;
   className?: string;
   maxResults?: number;
@@ -37,19 +38,37 @@ export function ISINFilter({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedCompanyName, setSelectedCompanyName] = useState(value);
 
-  // Fetch companies list on component mount (only listed companies for ISIN filter)
+  // Fetch companies list on component mount (both listed and unlisted companies)
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
         const client = authService.createAuthenticatedClient();
-        const response = await client.get('/companies/names');
-        // Transform to match new interface - these are all listed companies
-        const listedCompanies: Company[] = response.data.map((company: any) => ({
+
+        // Fetch both listed and unlisted companies
+        const [listedResponse, unlistedResponse] = await Promise.all([
+          client.get('/companies/names'),
+          client.get('/companies/unlisted/names')
+        ]);
+
+        // Transform listed companies
+        const listedCompanies: Company[] = listedResponse.data.map((company: any) => ({
           isin: company.isin,
           name: company.name,
           isListed: true
         }));
-        setCompanies(listedCompanies);
+
+        // Transform unlisted companies
+        const unlistedCompanies: Company[] = unlistedResponse.data.map((company: any) => ({
+          isin: company.name, // Use name as identifier for unlisted companies
+          name: company.name,
+          isListed: false
+        }));
+
+        // Combine and sort by name
+        const allCompanies = [...listedCompanies, ...unlistedCompanies]
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setCompanies(allCompanies);
       } catch (error) {
         toast({
           title: "Error",
@@ -96,7 +115,7 @@ export function ISINFilter({
     setSelectedCompanyName(company.name);
     setSearchQuery('');
     setShowDropdown(false);
-    onISINSelect(company.isin, company.name);
+    onISINSelect(company.isin, company.name, company.isListed);
   };
 
   const handleClear = () => {
@@ -129,7 +148,7 @@ export function ISINFilter({
 
   const handleInputBlur = () => {
     // Delay hiding dropdown to allow for clicks
-    setTimeout(() => setShowDropdown(false), 200);
+    setTimeout(() => setShowDropdown(false), 300);
   };
 
   return (
@@ -176,15 +195,32 @@ export function ISINFilter({
             searchResults.map((company) => (
               <button
                 key={company.isin}
-                onClick={() => handleCompanySelect(company)}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent input blur
+                  handleCompanySelect(company);
+                }}
                 className="w-full text-left p-3 hover:bg-accent hover:text-accent-foreground border-b border-border last:border-b-0 transition-colors"
               >
-                <div className="flex items-center">
-                  <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium text-sm">{company.name}</div>
-                    <div className="text-xs text-muted-foreground">{company.isin}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center min-w-0 flex-1">
+                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm truncate">{company.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {company.isListed ? company.isin : 'No ISIN'}
+                      </div>
+                    </div>
                   </div>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs flex-shrink-0 ${
+                      company.isListed
+                        ? 'bg-green-100 text-green-700 border-green-300'
+                        : 'bg-blue-100 text-blue-700 border-blue-300'
+                    }`}
+                  >
+                    {company.isListed ? 'Listed' : 'Unlisted'}
+                  </Badge>
                 </div>
               </button>
             ))

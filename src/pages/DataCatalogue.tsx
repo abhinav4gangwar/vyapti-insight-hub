@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,6 +47,7 @@ interface FilterMetadata {
 }
 
 export default function DataCatalogue() {
+  const navigate = useNavigate();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -147,9 +149,34 @@ export default function DataCatalogue() {
       if (selectedSourceTypes.length > 0) {
         params.append('source_types', selectedSourceTypes.join(','));
       }
+
+      // Separate listed and unlisted companies
       if (selectedCompanies.length > 0) {
-        params.append('companies', selectedCompanies.join(','));
+        const listedCompanies: string[] = [];
+        const unlistedCompanies: string[] = [];
+
+        selectedCompanies.forEach(companyId => {
+          const company = companyOptions.find(c => c.isin === companyId);
+          if (company) {
+            if (company.isListed) {
+              listedCompanies.push(company.isin);
+            } else {
+              unlistedCompanies.push(company.name);
+            }
+          }
+        });
+
+        // Add listed companies as ISINs
+        if (listedCompanies.length > 0) {
+          params.append('companies', listedCompanies.join(','));
+        }
+
+        // Add unlisted companies as names
+        if (unlistedCompanies.length > 0) {
+          params.append('company_names', unlistedCompanies.join(','));
+        }
       }
+
       if (selectedIndexed.length > 0) {
         params.append('indexed_status', selectedIndexed.join(','));
       }
@@ -166,7 +193,7 @@ export default function DataCatalogue() {
     } finally {
       setIsLoading(false);
     }
-  }, [dateFrom, dateTo, selectedSourceTypes, selectedCompanies, selectedIndexed, sortBy, sortOrder]);
+  }, [dateFrom, dateTo, selectedSourceTypes, selectedCompanies, selectedIndexed, sortBy, sortOrder, companyOptions]);
 
   useEffect(() => {
     fetchDocuments(currentPage);
@@ -253,6 +280,21 @@ export default function DataCatalogue() {
           }
         };
 
+        // For expert interviews, open in new tab
+        if (params.value === 'expert_interview') {
+          return (
+            <button
+              onClick={() => window.open(`/expert-interviews/${params.data.id}`, '_blank')}
+              className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+            >
+              <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium cursor-pointer">
+                {getSourceTypeLabel(params.value)}
+              </Badge>
+            </button>
+          );
+        }
+
+        // For other types, use external link
         return (
           <a
             href={params.data.url || '#'}
