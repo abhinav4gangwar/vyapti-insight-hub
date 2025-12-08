@@ -444,8 +444,8 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <SelectItem value="gpt-5-mini-2025-08-07">GPT 5 Mini (Moderate)</SelectItem>
                       <SelectItem value="gpt-5-nano-2025-08-07">GPT 5 Nano (Cheap)</SelectItem>
                       <SelectItem value="global.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
-                      <SelectItem value="global.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem>
-                      <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview</SelectItem>
+                      {/* <SelectItem value="global.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem> */}
+                      {/* <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview</SelectItem> */}
                       <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
                       <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
                     </SelectContent>
