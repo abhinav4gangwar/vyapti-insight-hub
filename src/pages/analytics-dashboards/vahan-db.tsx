@@ -1,6 +1,5 @@
 import CustomTableBuilder from "@/components/vahan-components/CustomTableBuilder";
 import VahanGridTable from "@/components/vahan-components/VahangridTable";
-import { apiClient } from "@/lib/vahan-api-utils";
 import { useState } from "react";
 
 export default function VahanDashboardPage() {
@@ -9,24 +8,24 @@ export default function VahanDashboardPage() {
   const [cachedData, setCachedData] = useState<any>({});
   const [scraping, setScraping] = useState(false);
 
-  const triggerScrape = async () => {
-    setScraping(true);
-    try {
-      await apiClient.get("/scraper/run");
-      alert("Scraping completed!");
-      setCachedData({});
-      setReloadTrigger(prev => prev + 1);
-    } catch {
-      alert("Scraping failed!");
-    } finally {
-      setScraping(false);
-    }
-  };
+  // const triggerScrape = async () => {
+  //   setScraping(true);
+  //   try {
+  //     await apiClient.get("/scraper/run");
+  //     alert("Scraping completed!");
+  //     setCachedData({});
+  //     setReloadTrigger(prev => prev + 1);
+  //   } catch {
+  //     alert("Scraping failed!");
+  //   } finally {
+  //     setScraping(false);
+  //   }
+  // };
 
   const tabs = [
     { key: "maker_vs_vehicle_class", label: "Vehicle Class View" },
     { key: "maker_vs_fuel", label: "Fuel View" },
-    { key: "custom", label: "Custom Table Builder" },
+    // { key: "custom", label: "Custom Table Builder" },
   ];
 
   return (
