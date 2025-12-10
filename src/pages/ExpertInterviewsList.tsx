@@ -3,11 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Calendar, Clock, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { FileText, Calendar, Clock, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { ISINFilter } from '@/components/ui/isin-filter';
 
 interface ExpertInterview {
   id: number;
@@ -45,24 +45,63 @@ export default function ExpertInterviewsList() {
     has_prev: false
   });
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Filter states
-  const [isinFilter, setIsinFilter] = useState('');
-  const [selectedCompanyName, setSelectedCompanyName] = useState('');
-  const [isSelectedCompanyListed, setIsSelectedCompanyListed] = useState(true);
+  const [selectedCompanies, setSelectedCompanies] = useState<Array<{ name: string; isListed: boolean }>>([]);
+  const [companySearch, setCompanySearch] = useState('');
+  const [companyOptions, setCompanyOptions] = useState<Array<{ isin: string; name: string; isListed: boolean }>>([]);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [industryFilter, setIndustryFilter] = useState('all');
   const [expertTypeFilter, setExpertTypeFilter] = useState('all');
   const [pageSizeFilter, setPageSizeFilter] = useState('20');
 
   const navigate = useNavigate();
 
+  // Fetch all companies on mount for client-side filtering
+  useEffect(() => {
+    const fetchAllCompanies = async () => {
+      try {
+        const client = authService.createAuthenticatedClient();
+
+        // Fetch both listed and unlisted companies
+        const [listedResponse, unlistedResponse] = await Promise.all([
+          client.get('/companies/names'),
+          client.get('/companies/unlisted/names')
+        ]);
+
+        // Transform listed companies
+        const listedCompanies = (listedResponse.data || []).map((company: any) => ({
+          isin: company.isin,
+          name: company.name,
+          isListed: true
+        }));
+
+        // Transform unlisted companies
+        const unlistedCompanies = (unlistedResponse.data || []).map((company: any) => ({
+          isin: company.name, // Use name as identifier for unlisted companies
+          name: company.name,
+          isListed: false
+        }));
+
+        // Combine and sort by name
+        const allCompanies = [...listedCompanies, ...unlistedCompanies]
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setCompanyOptions(allCompanies);
+      } catch (error) {
+        console.error('Failed to fetch companies:', error);
+      }
+    };
+
+    fetchAllCompanies();
+  }, []);
+
   const fetchInterviews = async (
     page: number = 1,
-    isin: string = isinFilter,
+    companies: Array<{ name: string; isListed: boolean }> = selectedCompanies,
     industry: string = industryFilter,
     expertType: string = expertTypeFilter,
-    pageSize: string = pageSizeFilter,
-    isListed: boolean = isSelectedCompanyListed
+    pageSize: string = pageSizeFilter
   ) => {
     setIsLoading(true);
     try {
@@ -72,16 +111,12 @@ export default function ExpertInterviewsList() {
         page_size: pageSize
       });
 
-      // Add filter parameters if they're not default values
-      if (isin.trim()) {
-        // For listed companies, use 'isin' parameter
-        // For unlisted companies, use 'company_name' parameter
-        if (isListed) {
-          params.append('isin', isin.trim());
-        } else {
-          params.append('company_name', isin.trim());
-        }
+      // Add company filter - send comma-separated company names
+      if (companies.length > 0) {
+        const companyNames = companies.map(c => c.name).join(',');
+        params.append('company_name', companyNames);
       }
+
       if (industry !== 'all') {
         params.append('industry', industry);
       }
@@ -124,8 +159,8 @@ export default function ExpertInterviewsList() {
   };
 
   useEffect(() => {
-    fetchInterviews(currentPage, isinFilter, industryFilter, expertTypeFilter, pageSizeFilter, isSelectedCompanyListed);
-  }, [currentPage, isinFilter, industryFilter, expertTypeFilter, pageSizeFilter, isSelectedCompanyListed]);
+    fetchInterviews(currentPage, selectedCompanies, industryFilter, expertTypeFilter, pageSizeFilter);
+  }, [currentPage, selectedCompanies, industryFilter, expertTypeFilter, pageSizeFilter]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage !== currentPage && newPage >= 1 && newPage <= pagination.total_pages) {
@@ -137,17 +172,19 @@ export default function ExpertInterviewsList() {
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  const handleISINSelect = (isin: string, companyName: string, isListed: boolean) => {
-    setIsinFilter(isin);
-    setSelectedCompanyName(companyName);
-    setIsSelectedCompanyListed(isListed);
+  const handleAddCompany = (name: string, isListed: boolean) => {
+    if (!selectedCompanies.some(c => c.name === name)) {
+      setSelectedCompanies([...selectedCompanies, { name, isListed }]);
+    }
+    setCompanySearch('');
+    setShowCompanyDropdown(false);
+    // Blur the input to remove focus
+    (document.activeElement as HTMLElement)?.blur();
     handleFilterChange();
   };
 
-  const handleISINClear = () => {
-    setIsinFilter('');
-    setSelectedCompanyName('');
-    setIsSelectedCompanyListed(true);
+  const handleRemoveCompany = (name: string) => {
+    setSelectedCompanies(selectedCompanies.filter(c => c.name !== name));
     handleFilterChange();
   };
 
@@ -184,6 +221,11 @@ export default function ExpertInterviewsList() {
     navigate(`/expert-interviews/${interviewId}`);
   };
 
+  // Filter companies based on search
+  const filteredCompanies = companyOptions.filter(company =>
+    company.name.toLowerCase().includes(companySearch.toLowerCase())
+  ).slice(0, 10);
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -209,17 +251,73 @@ export default function ExpertInterviewsList() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* ISIN Filter */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Company Filter */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Company</label>
-                <ISINFilter
-                  placeholder="Filter by company name or ISIN..."
-                  onISINSelect={handleISINSelect}
-                  onClear={handleISINClear}
-                  value={selectedCompanyName}
-                  maxResults={8}
-                />
+                <label className="text-sm font-medium text-gray-700">Companies</label>
+                <div className="relative">
+                  <Input
+                    placeholder="Search companies..."
+                    value={companySearch}
+                    onChange={(e) => setCompanySearch(e.target.value)}
+                    onFocus={() => setShowCompanyDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
+                    className="text-sm"
+                  />
+                  {showCompanyDropdown && filteredCompanies.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
+                      {filteredCompanies.map((company) => (
+                        <button
+                          key={company.isin}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent input blur
+                            handleAddCompany(company.name, company.isListed);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex items-center justify-between gap-2"
+                        >
+                          <span className="truncate">{company.name}</span>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs flex-shrink-0 ${
+                              company.isListed
+                                ? 'bg-green-100 text-green-700 border-green-300'
+                                : 'bg-blue-100 text-blue-700 border-blue-300'
+                            }`}
+                          >
+                            {company.isListed ? 'Listed' : 'Unlisted'}
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {selectedCompanies.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    {selectedCompanies.map((company) => (
+                      <div key={company.name} className="flex items-center justify-between gap-2 bg-muted px-2 py-1 rounded text-sm">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="truncate">{company.name}</span>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs flex-shrink-0 ${
+                              company.isListed
+                                ? 'bg-green-100 text-green-700 border-green-300'
+                                : 'bg-blue-100 text-blue-700 border-blue-300'
+                            }`}
+                          >
+                            {company.isListed ? 'L' : 'U'}
+                          </Badge>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveCompany(company.name)}
+                          className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Industry Filter */}
