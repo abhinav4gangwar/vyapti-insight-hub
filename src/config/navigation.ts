@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, Clipboard, Database, FileText, LucideIcon, Search, Settings } from 'lucide-react';
+import { Bell, BellRing, Building2, Clipboard, Database, FileText, LucideIcon, Search, Settings, TextSearch } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -43,6 +43,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label:"Anti Dumping Duties",
     href:"/dgtr-db",
     icon: Clipboard,
+  },
+  {
+    key:'full-text-search',
+    label:"Full Text Search",
+    href:"/fts",
+    icon: TextSearch,
   },
   {
     key: 'notifications',

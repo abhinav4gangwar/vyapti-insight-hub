@@ -13,7 +13,6 @@ import ChangePassword from "./pages/ChangePassword";
 import CompanyDetails from "./pages/CompanyDetails";
 import Dashboard from "./pages/Dashboard";
 import DataCatalogue from "./pages/DataCatalogue";
-import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Login from "./pages/Login";
@@ -21,9 +20,11 @@ import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Triggers from "./pages/Triggers";
+import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
 import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-page";
 import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
+import FullTextSearch from "./pages/full-text-search/FullTextSearch";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <VahanDashboardPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }/>
+          <Route path="/fts" element= {
+            <ProtectedRoute>
+              <DashboardLayout>
+                <FullTextSearch />
               </DashboardLayout>
             </ProtectedRoute>
           }/>
