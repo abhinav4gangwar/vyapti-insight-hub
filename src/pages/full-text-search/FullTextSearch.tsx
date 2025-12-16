@@ -22,6 +22,10 @@ const FullTextSearch = () => {
     clearExpandedDoc,
   } = useFTSSearch();
 
+  // New clear signal to reset the search input from parent
+  const [clearSignal, setClearSignal] = useState<number>(0);
+  const [cleared, setCleared] = useState<boolean>(false);
+
   // Filter states
   const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
@@ -45,6 +49,7 @@ const FullTextSearch = () => {
 
   // Handle search
   const handleSearch = (query: string, mode: SearchMode, enableSynonyms: boolean) => {
+    setCleared(false);
     setCurrentQuery(query);
     setCurrentSearchMode(mode);
     setCurrentPage(1);
@@ -62,6 +67,14 @@ const FullTextSearch = () => {
       include_other_snippets: true,
       max_other_snippets: 5,
     });
+  };
+
+  // Clear search: reset input and hide results
+  const handleClearSearch = () => {
+    setClearSignal((s) => s + 1);
+    setCleared(true);
+    setCurrentQuery('');
+    setCurrentPage(1);
   };
 
   // Handle pagination
@@ -98,9 +111,14 @@ const FullTextSearch = () => {
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
       <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
-        {/* Search Input */}
-        <div className="mb-6">
-          <SearchInput onSearch={handleSearch} isLoading={isLoading} />
+        {/* Search Input and Clear Button */}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <SearchInput onSearch={handleSearch} isLoading={isLoading} clearSignal={clearSignal} clearSearch={handleClearSearch}/>
+          </div>
+          <div className="flex-shrink-0">
+            
+          </div>
         </div>
 
         {/* Error Display */}
@@ -111,59 +129,61 @@ const FullTextSearch = () => {
         )}
 
         {/* Main Content Area */}
-        <div className="flex gap-4 flex-1">
-          {/* Toggle Button for Filters */}
-          <div className="flex-shrink-0">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-              className="h-10 w-10"
-              title={isFiltersExpanded ? 'Collapse filters' : 'Expand filters'}
-            >
-              {isFiltersExpanded ? (
-                <ChevronLeft className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+        <div className="flex gap-4 flex-1 min-h-0">
+           {/* Toggle Button for Filters */}
+           <div className="flex-shrink-0">
+             <Button
+               variant="outline"
+               size="icon"
+               onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+               className="h-10 w-10"
+               title={isFiltersExpanded ? 'Collapse filters' : 'Expand filters'}
+             >
+               {isFiltersExpanded ? (
+                 <ChevronLeft className="h-4 w-4" />
+               ) : (
+                 <ChevronRight className="h-4 w-4" />
+               )}
+             </Button>
+           </div>
 
-          {/* Filter Sidebar */}
-          {isFiltersExpanded && (
-            <FilterSidebar
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateFromChange={setDateFrom}
-              onDateToChange={setDateTo}
-              selectedSourceTypes={selectedSourceTypes}
-              onSourceTypesChange={setSelectedSourceTypes}
-              selectedCompanies={selectedCompanies}
-              onCompaniesChange={setSelectedCompanies}
-              companies={companies}
-              sourceTypeBreakdown={sourceTypeBreakdown}
-              onClearFilters={handleClearFilters}
-            />
-          )}
+           {/* Filter Sidebar */}
+           {isFiltersExpanded && (
+             <div className="h-full overflow-y-auto hide-scrollbar">
+               <FilterSidebar
+                 dateFrom={dateFrom}
+                 dateTo={dateTo}
+                 onDateFromChange={setDateFrom}
+                 onDateToChange={setDateTo}
+                 selectedSourceTypes={selectedSourceTypes}
+                 onSourceTypesChange={setSelectedSourceTypes}
+                 selectedCompanies={selectedCompanies}
+                 onCompaniesChange={setSelectedCompanies}
+                 companies={companies}
+                 sourceTypeBreakdown={sourceTypeBreakdown}
+                 onClearFilters={handleClearFilters}
+               />
+             </div>
+           )}
 
-          {/* Results Section */}
-          <div className="flex-1 min-w-0">
-            <ResultsSection
-              searchResults={searchResults}
-              query={currentQuery}
-              searchMode={currentSearchMode}
-              expandedDocs={expandedDocs}
-              loadingExpandedDoc={loadingExpandedDoc}
-              onLoadMatches={loadDocumentMatches}
-              onClearMatches={clearExpandedDoc}
-              onPageChange={handlePageChange}
-              isLoading={isLoading}
-            />
-          </div>
-        </div>
-      </main>
+           {/* Results Section */}
+           <div className="flex-1 min-w-0 h-full overflow-y-auto hide-scrollbar">
+             <ResultsSection
+               searchResults={cleared ? null : searchResults}
+               query={currentQuery}
+               searchMode={currentSearchMode}
+               expandedDocs={expandedDocs}
+               loadingExpandedDoc={loadingExpandedDoc}
+               onLoadMatches={loadDocumentMatches}
+               onClearMatches={clearExpandedDoc}
+               onPageChange={handlePageChange}
+               isLoading={isLoading}
+             />
+           </div>
+         </div>
+       </main>
 
-      {/* Custom CSS for snippet highlighting */}
+       {/* Custom CSS for snippet highlighting */}
       <style>{`
         .snippet-content b {
           background-color: #fef08a;
@@ -177,8 +197,8 @@ const FullTextSearch = () => {
           color: #fef3c7;
         }
       `}</style>
-    </div>
-  )
-}
+     </div>
+   )
+ }
 
-export default FullTextSearch
+ export default FullTextSearch

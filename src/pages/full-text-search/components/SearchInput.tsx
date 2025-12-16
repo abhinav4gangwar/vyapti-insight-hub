@@ -2,20 +2,31 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { Search, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { SearchMode } from '../fts-types';
 
 
 interface SearchInputProps {
   onSearch: (query: string, mode: SearchMode, enableSynonyms: boolean) => void;
   isLoading: boolean;
+  clearSignal?: number;
+  clearSearch?: () => void
 }
 
-export const SearchInput = ({ onSearch, isLoading }: SearchInputProps) => {
+export const SearchInput = ({ onSearch, isLoading, clearSignal, clearSearch }: SearchInputProps) => {
   const [query, setQuery] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('all_words');
   const [enableSynonyms, setEnableSynonyms] = useState(false);
+
+  // Reset internal state when clearSignal changes
+  useEffect(() => {
+    if (typeof clearSignal !== 'undefined') {
+      setQuery('');
+      setSearchMode('all_words');
+      setEnableSynonyms(false);
+    }
+  }, [clearSignal]);
 
   const handleSearch = () => {
     if (query.trim()) {
@@ -52,6 +63,9 @@ export const SearchInput = ({ onSearch, isLoading }: SearchInputProps) => {
           <Search className="h-4 w-4 mr-2" />
           {isLoading ? 'Searching...' : 'Search'}
         </Button>
+        <Button variant="outline" size="sm" onClick={clearSearch} className="h-11" disabled={!query.trim() || isLoading}>
+              <X />
+            </Button>
       </div>
 
       {/* Search Mode Radio Buttons */}
