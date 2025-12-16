@@ -22,7 +22,6 @@ const FullTextSearch = () => {
     clearExpandedDoc,
   } = useFTSSearch();
 
-  // New clear signal to reset the search input from parent
   const [clearSignal, setClearSignal] = useState<number>(0);
   const [cleared, setCleared] = useState<boolean>(false);
 
@@ -104,8 +103,8 @@ const FullTextSearch = () => {
     setSelectedCompanies([]);
   };
 
-  // Get source type breakdown for filter sidebar
-  const sourceTypeBreakdown = searchResults?.metadata.source_type_breakdown || [];
+
+  const sourceTypeBreakdown = (!cleared && searchResults?.metadata.source_type_breakdown) || [];
 
 
   return (
