@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, Clipboard, Database, FileText, LucideIcon, Search, Settings } from 'lucide-react';
+import { Bell, BellRing, Building2, Clipboard, Database, FileText, LucideIcon, Search, Settings, Sparkles } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -31,6 +31,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Triggers',
     href: '/triggers',
     icon: BellRing,
+  },
+  {
+    key: 'prompt-triggers',
+    label: 'Prompt Triggers',
+    href: '/prompt-triggers',
+    icon: Sparkles,
   },
   {
     key: 'data-catalogue',

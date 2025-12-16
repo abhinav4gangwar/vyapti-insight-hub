@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lock, Activity, ChevronRight, FileCode } from "lucide-react";
+import { Lock, Activity, ChevronRight, FileCode, Sparkles } from "lucide-react";
 import { authService } from "@/lib/auth";
 
 export default function Settings() {
@@ -73,6 +73,26 @@ export default function Settings() {
                     <div>
                       <h3 className="font-semibold text-gray-900">Prompt Registry</h3>
                       <p className="text-sm text-gray-600">Manage AI service prompts and versions</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Prompt Trigger Questions - Only for Authorized Users */}
+          {isPromptRegistryAuthorized && (
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/prompt-trigger-questions')}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-amber-100 rounded-lg">
+                      <Sparkles className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Prompt Trigger Questions</h3>
+                      <p className="text-sm text-gray-600">Manage questions and groups for document analysis</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400" />

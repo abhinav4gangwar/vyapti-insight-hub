@@ -20,6 +20,9 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import PromptRegistry from "./pages/PromptRegistry";
+import PromptTriggers from "./pages/PromptTriggers";
+import PromptTriggerDetails from "./pages/PromptTriggerDetails";
+import PromptTriggerQuestions from "./pages/PromptTriggerQuestions";
 import Settings from "./pages/Settings";
 import Triggers from "./pages/Triggers";
 import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
@@ -84,6 +87,20 @@ const App = () => {
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          <Route path="/prompt-triggers" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <PromptTriggers />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/prompt-triggers/:id" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <PromptTriggerDetails />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/notifications" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -123,6 +140,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <ActivityLogs />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/prompt-trigger-questions" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <PromptTriggerQuestions />
               </DashboardLayout>
             </ProtectedRoute>
           } />
