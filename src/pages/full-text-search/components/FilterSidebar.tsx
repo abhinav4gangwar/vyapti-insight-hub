@@ -223,7 +223,7 @@ export const FilterSidebar = ({
             className="text-sm"
           />
           {showCompanyDropdown && filteredCompanies.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
+            <div className="absolute bottom-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
               {filteredCompanies.map((company) => (
                 <button
                   key={company.isin}

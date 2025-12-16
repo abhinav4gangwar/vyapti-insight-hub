@@ -109,28 +109,21 @@ const FullTextSearch = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex flex-col">
-      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
-        {/* Search Input and Clear Button */}
+    <div className="h-screen overflow-hidden bg-gradient-subtle flex flex-col">
+      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col min-h-0">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div className="flex-1">
             <SearchInput onSearch={handleSearch} isLoading={isLoading} clearSignal={clearSignal} clearSearch={handleClearSearch}/>
           </div>
-          <div className="flex-shrink-0">
-            
-          </div>
         </div>
 
-        {/* Error Display */}
         {error && (
           <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
           </div>
         )}
 
-        {/* Main Content Area */}
         <div className="flex gap-4 flex-1 min-h-0">
-           {/* Toggle Button for Filters */}
            <div className="flex-shrink-0">
              <Button
                variant="outline"
@@ -147,7 +140,6 @@ const FullTextSearch = () => {
              </Button>
            </div>
 
-           {/* Filter Sidebar */}
            {isFiltersExpanded && (
              <div className="h-full overflow-y-auto hide-scrollbar">
                <FilterSidebar
@@ -166,7 +158,6 @@ const FullTextSearch = () => {
              </div>
            )}
 
-           {/* Results Section */}
            <div className="flex-1 min-w-0 h-full overflow-y-auto hide-scrollbar">
              <ResultsSection
                searchResults={cleared ? null : searchResults}
@@ -183,7 +174,6 @@ const FullTextSearch = () => {
          </div>
        </main>
 
-       {/* Custom CSS for snippet highlighting */}
       <style>{`
         .snippet-content b {
           background-color: #fef08a;
