@@ -2,9 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SearchMode } from '@/pages/full-text-search/fts-types';
 import { Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { SearchMode } from '../fts-types';
 
 
 interface SearchInputProps {
