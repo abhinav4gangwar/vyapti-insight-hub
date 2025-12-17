@@ -19,7 +19,6 @@ export const SearchInput = ({ onSearch, isLoading, clearSignal, clearSearch }: S
   const [searchMode, setSearchMode] = useState<SearchMode>('all_words');
   const [enableSynonyms, setEnableSynonyms] = useState(false);
 
-  // Reset internal state when clearSignal changes
   useEffect(() => {
     if (typeof clearSignal !== 'undefined') {
       setQuery('');
@@ -97,6 +96,18 @@ export const SearchInput = ({ onSearch, isLoading, clearSignal, clearSearch }: S
               disabled={isLoading}
             />
             <span className="text-sm">Any word (OR)</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="search-mode"
+              value="literal"
+              checked={searchMode === 'literal'}
+              onChange={(e) => setSearchMode(e.target.value as SearchMode)}
+              className="cursor-pointer"
+              disabled={isLoading}
+            />
+            <span className="text-sm">Literal</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
