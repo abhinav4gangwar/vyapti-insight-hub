@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CompanyInfo, SourceType, SourceTypeBreakdown } from '@/pages/full-text-search/fts-types';
 import { format, subDays } from 'date-fns';
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import { CompanyInfo, SourceType, SourceTypeBreakdown } from '../fts-types';
 
 
 interface FilterSidebarProps {

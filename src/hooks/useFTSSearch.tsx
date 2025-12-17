@@ -1,14 +1,15 @@
+import { getAllCompanies, getDocumentMatches, searchDocuments } from '@/lib/fts-api';
 import { useCallback, useState } from 'react';
-import { getAllCompanies, getDocumentMatches, searchDocuments } from './fts-api';
 import {
-    CompanyInfo,
-    DocumentMatchesRequest,
-    DocumentMatchesResponse,
-    FTSSearchRequest,
-    FTSSearchResponse,
-    SearchMode,
-    SourceType
-} from './fts-types';
+  CompanyInfo,
+  DocumentMatchesRequest,
+  DocumentMatchesResponse,
+  FTSSearchRequest,
+  FTSSearchResponse,
+  SearchMode,
+  SourceType
+} from '../pages/full-text-search/fts-types';
+;
 
 
 export const useFTSSearch = () => {

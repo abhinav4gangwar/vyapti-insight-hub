@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import { SearchMetadata } from '../fts-types';
+import { SearchMetadata } from '@/pages/full-text-search/fts-types';
+
 
 
 interface AnalyticsSummaryProps {

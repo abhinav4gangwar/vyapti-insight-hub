@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 
-import { DocumentMatchesResponse, FTSSearchResponse, SearchMode, SourceType } from '../fts-types';
+import { DocumentMatchesResponse, FTSSearchResponse, SearchMode, SourceType } from '@/pages/full-text-search/fts-types';
 import { AnalyticsSummary } from './AnalyticsSummary';
 import { DocumentCard } from './DocumentCard';
 

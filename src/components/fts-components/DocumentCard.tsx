@@ -1,10 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DocumentMatchesResponse, DocumentResult, SearchMode, SourceType } from '@/pages/full-text-search/fts-types';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
-import { DocumentMatchesResponse, DocumentResult, SearchMode, SourceType } from '../fts-types';
 
 
 interface DocumentCardProps {
