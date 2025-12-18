@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, Clipboard, Database, FileText, LucideIcon, Search, Settings, TextSearch } from 'lucide-react';
+import { Bell, BellRing, Building2, Clipboard, Database, FileText, FolderSearch, LucideIcon, Search, Settings, TextSearch } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -49,6 +49,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label:"Full Text Search",
     href:"/fts",
     icon: TextSearch,
+  },
+  {
+    key:'chunk-search',
+    label:"Chunk Search",
+    href:"/chunk-search",
+    icon: FolderSearch,
   },
   {
     key: 'notifications',

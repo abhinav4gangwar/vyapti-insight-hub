@@ -24,6 +24,7 @@ import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
 import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-page";
 import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
+import ChunkSearchPage from "./pages/chunk-search/ChunkSearchPage";
 import FullTextSearch from "./pages/full-text-search/FullTextSearch";
 
 const queryClient = new QueryClient();
@@ -137,6 +138,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <FullTextSearch />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }/>
+          <Route path="/chunk-search" element= {
+            <ProtectedRoute>
+              <DashboardLayout>
+                <ChunkSearchPage />
               </DashboardLayout>
             </ProtectedRoute>
           }/>
