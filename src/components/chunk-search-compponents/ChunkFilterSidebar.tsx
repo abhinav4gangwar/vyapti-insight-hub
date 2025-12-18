@@ -32,6 +32,8 @@ interface ChunkFilterSidebarProps {
   enableQueryExtraction: boolean;
   onEnableQueryExtractionChange: (enabled: boolean) => void;
   onClearFilters: () => void;
+  sourceDateRanges?: Record<string, { from_month?: number; from_year?: number; to_month?: number; to_year?: number }>;
+  onSourceDateRangesChange?: (ranges: Record<string, { from_month?: number; from_year?: number; to_month?: number; to_year?: number }>) => void;
 }
 
 const MODEL_OPTIONS = [
@@ -67,6 +69,8 @@ export const ChunkFilterSidebar = ({
   enableQueryExtraction,
   onEnableQueryExtractionChange,
   onClearFilters,
+  sourceDateRanges,
+  onSourceDateRangesChange,
 }: ChunkFilterSidebarProps) => {
   const toggleSource = (sourceId: string) => {
     if (selectedSources.includes(sourceId)) {
@@ -92,6 +96,14 @@ export const ChunkFilterSidebar = ({
     { value: 11, label: 'November' },
     { value: 12, label: 'December' },
   ];
+
+  const handleSourceRangeChange = (sourceId: string, field: string, value?: number) => {
+    type RangeMap = Record<string, { from_month?: number; from_year?: number; to_month?: number; to_year?: number }>;
+    const updated: RangeMap = { ...(sourceDateRanges || {}) };
+    if (!updated[sourceId]) updated[sourceId] = {};
+    updated[sourceId][field as keyof RangeMap[string]] = value;
+    onSourceDateRangesChange?.(updated);
+  };
 
   return (
     <div className="w-64 flex-shrink-0 space-y-5">
@@ -254,6 +266,52 @@ export const ChunkFilterSidebar = ({
           </div>
         </div>
         <div className="text-xs text-muted-foreground">Filter by month and year</div>
+
+        <div className="pt-4">
+          <Label className="text-xs font-medium">Per-source Date Ranges</Label>
+          <div className="space-y-2 mt-2">
+            {AVAILABLE_SOURCES.map((source) => {
+              const ranges = sourceDateRanges?.[source.id] || {};
+              return (
+                <div key={source.id} className="border rounded p-2">
+                  <div className="text-sm font-medium mb-2">{source.label}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={(ranges.from_month || '').toString()} onValueChange={(v) => handleSourceRangeChange(source.id, 'from_month', v ? Number(v) : undefined)}>
+                      <SelectTrigger className="text-xs h-8"><SelectValue placeholder="From Month" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        {months.map((m) => (<SelectItem key={m.value} value={m.value.toString()}>{m.label}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={(ranges.from_year || '').toString()} onValueChange={(v) => handleSourceRangeChange(source.id, 'from_year', v ? Number(v) : undefined)}>
+                      <SelectTrigger className="text-xs h-8"><SelectValue placeholder="From Year" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        {years.map((y) => (<SelectItem key={y} value={y.toString()}>{y}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <Select value={(ranges.to_month || '').toString()} onValueChange={(v) => handleSourceRangeChange(source.id, 'to_month', v ? Number(v) : undefined)}>
+                      <SelectTrigger className="text-xs h-8"><SelectValue placeholder="To Month" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        {months.map((m) => (<SelectItem key={m.value} value={m.value.toString()}>{m.label}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={(ranges.to_year || '').toString()} onValueChange={(v) => handleSourceRangeChange(source.id, 'to_year', v ? Number(v) : undefined)}>
+                      <SelectTrigger className="text-xs h-8"><SelectValue placeholder="To Year" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        {years.map((y) => (<SelectItem key={y} value={y.toString()}>{y}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Model Selection */}

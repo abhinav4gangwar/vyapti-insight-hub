@@ -22,6 +22,7 @@ const ChunkSearchPage = () => {
   const [fromYear, setFromYear] = useState<number | undefined>();
   const [toMonth, setToMonth] = useState<number | undefined>();
   const [toYear, setToYear] = useState<number | undefined>();
+  const [sourceDateRanges, setSourceDateRanges] = useState<Record<string, { from_month?: number; from_year?: number; to_month?: number; to_year?: number }>>({});
   const [selectedModel, setSelectedModel] = useState('global.anthropic.claude-sonnet-4-5-20250929-v1:0');
   const [enableReranking, setEnableReranking] = useState(true);
   const [enableQueryExtraction, setEnableQueryExtraction] = useState(true);
@@ -51,6 +52,10 @@ const ChunkSearchPage = () => {
       params.to_year = toYear;
     }
 
+    if (Object.keys(sourceDateRanges).length > 0) {
+      params.source_date_ranges = sourceDateRanges;
+    }
+
     performSearch(params);
   };
 
@@ -68,6 +73,7 @@ const ChunkSearchPage = () => {
     setFromYear(undefined);
     setToMonth(undefined);
     setToYear(undefined);
+    setSourceDateRanges({});
     setSelectedModel('gpt-5-nano-2025-08-07');
     setEnableReranking(true);
     setEnableQueryExtraction(true);
@@ -138,6 +144,8 @@ const ChunkSearchPage = () => {
                 enableQueryExtraction={enableQueryExtraction}
                 onEnableQueryExtractionChange={setEnableQueryExtraction}
                 onClearFilters={handleClearFilters}
+                sourceDateRanges={sourceDateRanges}
+                onSourceDateRangesChange={setSourceDateRanges}
               />
             </div>
           )}

@@ -9,6 +9,14 @@ export interface ChunkSearchRequest {
   from_year?: number;
   to_month?: number;
   to_year?: number;
+  source_date_ranges?: {
+    [source: string]: {
+      from_month?: number;
+      from_year?: number;
+      to_month?: number;
+      to_year?: number;
+    };
+  };
   enable_reranking?: boolean;
   enable_query_extraction?: boolean;
   model?: string;
@@ -23,7 +31,7 @@ export interface Chunk {
   rerank_score: number | null;
   original_score: number | null;
   source: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface DocumentGroup {
