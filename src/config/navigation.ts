@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, Clipboard, Database, FileText, FolderSearch, LucideIcon, Search, Settings, TextSearch } from 'lucide-react';
+import { Bell, BellRing, Building2, CarFront, Clipboard, Database, FileText, FolderSearch, LucideIcon, Search, Settings, TextSearch } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -37,6 +37,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Data Catalogue',
     href: '/data-catalogue',
     icon: Database,
+  },
+  {
+    key:'vahan-dashboard',
+    label:"Vahan Data",
+    href:"/vahan-db",
+    icon: CarFront,
   },
   {
     key:'anti-dumping-duties',
