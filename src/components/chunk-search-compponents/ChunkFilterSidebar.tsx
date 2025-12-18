@@ -106,7 +106,7 @@ export const ChunkFilterSidebar = ({
   };
 
   return (
-    <div className="w-64 flex-shrink-0 space-y-5">
+    <div className="flex-shrink-0 space-y-5 w-72">
       <h3 className="text-base font-semibold mb-4">Filters</h3>
 
       {/* Retrieval Configuration */}
@@ -270,7 +270,7 @@ export const ChunkFilterSidebar = ({
         <div className="pt-4">
           <Label className="text-xs font-medium">Per-source Date Ranges</Label>
           <div className="space-y-2 mt-2">
-            {AVAILABLE_SOURCES.map((source) => {
+            {AVAILABLE_SOURCES.filter((s) => selectedSources.includes(s.id)).map((source) => {
               const ranges = sourceDateRanges?.[source.id] || {};
               return (
                 <div key={source.id} className="border rounded p-2">
