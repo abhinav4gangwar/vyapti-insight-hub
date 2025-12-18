@@ -39,8 +39,6 @@ const MODEL_OPTIONS = [
   { value: 'gpt-5-mini-2025-08-07', label: 'GPT 5 Mini (Moderate)' },
   { value: 'gpt-5-nano-2025-08-07', label: 'GPT 5 Nano (Cheap)' },
   { value: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', label: 'Claude Sonnet 4.5' },
-  { value: 'global.anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4' },
-  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
 ];

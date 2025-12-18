@@ -18,14 +18,6 @@ const ChunkCard = ({ chunk, documentTitle, sourceType }: any) => {
           <Badge variant="outline" className="text-xs">
             Rank #{chunk.global_rank}
           </Badge>
-          <Badge variant="secondary" className="text-xs">
-            Score: {chunk.score.toFixed(3)}
-          </Badge>
-          {chunk.rerank_score && (
-            <Badge variant="secondary" className="text-xs">
-              Rerank: {chunk.rerank_score.toFixed(3)}
-            </Badge>
-          )}
         </div>
         <Badge className="text-xs">{sourceType}</Badge>
       </div>
