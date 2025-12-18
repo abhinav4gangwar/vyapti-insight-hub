@@ -129,6 +129,8 @@ const CompanySection = ({ company }: { company: CompanyGroup }) => {
 };
 
 export const ChunkResultsSection = ({ searchResults, isLoading }: ChunkResultsSectionProps) => {
+  const [companyFilter, setCompanyFilter] = useState<string>('all');
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -153,6 +155,22 @@ export const ChunkResultsSection = ({ searchResults, isLoading }: ChunkResultsSe
       </div>
     );
   }
+
+  const companyOptions = searchResults.grouped_results.map((c) => c.company_name);
+
+  const filteredGroupedResults = searchResults.grouped_results
+    .filter((c) => (companyFilter === 'all' ? true : c.company_name === companyFilter))
+    .map((c) => {
+      const documents: DocumentGroup[] = c.documents.map((doc) => {
+        const chunks = [...doc.chunks];
+        return { ...doc, chunks };
+      });
+      const chunk_count = documents.reduce((sum, d) => sum + d.chunks.length, 0);
+      return { ...c, documents, chunk_count } as CompanyGroup;
+    });
+
+  const totalChunks = filteredGroupedResults.reduce((s, c) => s + c.documents.reduce((sd, d) => sd + d.chunks.length, 0), 0);
+  const totalCompanies = filteredGroupedResults.length;
 
   return (
     <div className="space-y-6">
@@ -186,14 +204,29 @@ export const ChunkResultsSection = ({ searchResults, isLoading }: ChunkResultsSe
         )}
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <label className="text-sm">Company</label>
+          <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="text-sm h-8 rounded border px-2">
+            <option value="all">All companies</option>
+            {companyOptions.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
+
+        <button onClick={() => { setCompanyFilter('all'); }} className="text-sm text-blue-500">Clear Filters</button>
+      </div>
+
       {/* Results */}
       <div className="space-y-6">
-        {searchResults.grouped_results.map((company) => (
+        {filteredGroupedResults.map((company) => (
           <CompanySection key={company.normalized_name} company={company} />
         ))}
       </div>
 
-      {searchResults.grouped_results.length === 0 && (
+      {filteredGroupedResults.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No results found</p>
         </div>
