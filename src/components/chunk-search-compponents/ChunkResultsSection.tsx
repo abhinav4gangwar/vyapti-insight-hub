@@ -144,9 +144,10 @@ const CompanySection = ({ company }: { company: CompanyGroup }) => {
 };
 
 export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuses, queries }: ChunkResultsSectionProps) => {
-  const [companyFilter, setCompanyFilter] = useState<string>('all');
+  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(new Set());
   const [showQueries, setShowQueries] = useState(false);
   const [showComponents, setShowComponents] = useState(false);
+  const [showCompanyFilter, setShowCompanyFilter] = useState(false);
 
   // Auto-expand processing pipeline when loading starts
   useEffect(() => {
@@ -348,24 +349,81 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm">Company</label>
-              <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="text-sm h-8 rounded border px-2">
-                <option value="all">All companies</option>
-                {searchResults.grouped_results.map((c) => c.company_name).map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCompanyFilter(!showCompanyFilter)}
+                className="flex items-center gap-2 text-sm px-3 py-2 rounded border hover:bg-gray-50"
+              >
+                <span>Filter by Company</span>
+                {selectedCompanies.size > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {selectedCompanies.size}
+                  </Badge>
+                )}
+                <span>{showCompanyFilter ? '▼' : '▶'}</span>
+              </button>
+
+              {selectedCompanies.size > 0 && (
+                <button
+                  onClick={() => setSelectedCompanies(new Set())}
+                  className="text-sm text-blue-500 hover:text-blue-600"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
 
-            <button onClick={() => { setCompanyFilter('all'); }} className="text-sm text-blue-500">Clear Filters</button>
+            {showCompanyFilter && (
+              <div className="border rounded-lg p-4 bg-gray-50 space-y-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Select Companies:</span>
+                  <button
+                    onClick={() => {
+                      if (selectedCompanies.size === searchResults.grouped_results.length) {
+                        setSelectedCompanies(new Set());
+                      } else {
+                        setSelectedCompanies(new Set(searchResults.grouped_results.map(c => c.company_name)));
+                      }
+                    }}
+                    className="text-xs text-blue-500 hover:text-blue-600"
+                  >
+                    {selectedCompanies.size === searchResults.grouped_results.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                  {searchResults.grouped_results.map((company) => (
+                    <label
+                      key={company.normalized_name}
+                      className="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCompanies.has(company.company_name)}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedCompanies);
+                          if (e.target.checked) {
+                            newSelected.add(company.company_name);
+                          } else {
+                            newSelected.delete(company.company_name);
+                          }
+                          setSelectedCompanies(newSelected);
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{company.company_name}</span>
+                      <span className="text-xs text-gray-500">({company.chunk_count})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Results */}
           <div className="space-y-6">
             {searchResults.grouped_results
-              .filter((c) => (companyFilter === 'all' ? true : c.company_name === companyFilter))
+              .filter((c) => (selectedCompanies.size === 0 ? true : selectedCompanies.has(c.company_name)))
               .map((company) => (
                 <CompanySection key={company.normalized_name} company={company} />
               ))}
@@ -373,7 +431,7 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
 
           
 
-          {searchResults.grouped_results.filter((c) => (companyFilter === 'all' ? true : c.company_name === companyFilter)).length === 0 && (
+          {searchResults.grouped_results.filter((c) => (selectedCompanies.size === 0 ? true : selectedCompanies.has(c.company_name))).length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No results found</p>
             </div>
