@@ -251,7 +251,6 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
                     <Loader2 className="w-6 h-6 animate-spin text-yellow-600 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-yellow-900">Processing next stage...</p>
-                      <p className="text-xs text-yellow-600 mt-1">Please wait while we complete the search</p>
                     </div>
                   </div>
                 )}
@@ -314,51 +313,7 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
         </Card>
       )}
 
-      {/* Cost Metrics */}
-      {!isLoading && searchResults?.openai_usage && searchResults.openai_usage.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>Cost Breakdown</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 w-full">
-              {searchResults.openai_usage.map((usage, idx) => (
-                <div key={idx} className="p-4 bg-amber-50 border border-amber-200 rounded-md w-full">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-amber-900">Model: {usage.model_key}</span>
-                      <span className="text-sm font-bold text-amber-900">{usage.cost}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-4 text-xs text-amber-800">
-                      <div>
-                        <span className="opacity-70">Input: </span>
-                        <span className="font-medium">{usage.prompt_tokens} tokens (${usage.input_cost.toFixed(6)})</span>
-                      </div>
-                      <div>
-                        <span className="opacity-70">Output: </span>
-                        <span className="font-medium">{usage.completion_tokens} tokens (${usage.output_cost.toFixed(6)})</span>
-                      </div>
-                      <div>
-                        <span className="opacity-70">Total: </span>
-                        <span className="font-medium">{usage.total_tokens} tokens</span>
-                      </div>
-                      {usage.component && (
-                        <div>
-                          <span className="opacity-70">Component: </span>
-                          <span className="font-medium">{usage.component}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
+      
       {/* Rest of the original content... */}
       {searchResults && (
         <>
@@ -416,6 +371,8 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
               ))}
           </div>
 
+          
+
           {searchResults.grouped_results.filter((c) => (companyFilter === 'all' ? true : c.company_name === companyFilter)).length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No results found</p>
@@ -423,6 +380,53 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
           )}
         </>
       )}
+
+      {/* Cost Metrics */}
+      {!isLoading && searchResults?.openai_usage && searchResults.openai_usage.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span>Cost Breakdown</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 w-full">
+              {searchResults.openai_usage.map((usage, idx) => (
+                <div key={idx} className="p-4 bg-amber-50 border border-amber-200 rounded-md w-full">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-amber-900">Model: {usage.model_key}</span>
+                      <span className="text-sm font-bold text-amber-900">{usage.cost}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-xs text-amber-800">
+                      <div>
+                        <span className="opacity-70">Input: </span>
+                        <span className="font-medium">{usage.prompt_tokens} tokens (${usage.input_cost.toFixed(6)})</span>
+                      </div>
+                      <div>
+                        <span className="opacity-70">Output: </span>
+                        <span className="font-medium">{usage.completion_tokens} tokens (${usage.output_cost.toFixed(6)})</span>
+                      </div>
+                      <div>
+                        <span className="opacity-70">Total: </span>
+                        <span className="font-medium">{usage.total_tokens} tokens</span>
+                      </div>
+                      {usage.component && (
+                        <div>
+                          <span className="opacity-70">Component: </span>
+                          <span className="font-medium">{usage.component}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
     </div>
   );
 };
