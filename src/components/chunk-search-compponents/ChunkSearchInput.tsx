@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { StreamingStatus } from '@/lib/chunk-search-api';
 import { Loader2, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -8,13 +10,19 @@ interface ChunkSearchInputProps {
   isLoading: boolean;
   clearSignal?: number;
   onClear?: () => void;
+  useStreaming?: boolean;
+  onStreamingToggle?: (enabled: boolean) => void;
+  streamingStatus?: StreamingStatus | null;
 }
 
 export const ChunkSearchInput = ({ 
   onSearch, 
   isLoading, 
   clearSignal = 0,
-  onClear 
+  onClear,
+  useStreaming = true,
+  onStreamingToggle,
+  streamingStatus
 }: ChunkSearchInputProps) => {
   const [query, setQuery] = useState('');
 
@@ -37,7 +45,7 @@ export const ChunkSearchInput = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
+    <form onSubmit={handleSubmit} className="relative space-y-3">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
@@ -72,6 +80,40 @@ export const ChunkSearchInput = ({
           </Button>
         </div>
       </div>
+
+      {onStreamingToggle && (
+        <div className="flex items-center gap-2 text-sm">
+          <Switch
+            checked={useStreaming}
+            onCheckedChange={onStreamingToggle}
+            disabled={isLoading}
+          />
+          <label className="cursor-pointer" onClick={() => !isLoading && onStreamingToggle(!useStreaming)}>
+            Enable streaming mode (real-time progress)
+          </label>
+        </div>
+      )}
+
+      {streamingStatus && (
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              {streamingStatus.step}
+            </span>
+            {streamingStatus.progress !== undefined && (
+              <span className="text-xs text-blue-700 dark:text-blue-300">
+                {Math.round(streamingStatus.progress * 100)}%
+              </span>
+            )}
+          </div>
+          {streamingStatus.message && (
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              {streamingStatus.message}
+            </p>
+          )}
+        </div>
+      )}
     </form>
   );
 };

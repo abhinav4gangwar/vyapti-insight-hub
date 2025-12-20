@@ -9,10 +9,11 @@ import { ChunkSearchRequest } from './chunk-search-types';
 
 
 const ChunkSearchPage = () => {
-  const { isLoading, searchResults, error, performSearch, clearResults } = useChunkSearch();
+  const { isLoading, searchResults, error, streamingStatus, performSearch, performStreamingSearch, clearResults } = useChunkSearch();
 
   const [clearSignal, setClearSignal] = useState(0);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
+  const [useStreaming, setUseStreaming] = useState(true);
 
   const [topK, setTopK] = useState(100);
   const [numExpansion, setNumExpansion] = useState(5);
@@ -56,7 +57,11 @@ const ChunkSearchPage = () => {
       params.source_date_ranges = sourceDateRanges;
     }
 
-    performSearch(params);
+    if (useStreaming) {
+      performStreamingSearch(params);
+    } else {
+      performSearch(params);
+    }
   };
 
   const handleClearSearch = () => {
@@ -92,6 +97,9 @@ const ChunkSearchPage = () => {
             isLoading={isLoading}
             clearSignal={clearSignal}
             onClear={handleClearSearch}
+            useStreaming={useStreaming}
+            onStreamingToggle={setUseStreaming}
+            streamingStatus={streamingStatus}
           />
         </div>
 

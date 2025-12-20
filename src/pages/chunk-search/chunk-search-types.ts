@@ -72,6 +72,13 @@ export interface ChunkSearchResponse {
   search_metadata: SearchMetadata;
 }
 
+export interface StreamingStatus {
+  step: string;
+  status: 'running' | 'completed' | 'error';
+  message?: string;
+  progress?: number;
+}
+
 export const AVAILABLE_SOURCES = [
   { id: 'earnings_calls_20_25', label: 'Earnings Calls' },
   { id: 'expert_interviews_embeddings', label: 'Expert Interviews' },
