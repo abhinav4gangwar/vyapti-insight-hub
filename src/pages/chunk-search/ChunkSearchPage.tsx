@@ -9,7 +9,7 @@ import { ChunkSearchRequest } from './chunk-search-types';
 
 
 const ChunkSearchPage = () => {
-  const { isLoading, searchResults, error, streamingStatus, performSearch, performStreamingSearch, clearResults } = useChunkSearch();
+  const { isLoading, searchResults, error, streamingStatus, componentStatuses, queries, performSearch, performStreamingSearch, clearResults } = useChunkSearch();
 
   const [clearSignal, setClearSignal] = useState(0);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
@@ -159,7 +159,12 @@ const ChunkSearchPage = () => {
           )}
 
           <div className="flex-1 min-w-0 h-full overflow-y-auto hide-scrollbar">
-            <ChunkResultsSection searchResults={searchResults} isLoading={isLoading} />
+            <ChunkResultsSection 
+              searchResults={searchResults} 
+              isLoading={isLoading}
+              componentStatuses={componentStatuses}
+              queries={queries}
+            />
           </div>
         </div>
       </main>

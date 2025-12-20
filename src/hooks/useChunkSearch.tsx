@@ -2,12 +2,27 @@ import { chunkSearch, chunkSearchStreaming, StreamingStatus } from '@/lib/chunk-
 import { ChunkSearchRequest, ChunkSearchResponse } from '@/pages/chunk-search/chunk-search-types';
 import { useCallback, useState } from 'react';
 
+interface ComponentStatus {
+  component: string;
+  status: 'completed';
+  execution_time_ms: number;
+  timestamp: number;
+}
+
+interface QueriesData {
+  extracted_query: string;
+  bm25_queries: string[];
+  semantic_queries: string[];
+  expansion_metadata: Record<string, unknown>;
+}
 
 export const useChunkSearch = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<ChunkSearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [streamingStatus, setStreamingStatus] = useState<StreamingStatus | null>(null);
+  const [componentStatuses, setComponentStatuses] = useState<ComponentStatus[]>([]);
+  const [queries, setQueries] = useState<QueriesData | null>(null);
 
   const performSearch = useCallback(async (params: ChunkSearchRequest) => {
     setIsLoading(true);
@@ -32,6 +47,8 @@ export const useChunkSearch = () => {
     setError(null);
     setStreamingStatus(null);
     setSearchResults(null);
+    setComponentStatuses([]);
+    setQueries(null);
 
     await chunkSearchStreaming(
       params,
@@ -47,6 +64,12 @@ export const useChunkSearch = () => {
         setError(errorMsg);
         setIsLoading(false);
         setStreamingStatus(null);
+      },
+      (componentStatus) => {
+        setComponentStatuses(prev => [...prev, componentStatus]);
+      },
+      (queriesData) => {
+        setQueries(queriesData);
       }
     );
   }, []);
@@ -62,6 +85,8 @@ export const useChunkSearch = () => {
     searchResults,
     error,
     streamingStatus,
+    componentStatuses,
+    queries,
     performSearch,
     performStreamingSearch,
     clearResults,

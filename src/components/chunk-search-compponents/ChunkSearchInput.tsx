@@ -101,9 +101,9 @@ export const ChunkSearchInput = ({
             <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
               {streamingStatus.step}
             </span>
-            {streamingStatus.progress !== undefined && (
+            {streamingStatus.executionTime !== undefined && (
               <span className="text-xs text-blue-700 dark:text-blue-300">
-                {Math.round(streamingStatus.progress * 100)}%
+                {streamingStatus.executionTime.toFixed(0)}ms
               </span>
             )}
           </div>

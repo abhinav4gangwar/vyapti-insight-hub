@@ -77,7 +77,9 @@ export const chunkSearchStreaming = async (
   params: ChunkSearchRequest,
   onStatus: (status: StreamingStatus) => void,
   onComplete: (response: ChunkSearchResponse) => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  onComponentStatus?: (status: ComponentStatusData) => void,
+  onQueries?: (queries: QueriesData) => void
 ): Promise<void> => {
   const token = getAuthToken();
   // FIXED: Add '/stream' to the endpoint path
@@ -133,6 +135,9 @@ export const chunkSearchStreaming = async (
                   status: 'completed',
                   executionTime: statusData.execution_time_ms,
                 });
+                if (onComponentStatus) {
+                  onComponentStatus(statusData);
+                }
                 break;
               }
               
@@ -143,6 +148,9 @@ export const chunkSearchStreaming = async (
                   status: 'completed',
                   message: `Expanded to ${queriesData.bm25_queries.length} BM25 queries and ${queriesData.semantic_queries.length} semantic queries`,
                 });
+                if (onQueries) {
+                  onQueries(queriesData);
+                }
                 break;
               }
               

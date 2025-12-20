@@ -66,10 +66,35 @@ export interface SearchMetadata {
   sources_searched: string[];
 }
 
+export interface OpenAIUsage {
+  model: string;
+  model_key: string;
+  rates_per_1m: {
+    input: number;
+    cached_input: number;
+    output: number;
+  };
+  cost: string;
+  cost_float: number;
+  input_cost: number;
+  cached_input_cost: number;
+  output_cost: number;
+  prompt_tokens: number;
+  cached_tokens: number;
+  non_cached_prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  reasoning_tokens: number;
+  cache_write_input_tokens: number;
+  cache_read_input_tokens: number;
+  component: string;
+}
+
 export interface ChunkSearchResponse {
   grouped_results: CompanyGroup[];
   query_info: QueryInfo;
   search_metadata: SearchMetadata;
+  openai_usage?: OpenAIUsage[];
 }
 
 export interface StreamingStatus {
