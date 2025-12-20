@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChunkSearchResponse, CompanyGroup, DocumentGroup } from '@/pages/chunk-search/chunk-search-types';
-import { CheckCircle, ExternalLink, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCircle, ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface ComponentStatus {
   component: string;
@@ -148,7 +148,14 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
   const [showQueries, setShowQueries] = useState(false);
   const [showComponents, setShowComponents] = useState(false);
 
-  if (isLoading) {
+  // Auto-expand processing pipeline when loading starts
+  useEffect(() => {
+    if (isLoading) {
+      setShowComponents(true);
+    }
+  }, [isLoading]);
+
+  if (isLoading && !componentStatuses) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-3">
@@ -159,7 +166,7 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
     );
   }
 
-  if (!searchResults) {
+  if (!searchResults && !isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-3">
@@ -173,24 +180,87 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
     );
   }
 
-  const companyOptions = searchResults.grouped_results.map((c) => c.company_name);
-
-  const filteredGroupedResults = searchResults.grouped_results
-    .filter((c) => (companyFilter === 'all' ? true : c.company_name === companyFilter))
-    .map((c) => {
-      const documents: DocumentGroup[] = c.documents.map((doc) => {
-        const chunks = [...doc.chunks];
-        return { ...doc, chunks };
-      });
-      const chunk_count = documents.reduce((sum, d) => sum + d.chunks.length, 0);
-      return { ...c, documents, chunk_count } as CompanyGroup;
-    });
-
-  const totalChunks = filteredGroupedResults.reduce((s, c) => s + c.documents.reduce((sd, d) => sd + d.chunks.length, 0), 0);
-  const totalCompanies = filteredGroupedResults.length;
-
   return (
     <div className="space-y-6">
+      {/* Processing Pipeline Section - Auto-expanded during loading */}
+      {(isLoading || (componentStatuses && componentStatuses.length > 0)) && (
+        <Card>
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <button
+              onClick={() => setShowComponents(!showComponents)}
+              className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
+            >
+              <CardTitle className="flex items-center gap-2 text-lg">
+                {isLoading && <Loader2 className="w-5 h-5 animate-spin text-blue-600" />}
+                Processing Pipeline
+                {componentStatuses && componentStatuses.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700">
+                    {componentStatuses.length} stages completed
+                  </Badge>
+                )}
+              </CardTitle>
+              <span className="text-gray-500 text-xl font-bold">
+                {showComponents ? '▼' : '▶'}
+              </span>
+            </button>
+          </CardHeader>
+          {showComponents && (
+            <CardContent className="pt-4">
+              <div className="space-y-2">
+                {isLoading && (!componentStatuses || componentStatuses.length === 0) && (
+                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border-2 border-blue-200 animate-pulse">
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900">Initializing search pipeline...</p>
+                      <p className="text-xs text-blue-600 mt-1">Preparing to process your query</p>
+                    </div>
+                  </div>
+                )}
+                {componentStatuses && componentStatuses.map((status, idx) => (
+                  <div 
+                    key={idx} 
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 shadow-sm hover:shadow-md transition-all duration-300"
+                    style={{ 
+                      animation: 'slideInFromTop 0.4s ease-out',
+                      animationDelay: `${idx * 100}ms`,
+                      animationFillMode: 'backwards'
+                    }}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex-shrink-0">
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-900">{status.component}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-gray-600">
+                            Completed in <span className="font-bold text-green-700">{status.execution_time_ms.toFixed(0)}ms</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge className="bg-green-500 text-white border-0 shadow-sm">
+                        ✓ Done
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {isLoading && componentStatuses && componentStatuses.length > 0 && (
+                  <div className="flex items-center gap-3 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+                    <Loader2 className="w-6 h-6 animate-spin text-yellow-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-yellow-900">Processing next stage...</p>
+                      <p className="text-xs text-yellow-600 mt-1">Please wait while we complete the search</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       {/* Queries Section */}
       {queries && (
         <Card>
@@ -238,50 +308,6 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
                     </div>
                   ))}
                 </div>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {/* Component Status Section */}
-      {componentStatuses && componentStatuses.length > 0 && (
-        <Card>
-          <CardHeader>
-            <button
-              onClick={() => setShowComponents(!showComponents)}
-              className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
-            >
-              <CardTitle className="flex items-center gap-2 text-lg">
-                Processing Pipeline
-              </CardTitle>
-              <span className="text-gray-500">
-                {showComponents ? '▼' : '▶'}
-              </span>
-            </button>
-          </CardHeader>
-          {showComponents && (
-            <CardContent>
-              <div className="space-y-2">
-                {componentStatuses.map((status, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="flex-shrink-0">
-                        {status.status === 'completed' && (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{status.component}</p>
-                      </div>
-                    </div>
-                    {status.execution_time_ms > 0 && (
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-900">{status.execution_time_ms.toFixed(0)}ms</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
               </div>
             </CardContent>
           )}
