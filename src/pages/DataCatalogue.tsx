@@ -11,8 +11,9 @@ import { authService } from '@/lib/auth';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 import { ColDef } from 'ag-grid-community';
-import { X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Search, ChevronLeft, ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
+import axios from 'axios';
 
 // Register ag-grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -29,6 +30,7 @@ interface Document {
   url: string;
   file_type: string;
   indexed: boolean;
+  screener_earnings_call_id?: number;
 }
 
 interface PaginationInfo {
@@ -84,6 +86,56 @@ export default function DataCatalogue() {
   // Sorting states
   const [sortBy, setSortBy] = useState('fetched_at');
   const [sortOrder, setSortOrder] = useState('desc');
+
+  // Track which documents are being analyzed
+  const [analyzingIds, setAnalyzingIds] = useState<Set<number>>(new Set());
+
+  // Function to trigger prompt analysis for an earnings call
+  const triggerPromptAnalysis = async (screenerEarningCallId: number) => {
+    setAnalyzingIds(prev => new Set(prev).add(screenerEarningCallId));
+
+    const aiApiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8006';
+
+    try {
+      const response = await axios.post(
+        `${aiApiBaseUrl}/api/prompt-triggers/analyze`,
+        {
+          screener_earning_call_id: screenerEarningCallId,
+          document_type: 'earnings_calls_20_25',
+          full_document_mode: true,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authService.getAccessToken()}`,
+          },
+        }
+      );
+
+      toast({
+        title: 'Analysis Complete',
+        description: 'Prompt trigger analysis completed successfully. Opening results...',
+      });
+
+      // Store analysis data in sessionStorage and open in new tab
+      const analysisKey = `analysis_${Date.now()}`;
+      sessionStorage.setItem(analysisKey, JSON.stringify(response.data));
+      window.open(`/analysis-results?key=${analysisKey}`, '_blank');
+    } catch (error: any) {
+      console.error('Failed to trigger prompt analysis:', error);
+      toast({
+        title: 'Analysis Failed',
+        description: error.response?.data?.detail || 'Failed to trigger prompt analysis. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAnalyzingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(screenerEarningCallId);
+        return newSet;
+      });
+    }
+  };
 
   // Fetch all companies on mount for client-side filtering
   useEffect(() => {
@@ -360,6 +412,46 @@ export default function DataCatalogue() {
           {params.value ? 'Yes' : 'No'}
         </Badge>
       ),
+    },
+    {
+      headerName: 'Actions',
+      sortable: false,
+      width: 120,
+      cellRenderer: (params: any) => {
+        // Only show for earnings calls that have a screener_earnings_call_id
+        if (params.data?.source_type !== 'earnings_call' || !params.data?.screener_earnings_call_id) {
+          return null;
+        }
+
+        const screenerEarningsCallId = params.data.screener_earnings_call_id;
+        const isAnalyzing = analyzingIds.has(screenerEarningsCallId);
+
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isAnalyzing) {
+                triggerPromptAnalysis(screenerEarningsCallId);
+              }
+            }}
+            disabled={isAnalyzing}
+            className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Trigger prompt analysis"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3 w-3" />
+                <span>Analyze</span>
+              </>
+            )}
+          </button>
+        );
+      },
     },
   ];
 

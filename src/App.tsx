@@ -23,9 +23,9 @@ import PromptRegistry from "./pages/PromptRegistry";
 import PromptTriggers from "./pages/PromptTriggers";
 import PromptTriggerDetails from "./pages/PromptTriggerDetails";
 import PromptTriggerQuestions from "./pages/PromptTriggerQuestions";
+import AnalysisResultsView from "./pages/AnalysisResultsView";
 import Settings from "./pages/Settings";
 import Triggers from "./pages/Triggers";
-import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
 import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-page";
 import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
@@ -100,6 +100,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <PromptTriggerDetails />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/analysis-results" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AnalysisResultsView />
               </DashboardLayout>
             </ProtectedRoute>
           } />
