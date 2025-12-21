@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sidebar';
 import { NAVIGATION_ITEMS } from '@/config/navigation';
 import { authService } from '@/lib/auth';
-import { ChevronLeft, ChevronRight, Search as SearchIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Search as SearchIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -72,6 +72,11 @@ export const AppSidebar = () => {
     navigate(href);
   };
 
+  const handleOpenInNewTab = (href: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the main button click
+    window.open(href, '_blank');
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -122,23 +127,36 @@ export const AppSidebar = () => {
 
                   return (
                     <SidebarMenuItem key={item.key}>
-                      <SidebarMenuButton
-                        onClick={() => handleNavigation(item.href)}
-                        isActive={isActive}
-                        tooltip={state === 'collapsed' ? item.label : undefined}
-                        className="relative"
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                        {showBadge && state === 'expanded' && (
-                          <Badge
-                            variant="default"
-                            className="ml-auto h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-accent text-white"
+                      <div className="flex items-center gap-1 w-full group/item">
+                        <SidebarMenuButton
+                          onClick={() => handleNavigation(item.href)}
+                          isActive={isActive}
+                          tooltip={state === 'collapsed' ? item.label : undefined}
+                          className="relative flex-1"
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span>{item.label}</span>
+                          {showBadge && state === 'expanded' && (
+                            <Badge
+                              variant="default"
+                              className="ml-auto h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-accent text-white"
+                            >
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </Badge>
+                          )}
+                        </SidebarMenuButton>
+                        {state === 'expanded' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleOpenInNewTab(item.href, e)}
+                            className="h-8 w-8 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0"
+                            aria-label={`Open ${item.label} in new tab`}
                           >
-                            {unreadCount > 99 ? '99+' : unreadCount}
-                          </Badge>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
                         )}
-                      </SidebarMenuButton>
+                      </div>
                     </SidebarMenuItem>
                   );
                 })
