@@ -15,14 +15,19 @@ const ChunkSearchPage = () => {
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
   const [useStreaming, setUseStreaming] = useState(true);
 
+  // Get current month and year
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11
+  const currentYear = currentDate.getFullYear();
+
   const [topK, setTopK] = useState(100);
   const [numExpansion, setNumExpansion] = useState(5);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.45);
   const [selectedSources, setSelectedSources] = useState<string[]>(['earnings_calls_20_25', 'expert_interviews_embeddings']);
-  const [fromMonth, setFromMonth] = useState<number | undefined>();
-  const [fromYear, setFromYear] = useState<number | undefined>();
-  const [toMonth, setToMonth] = useState<number | undefined>();
-  const [toYear, setToYear] = useState<number | undefined>();
+  const [fromMonth, setFromMonth] = useState<number | undefined>(1); // January
+  const [fromYear, setFromYear] = useState<number | undefined>(2020);
+  const [toMonth, setToMonth] = useState<number | undefined>(currentMonth);
+  const [toYear, setToYear] = useState<number | undefined>(currentYear);
   const [sourceDateRanges, setSourceDateRanges] = useState<Record<string, { from_month?: number; from_year?: number; to_month?: number; to_year?: number }>>({});
   const [selectedModel, setSelectedModel] = useState('global.anthropic.claude-sonnet-4-5-20250929-v1:0');
   const [enableReranking, setEnableReranking] = useState(true);
@@ -70,16 +75,20 @@ const ChunkSearchPage = () => {
   };
 
   const handleClearFilters = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+    
     setTopK(100);
     setNumExpansion(5);
     setSimilarityThreshold(0.45);
     setSelectedSources(['earnings_calls_20_25', 'expert_interviews_embeddings']);
-    setFromMonth(undefined);
-    setFromYear(undefined);
-    setToMonth(undefined);
-    setToYear(undefined);
+    setFromMonth(1); // January
+    setFromYear(2020);
+    setToMonth(currentMonth);
+    setToYear(currentYear);
     setSourceDateRanges({});
-    setSelectedModel('gpt-5-nano-2025-08-07');
+    setSelectedModel('global.anthropic.claude-sonnet-4-5-20250929-v1:0');
     setEnableReranking(true);
     setEnableQueryExtraction(true);
   };
