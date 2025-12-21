@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { StreamingStatus } from '@/lib/chunk-search-api';
 import { Loader2, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -81,18 +80,7 @@ export const ChunkSearchInput = ({
         </div>
       </div>
 
-      {onStreamingToggle && (
-        <div className="flex items-center gap-2 text-sm">
-          <Switch
-            checked={useStreaming}
-            onCheckedChange={onStreamingToggle}
-            disabled={isLoading}
-          />
-          <label className="cursor-pointer" onClick={() => !isLoading && onStreamingToggle(!useStreaming)}>
-            Enable streaming mode (real-time progress)
-          </label>
-        </div>
-      )}
+      
 
       {streamingStatus && (
         <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">

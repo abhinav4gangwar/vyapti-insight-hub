@@ -449,36 +449,45 @@ export const ChunkResultsSection = ({ searchResults, isLoading, componentStatuse
           </CardHeader>
           <CardContent>
             <div className="space-y-3 w-full">
-              {searchResults.openai_usage.map((usage, idx) => (
-                <div key={idx} className="p-4 bg-amber-50 border border-amber-200 rounded-md w-full">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-amber-900">Model: {usage.model_key}</span>
-                      <span className="text-sm font-bold text-amber-900">{usage.cost}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-4 text-xs text-amber-800">
-                      <div>
-                        <span className="opacity-70">Input: </span>
-                        <span className="font-medium">{usage.prompt_tokens} tokens (${usage.input_cost.toFixed(6)})</span>
-                      </div>
-                      <div>
-                        <span className="opacity-70">Output: </span>
-                        <span className="font-medium">{usage.completion_tokens} tokens (${usage.output_cost.toFixed(6)})</span>
-                      </div>
-                      <div>
-                        <span className="opacity-70">Total: </span>
-                        <span className="font-medium">{usage.total_tokens} tokens</span>
-                      </div>
-                      {usage.component && (
-                        <div>
-                          <span className="opacity-70">Component: </span>
-                          <span className="font-medium">{usage.component}</span>
+              {searchResults.openai_usage.map((usage, idx) => {
+                const USD_TO_INR = 90;
+                const totalCostUSD = usage.input_cost + usage.output_cost;
+                const totalCostINR = totalCostUSD * USD_TO_INR;
+                
+                return (
+                  <div key={idx} className="p-4 bg-amber-50 border border-amber-200 rounded-md w-full">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-amber-900">Model: {usage.model_key}</span>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-amber-900">${totalCostUSD.toFixed(6)}</div>
+                          <div className="text-xs font-semibold text-amber-700">₹{totalCostINR.toFixed(4)}</div>
                         </div>
-                      )}
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-xs text-amber-800">
+                        <div>
+                          <span className="opacity-70">Input: </span>
+                          <span className="font-medium">{usage.prompt_tokens} tokens (${usage.input_cost.toFixed(6)} / ₹{(usage.input_cost * USD_TO_INR).toFixed(4)})</span>
+                        </div>
+                        <div>
+                          <span className="opacity-70">Output: </span>
+                          <span className="font-medium">{usage.completion_tokens} tokens (${usage.output_cost.toFixed(6)} / ₹{(usage.output_cost * USD_TO_INR).toFixed(4)})</span>
+                        </div>
+                        <div>
+                          <span className="opacity-70">Total: </span>
+                          <span className="font-medium">{usage.total_tokens} tokens</span>
+                        </div>
+                        {usage.component && (
+                          <div>
+                            <span className="opacity-70">Component: </span>
+                            <span className="font-medium">{usage.component}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
