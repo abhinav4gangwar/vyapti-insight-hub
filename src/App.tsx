@@ -21,7 +21,8 @@ import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import PromptRegistry from "./pages/PromptRegistry";
 import PromptTriggers from "./pages/PromptTriggers";
-import PromptTriggerDetails from "./pages/PromptTriggerDetails";
+import DocumentDetails from "./pages/DocumentDetails";
+import PromptTriggerDetailsWrapper from "./pages/PromptTriggerDetailsWrapper";
 import PromptTriggerQuestions from "./pages/PromptTriggerQuestions";
 import AnalysisResultsView from "./pages/AnalysisResultsView";
 import Settings from "./pages/Settings";
@@ -99,7 +100,14 @@ const App = () => {
           <Route path="/prompt-triggers/:id" element={
             <ProtectedRoute>
               <DashboardLayout>
-                <PromptTriggerDetails />
+                <PromptTriggerDetailsWrapper />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/documents/:documentType/:id" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DocumentDetails />
               </DashboardLayout>
             </ProtectedRoute>
           } />

@@ -11,15 +11,17 @@ import { authService } from '@/lib/auth';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 import { ColDef } from 'ag-grid-community';
-import { X, Search, ChevronLeft, ChevronRight, Loader2, Sparkles } from 'lucide-react';
+import { X, Search, ChevronLeft, ChevronRight, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 import axios from 'axios';
+import { getDocumentUrl } from '@/lib/documents-api';
 
 // Register ag-grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface Document {
   id: number;
+  sebi_id?: number;
   ingestion_time: string;
   source_type: string;
   source: string;
@@ -346,6 +348,25 @@ export default function DataCatalogue() {
           );
         }
 
+        // For sebi_doc, investor_ppt, and earnings_call, navigate to document details page
+        if (params.value === 'sebi_doc' || params.value === 'investor_ppt' || params.value === 'earnings_call') {
+          // For SEBI docs, use sebi_id if available, otherwise fall back to id
+          const docId = params.value === 'sebi_doc'
+            ? (params.data.sebi_id || params.data.id)
+            : params.data.id;
+
+          return (
+            <button
+              onClick={() => window.open(getDocumentUrl(params.value, docId), '_blank')}
+              className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+            >
+              <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium cursor-pointer">
+                {getSourceTypeLabel(params.value)}
+              </Badge>
+            </button>
+          );
+        }
+
         // For other types, use external link
         return (
           <a
@@ -412,6 +433,37 @@ export default function DataCatalogue() {
           {params.value ? 'Yes' : 'No'}
         </Badge>
       ),
+    },
+    {
+      headerName: 'External URL',
+      sortable: false,
+      width: 120,
+      cellRenderer: (params: any) => {
+        // Only show for sebi_doc, investor_ppt, and earnings_call
+        if (params.data?.source_type !== 'sebi_doc' &&
+            params.data?.source_type !== 'investor_ppt' &&
+            params.data?.source_type !== 'earnings_call') {
+          return null;
+        }
+
+        if (!params.data?.url) {
+          return null;
+        }
+
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(params.data.url, '_blank');
+            }}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            title="Open PDF in new tab"
+          >
+            <ExternalLink className="h-3 w-3" />
+            <span>View PDF</span>
+          </button>
+        );
+      },
     },
     {
       headerName: 'Actions',

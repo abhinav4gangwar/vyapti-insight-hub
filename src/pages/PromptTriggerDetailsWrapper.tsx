@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +11,6 @@ import {
   Sparkles,
   FileText,
   Info,
-  ChevronLeft,
   ExternalLink,
   Calendar,
   Building2,
@@ -20,8 +19,8 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { getPromptTriggerDetail } from '@/lib/prompt-triggers-api';
-import type { PromptTriggerDetail, TriggerDetail, BucketCounts } from '@/types/prompt-triggers';
+import { authService } from '@/lib/auth';
+import type { PromptTriggerDetail, TriggerDetail } from '@/types/prompt-triggers';
 
 // Get confidence bar color based on value
 const getConfidenceColor = (confidence: number): string => {
@@ -37,25 +36,31 @@ const getConfidenceTextColor = (confidence: number): string => {
   return 'text-red-600';
 };
 
-export default function PromptTriggerDetails() {
+/**
+ * Wrapper component for legacy /prompt-triggers/:id route
+ * Fetches document from the old prompt-triggers API endpoint
+ * and displays it using the same UI as DocumentDetails
+ */
+export default function PromptTriggerDetailsWrapper() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [triggerDetail, setTriggerDetail] = useState<PromptTriggerDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    const fetchTriggerDetail = async () => {
+    const fetchPromptTriggerDetail = async () => {
       if (!id) return;
 
       try {
-        const data = await getPromptTriggerDetail(parseInt(id));
-        setTriggerDetail(data);
+        // Call the old prompt-triggers API endpoint
+        const client = authService.createAuthenticatedClient();
+        const response = await client.get(`/prompt-triggers/${id}`);
+        setTriggerDetail(response.data);
       } catch (error) {
         toast({
           title: 'Error',
-          description: 'Failed to load trigger details',
+          description: 'Failed to load document details',
           variant: 'destructive',
         });
       } finally {
@@ -63,7 +68,7 @@ export default function PromptTriggerDetails() {
       }
     };
 
-    fetchTriggerDetail();
+    fetchPromptTriggerDetail();
   }, [id]);
 
   const formatDate = (dateString: string) => {
@@ -88,20 +93,6 @@ export default function PromptTriggerDetails() {
     if (!text) return 'No quote available';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
-  };
-
-  // Get triggers grouped by bucket for display
-  const getTriggersByBucket = (): Record<string, TriggerDetail[]> => {
-    if (!triggerDetail?.triggers) return {};
-
-    const grouped: Record<string, TriggerDetail[]> = {};
-    triggerDetail.triggers.forEach((trigger) => {
-      if (!grouped[trigger.bucket]) {
-        grouped[trigger.bucket] = [];
-      }
-      grouped[trigger.bucket].push(trigger);
-    });
-    return grouped;
   };
 
   // Get only YES triggers
@@ -130,12 +121,8 @@ export default function PromptTriggerDetails() {
           <Card className="shadow-card border-0">
             <CardContent className="text-center py-16">
               <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h2 className="financial-heading mb-2">Trigger Not Found</h2>
-              <p className="financial-body mb-4">The requested trigger could not be found.</p>
-              <Button variant="outline" onClick={() => navigate('/prompt-triggers')}>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back to List
-              </Button>
+              <h2 className="financial-heading mb-2">Document Not Found</h2>
+              <p className="financial-body mb-4">The requested document could not be found.</p>
             </CardContent>
           </Card>
         </main>
@@ -148,23 +135,13 @@ export default function PromptTriggerDetails() {
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/prompt-triggers')}
-          className="mb-4"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back to Prompt Triggers
-        </Button>
-
         {/* Header */}
         <Card className="shadow-card border-0 mb-8 animate-fade-in">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="financial-heading text-2xl mb-2 flex items-center">
-                  <Sparkles className="h-6 w-6 mr-3 text-accent" />
+                  <FileText className="h-6 w-6 mr-3 text-accent" />
                   {triggerDetail.company_name}
                 </CardTitle>
                 <CardDescription className="financial-body">
@@ -395,14 +372,6 @@ export default function PromptTriggerDetails() {
                     <p className="financial-body">
                       No positive signals were identified in this document.
                     </p>
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate('/prompt-triggers')}
-                      className="mt-4"
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Back to List
-                    </Button>
                   </div>
                 )}
               </CardContent>

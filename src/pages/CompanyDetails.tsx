@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Building2, FileText, ExternalLink, Calendar, TrendingUp, BarChart3, FileSpreadsheet, Filter } from 'lucide-react';
+import { Building2, FileText, ExternalLink, Calendar, TrendingUp, BarChart3, FileSpreadsheet } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getDocumentUrl } from '@/lib/documents-api';
 
 
 interface EarningsCall {
@@ -71,6 +72,7 @@ interface ExpertInterview {
 
 interface SEBIDocument {
   id: number;
+  sebi_id?: number;
   date: string;
   url: string;
   title: string;
@@ -493,6 +495,16 @@ const formatDate = (dateString: string) => {
                               {formatDate(call.date)}
                             </div>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(getDocumentUrl('earnings_call', call.id), '_blank')}
+                              className="financial-body hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Details
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -500,8 +512,9 @@ const formatDate = (dateString: string) => {
                               className="financial-body hover:bg-accent hover:text-accent-foreground"
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
-                              View
+                              View PDF
                             </Button>
+                          </div>
                           </div>
                         ))}
                     </div>
@@ -614,15 +627,26 @@ const formatDate = (dateString: string) => {
                               {formatDate(presentation.date)}
                             </div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openDocument(presentation.url)}
-                            className="financial-body hover:bg-accent hover:text-accent-foreground"
-                          >
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            View
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(getDocumentUrl('investor_ppt', presentation.id), '_blank')}
+                              className="financial-body hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Details
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDocument(presentation.url)}
+                              className="financial-body hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View PDF
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -764,15 +788,26 @@ const formatDate = (dateString: string) => {
                               {formatDate(document.date)}
                             </div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(document.pdf_url, '_blank')}
-                            className="financial-body hover:bg-accent hover:text-accent-foreground"
-                          >
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            View PDF
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(getDocumentUrl('sebi_doc', document.sebi_id || document.id), '_blank')}
+                              className="financial-body hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Details
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(document.pdf_url, '_blank')}
+                              className="financial-body hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View PDF
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
