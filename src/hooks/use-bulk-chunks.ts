@@ -30,6 +30,7 @@ export interface EarningsCallChunkData extends BaseChunkData {
   primary_speaker_type?: string
   primary_speaker_role?: string
   section_guess?: string
+  screener_earning_call_id?: number
   speaker_spans?: Array<{
     start: number
     end: number

@@ -316,18 +316,18 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
               {chunkData.source_type === 'earnings_call' ? (
                 // Earnings Call Document Buttons - Two buttons: Details + External URL
                 <>
-                  {(chunkData as EarningsCallChunkData).id && (
-                    <Button
-                      onClick={() => {
-                        const id = Number((chunkData as EarningsCallChunkData).id);
-                        window.open(getDocumentUrl('earnings_call', id), '_blank');
-                      }}
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                    >
-                      <FileText className="h-4 w-4" />
-                      Document Details
-                    </Button>
-                  )}
+                  <Button
+                    onClick={() => {
+                      const earningsChunk = chunkData as EarningsCallChunkData;
+                      // Use screener_earning_call_id if available, otherwise fall back to id
+                      const earningCallId = Number(earningsChunk.screener_earning_call_id || earningsChunk.id);
+                      window.open(getDocumentUrl('earnings_call', earningCallId), '_blank');
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Document Details
+                  </Button>
                   {documentInfo?.pdf_url ? (
                     <Button onClick={handleViewFullDoc} variant="outline" className="flex items-center gap-2">
                       <ExternalLink className="h-4 w-4" />
