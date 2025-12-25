@@ -16,6 +16,20 @@ export async function getDocumentDetail(
   // The backend returns document_date and document_url, but frontend expects earning_call_date and earning_call_url
   const data = response.data;
 
+  // Flatten the buckets structure into a flat triggers array
+  // Backend returns: { buckets: [{ questions: [...] }] }
+  // Frontend expects: { triggers: [...] }
+  let triggers = [];
+  if (data.triggers) {
+    // If triggers already exists as flat array, use it
+    triggers = data.triggers;
+  } else if (data.buckets) {
+    // If data comes in buckets structure, flatten it
+    triggers = data.buckets.flatMap((bucket: any) =>
+      bucket.questions ? bucket.questions : []
+    );
+  }
+
   return {
     id: data.id,
     company_name: data.company_name,
@@ -27,7 +41,7 @@ export async function getDocumentDetail(
     created_at: data.created_at,
     total_triggers: data.total_triggers || 0,
     bucket_counts: data.bucket_counts || {},
-    triggers: data.triggers || [],
+    triggers: triggers,
   };
 }
 

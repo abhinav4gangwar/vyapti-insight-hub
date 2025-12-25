@@ -29,6 +29,30 @@ export interface PromptTrigger {
   created_at: string;
 }
 
+export interface UsageInfo {
+  model: string;
+  model_key: string;
+  rates_per_1m: {
+    input: number;
+    cached_input: number;
+    output: number;
+  };
+  cost: string;
+  cost_float: number;
+  input_cost: number;
+  cached_input_cost: number;
+  output_cost: number;
+  prompt_tokens: number;
+  cached_tokens: number;
+  non_cached_prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  reasoning_tokens: number;
+  cache_write_input_tokens: number;
+  cache_read_input_tokens: number;
+  note?: string;
+}
+
 export interface TriggerDetail {
   qid: number;
   bucket: string;
@@ -37,6 +61,15 @@ export interface TriggerDetail {
   quote: string | null;
   confidence: number;
   reasoning?: string;
+  processing_time_seconds?: number;
+  was_verified?: boolean;
+  verifier_model?: string | null;
+  initial_answer?: string | null;
+  verification_reasoning?: string | null;
+  usage?: UsageInfo;
+  verification_usage?: UsageInfo | null;
+  total_cost?: number;
+  error?: string | null;
 }
 
 export interface PromptTriggerDetail {

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Sparkles,
   FileText,
@@ -16,6 +17,8 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  Code,
+  Cpu,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -47,6 +50,8 @@ export default function PromptTriggerDetailsWrapper() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
+  const [jsonModalOpen, setJsonModalOpen] = useState(false);
+  const [selectedTrigger, setSelectedTrigger] = useState<TriggerDetail | null>(null);
 
   useEffect(() => {
     const fetchPromptTriggerDetail = async () => {
@@ -56,7 +61,25 @@ export default function PromptTriggerDetailsWrapper() {
         // Call the old prompt-triggers API endpoint
         const client = authService.createAuthenticatedClient();
         const response = await client.get(`/prompt-triggers/${id}`);
-        setTriggerDetail(response.data);
+        const data = response.data;
+
+        // Flatten the buckets structure if needed (same logic as documents-api.ts)
+        let triggers = [];
+        if (data.triggers) {
+          // If triggers already exists as flat array, use it
+          triggers = data.triggers;
+        } else if (data.buckets) {
+          // If data comes in buckets structure, flatten it
+          triggers = data.buckets.flatMap((bucket: any) =>
+            bucket.questions ? bucket.questions : []
+          );
+        }
+
+        // Set the flattened data
+        setTriggerDetail({
+          ...data,
+          triggers: triggers,
+        });
       } catch (error) {
         toast({
           title: 'Error',
@@ -99,6 +122,12 @@ export default function PromptTriggerDetailsWrapper() {
   const getYesTriggers = (): TriggerDetail[] => {
     if (!triggerDetail?.triggers) return [];
     return triggerDetail.triggers.filter((t) => t.answer.toLowerCase() === 'yes');
+  };
+
+  // Get only NO triggers
+  const getNoTriggers = (): TriggerDetail[] => {
+    if (!triggerDetail?.triggers) return [];
+    return triggerDetail.triggers.filter((t) => t.answer.toLowerCase() === 'no');
   };
 
   if (isLoading) {
@@ -282,15 +311,28 @@ export default function PromptTriggerDetailsWrapper() {
           <TabsContent value="triggers" className="space-y-6">
             <Card className="shadow-card border-0">
               <CardHeader>
-                <CardTitle className="financial-heading flex items-center justify-between">
-                  <span>Identified Triggers</span>
-                  <Badge variant="default" className="bg-accent">
-                    {yesTriggers.length} Triggers
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="financial-body">
-                  Questions answered with "Yes" indicating positive signals
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="financial-heading flex items-center gap-2">
+                      <span>Identified Triggers</span>
+                      <Badge variant="default" className="bg-accent">
+                        {yesTriggers.length} Triggers
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription className="financial-body mt-2">
+                      Questions answered with "Yes" indicating positive signals
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setJsonModalOpen(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Code className="h-4 w-4" />
+                    View Raw JSON
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {yesTriggers.length > 0 ? (
@@ -346,16 +388,59 @@ export default function PromptTriggerDetailsWrapper() {
                               <div className="space-y-4">
                                 <div>
                                   <h5 className="text-sm font-medium mb-2">Full Quote</h5>
-                                  <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                                  <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                     {trigger.quote || 'No quote available'}
                                   </p>
                                 </div>
                                 {trigger.reasoning && (
                                   <div>
                                     <h5 className="text-sm font-medium mb-2">Reasoning</h5>
-                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {trigger.reasoning}
                                     </p>
+                                  </div>
+                                )}
+                                {trigger.was_verified && trigger.verification_reasoning && (
+                                  <div>
+                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                      Verification Reasoning
+                                      <Badge variant="outline" className="text-xs">Verified</Badge>
+                                    </h5>
+                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                                      {trigger.verification_reasoning}
+                                    </p>
+                                  </div>
+                                )}
+                                {trigger.usage && (
+                                  <div>
+                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                      <Cpu className="h-4 w-4" />
+                                      Model Information
+                                    </h5>
+                                    <div className="bg-muted p-3 rounded-md space-y-2">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">Model:</span>
+                                        <code className="bg-background px-2 py-1 rounded text-xs">{trigger.usage.model}</code>
+                                      </div>
+                                      {trigger.was_verified && trigger.verifier_model && (
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-muted-foreground">Verifier Model:</span>
+                                          <code className="bg-background px-2 py-1 rounded text-xs">{trigger.verifier_model}</code>
+                                        </div>
+                                      )}
+                                      {trigger.processing_time_seconds !== undefined && (
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-muted-foreground">Processing Time:</span>
+                                          <span>{trigger.processing_time_seconds.toFixed(2)}s</span>
+                                        </div>
+                                      )}
+                                      {trigger.total_cost !== undefined && (
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-muted-foreground">Total Cost:</span>
+                                          <span>${trigger.total_cost.toFixed(6)}</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -376,9 +461,176 @@ export default function PromptTriggerDetailsWrapper() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Unidentified Triggers Section */}
+            {getNoTriggers().length > 0 && (
+              <Card className="shadow-card border-0">
+                <CardHeader>
+                  <CardTitle className="financial-heading flex items-center justify-between">
+                    <span>Unidentified Triggers</span>
+                    <Badge variant="secondary" className="bg-gray-500">
+                      {getNoTriggers().length} Questions
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="financial-body">
+                    Questions answered with "No" - signals not found in this document
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {getNoTriggers().map((trigger) => (
+                      <Collapsible key={trigger.qid}>
+                        <div className="border border-border rounded-lg overflow-hidden">
+                          <CollapsibleTrigger asChild>
+                            <div
+                              className="flex items-start justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-smooth cursor-pointer"
+                              onClick={() => toggleQuoteExpand(trigger.qid)}
+                            >
+                              <div className="flex-1 min-w-0 pr-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {trigger.bucket}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm font-medium mb-2">{trigger.question_text}</p>
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {truncateText(trigger.quote)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4 flex-shrink-0">
+                                {/* Confidence Bar */}
+                                <div className="flex items-center gap-2 min-w-[100px]">
+                                  <div className="w-16 h-2 rounded-full bg-gray-200 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all ${getConfidenceColor(
+                                        trigger.confidence
+                                      )}`}
+                                      style={{ width: `${trigger.confidence * 100}%` }}
+                                    />
+                                  </div>
+                                  <span
+                                    className={`text-xs font-medium ${getConfidenceTextColor(
+                                      trigger.confidence
+                                    )}`}
+                                  >
+                                    {Math.round(trigger.confidence * 100)}%
+                                  </span>
+                                </div>
+                                {expandedQuotes.has(trigger.qid) ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="p-4 bg-card border-t border-border">
+                              <div className="space-y-4">
+                                <div>
+                                  <h5 className="text-sm font-medium mb-2">Full Quote</h5>
+                                  <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                                    {trigger.quote || 'No quote available'}
+                                  </p>
+                                </div>
+                                {trigger.reasoning && (
+                                  <div>
+                                    <h5 className="text-sm font-medium mb-2">Analyzer Reasoning</h5>
+                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                                      {trigger.reasoning}
+                                    </p>
+                                  </div>
+                                )}
+                                {trigger.was_verified && trigger.verification_reasoning && (
+                                  <div>
+                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                      Verifier Reasoning
+                                      <Badge variant="outline" className="text-xs">Verified</Badge>
+                                    </h5>
+                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                                      {trigger.verification_reasoning}
+                                    </p>
+                                  </div>
+                                )}
+                                {trigger.usage && (
+                                  <div>
+                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                      <Cpu className="h-4 w-4" />
+                                      Model Information
+                                    </h5>
+                                    <div className="bg-muted p-3 rounded-md space-y-2">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">Model:</span>
+                                        <code className="bg-background px-2 py-1 rounded text-xs">{trigger.usage.model}</code>
+                                      </div>
+                                      {trigger.was_verified && trigger.verifier_model && (
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-muted-foreground">Verifier Model:</span>
+                                          <code className="bg-background px-2 py-1 rounded text-xs">{trigger.verifier_model}</code>
+                                        </div>
+                                      )}
+                                      {trigger.processing_time_seconds !== undefined && (
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-muted-foreground">Processing Time:</span>
+                                          <span>{trigger.processing_time_seconds.toFixed(2)}s</span>
+                                        </div>
+                                      )}
+                                      {trigger.total_cost !== undefined && (
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-muted-foreground">Total Cost:</span>
+                                          <span>${trigger.total_cost.toFixed(6)}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* JSON Modal */}
+      <Dialog open={jsonModalOpen} onOpenChange={setJsonModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Code className="h-5 w-5" />
+              Raw JSON Data - Full Document
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <pre className="bg-muted p-4 rounded-md overflow-x-auto text-xs">
+              {triggerDetail && JSON.stringify(triggerDetail, null, 2)}
+            </pre>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (triggerDetail) {
+                  navigator.clipboard.writeText(JSON.stringify(triggerDetail, null, 2));
+                  toast({
+                    title: 'Copied!',
+                    description: 'JSON data copied to clipboard',
+                  });
+                }
+              }}
+            >
+              Copy to Clipboard
+            </Button>
+            <Button onClick={() => setJsonModalOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

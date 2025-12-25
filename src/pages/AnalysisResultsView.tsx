@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Sparkles,
   FileText,
@@ -15,7 +16,10 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  Code,
+  Cpu,
 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 // Types for the analysis API response
@@ -78,6 +82,7 @@ export default function AnalysisResultsView() {
   const [analysisData, setAnalysisData] = useState<AnalysisResponse | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
+  const [jsonModalOpen, setJsonModalOpen] = useState(false);
 
   useEffect(() => {
     // Get the analysis data from sessionStorage using the key from URL
@@ -134,6 +139,21 @@ export default function AnalysisResultsView() {
       });
     });
     return yesTriggers;
+  };
+
+  // Get all NO triggers across all buckets
+  const getNoTriggers = (): { bucket: string; question: QuestionResult }[] => {
+    if (!analysisData?.buckets) return [];
+
+    const noTriggers: { bucket: string; question: QuestionResult }[] = [];
+    analysisData.buckets.forEach((bucket) => {
+      bucket.questions.forEach((q) => {
+        if (q.answer.toLowerCase() === 'no') {
+          noTriggers.push({ bucket: bucket.bucket_name, question: q });
+        }
+      });
+    });
+    return noTriggers;
   };
 
   // Get bucket counts
@@ -339,15 +359,28 @@ export default function AnalysisResultsView() {
           <TabsContent value="triggers" className="space-y-6">
             <Card className="shadow-card border-0">
               <CardHeader>
-                <CardTitle className="financial-heading flex items-center justify-between">
-                  <span>Identified Triggers</span>
-                  <Badge variant="default" className="bg-accent">
-                    {yesTriggers.length} Triggers
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="financial-body">
-                  Questions answered with "Yes" indicating positive signals
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="financial-heading flex items-center gap-2">
+                      <span>Identified Triggers</span>
+                      <Badge variant="default" className="bg-accent">
+                        {yesTriggers.length} Triggers
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription className="financial-body mt-2">
+                      Questions answered with "Yes" indicating positive signals
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setJsonModalOpen(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Code className="h-4 w-4" />
+                    View Raw JSON
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {yesTriggers.length > 0 ? (
@@ -420,19 +453,36 @@ export default function AnalysisResultsView() {
                                     </p>
                                   </div>
                                 )}
-                                {question.verification_reasoning && (
+                                {question.was_verified && question.verification_reasoning && (
                                   <div>
-                                    <h5 className="text-sm font-medium mb-2">Verification Reasoning</h5>
+                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                      Verification Reasoning
+                                      <Badge variant="outline" className="text-xs">Verified</Badge>
+                                    </h5>
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {question.verification_reasoning}
                                     </p>
                                   </div>
                                 )}
-                                <div className="flex gap-4 text-xs text-muted-foreground">
-                                  <span>Processing time: {question.processing_time_seconds.toFixed(2)}s</span>
-                                  {question.verifier_model && (
-                                    <span>Verifier: {question.verifier_model.split('.').pop()}</span>
-                                  )}
+                                <div>
+                                  <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                    <Cpu className="h-4 w-4" />
+                                    Model Information
+                                  </h5>
+                                  <div className="bg-muted p-3 rounded-md space-y-2">
+                                    {question.was_verified && question.verifier_model && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">Verifier Model:</span>
+                                        <code className="bg-background px-2 py-1 rounded text-xs">{question.verifier_model}</code>
+                                      </div>
+                                    )}
+                                    {question.processing_time_seconds !== undefined && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">Processing Time:</span>
+                                        <span>{question.processing_time_seconds.toFixed(2)}s</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -442,27 +492,172 @@ export default function AnalysisResultsView() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16">
-                    <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="financial-subheading mb-2">No Triggers Found</h3>
-                    <p className="financial-body">
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">
                       No positive signals were identified in this document.
                     </p>
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate('/data-catalogue')}
-                      className="mt-4"
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Back to Data Catalogue
-                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Unidentified Triggers Section */}
+            {getNoTriggers().length > 0 && (
+              <Card className="shadow-card border-0">
+                <CardHeader>
+                  <CardTitle className="financial-heading flex items-center justify-between">
+                    <span>Unidentified Triggers</span>
+                    <Badge variant="secondary" className="bg-gray-500">
+                      {getNoTriggers().length} Questions
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="financial-body">
+                    Questions answered with "No" - signals not found in this document
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {getNoTriggers().map(({ bucket, question }) => (
+                      <Collapsible key={question.question_id}>
+                        <div className="border border-border rounded-lg overflow-hidden">
+                          <CollapsibleTrigger asChild>
+                            <div
+                              className="flex items-start justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-smooth cursor-pointer"
+                              onClick={() => toggleQuoteExpand(question.question_id)}
+                            >
+                              <div className="flex-1 min-w-0 pr-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {bucket}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm font-medium mb-2">{question.question}</p>
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {truncateText(question.quote)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4 flex-shrink-0">
+                                {/* Confidence Bar */}
+                                <div className="flex items-center gap-2 min-w-[100px]">
+                                  <div className="w-16 h-2 rounded-full bg-gray-200 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all ${getConfidenceColor(
+                                        question.confidence
+                                      )}`}
+                                      style={{ width: `${question.confidence * 100}%` }}
+                                    />
+                                  </div>
+                                  <span
+                                    className={`text-xs font-medium ${getConfidenceTextColor(
+                                      question.confidence
+                                    )}`}
+                                  >
+                                    {Math.round(question.confidence * 100)}%
+                                  </span>
+                                </div>
+                                {expandedQuotes.has(question.question_id) ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="p-4 bg-card border-t border-border">
+                              <div className="space-y-4">
+                                <div>
+                                  <h5 className="text-sm font-medium mb-2">Full Quote</h5>
+                                  <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                                    {question.quote || 'No quote available'}
+                                  </p>
+                                </div>
+                                {question.reasoning && (
+                                  <div>
+                                    <h5 className="text-sm font-medium mb-2">Analyzer Reasoning</h5>
+                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                                      {question.reasoning}
+                                    </p>
+                                  </div>
+                                )}
+                                {question.was_verified && question.verification_reasoning && (
+                                  <div>
+                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                      Verifier Reasoning
+                                      <Badge variant="outline" className="text-xs">Verified</Badge>
+                                    </h5>
+                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                                      {question.verification_reasoning}
+                                    </p>
+                                  </div>
+                                )}
+                                <div>
+                                  <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                    <Cpu className="h-4 w-4" />
+                                    Model Information
+                                  </h5>
+                                  <div className="bg-muted p-3 rounded-md space-y-2">
+                                    {question.was_verified && question.verifier_model && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">Verifier Model:</span>
+                                        <code className="bg-background px-2 py-1 rounded text-xs">{question.verifier_model}</code>
+                                      </div>
+                                    )}
+                                    {question.processing_time_seconds !== undefined && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">Processing Time:</span>
+                                        <span>{question.processing_time_seconds.toFixed(2)}s</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* JSON Modal */}
+      <Dialog open={jsonModalOpen} onOpenChange={setJsonModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Code className="h-5 w-5" />
+              Raw JSON Data - Full Document
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <pre className="bg-muted p-4 rounded-md overflow-x-auto text-xs">
+              {analysisData && JSON.stringify(analysisData, null, 2)}
+            </pre>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (analysisData) {
+                  navigator.clipboard.writeText(JSON.stringify(analysisData, null, 2));
+                  toast({
+                    title: 'Copied!',
+                    description: 'JSON data copied to clipboard',
+                  });
+                }
+              }}
+            >
+              Copy to Clipboard
+            </Button>
+            <Button onClick={() => setJsonModalOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
