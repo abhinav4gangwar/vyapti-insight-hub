@@ -1,3 +1,4 @@
+import { CompanyNotesManager } from '@/components/notes-components/company-note-manager';
 import { CompanyTagsManager } from '@/components/tags-components/company-tags-manager';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { authService } from '@/lib/auth';
 import { getDocumentUrl } from '@/lib/documents-api';
 import { Tag } from '@/lib/tags-api';
-import { BarChart3, Building2, Calendar, ExternalLink, FileSpreadsheet, FileText, TrendingUp } from 'lucide-react';
+import { BarChart3, Building2, Calendar, ExternalLink, FileSpreadsheet, FileText, StickyNote, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
@@ -360,20 +361,25 @@ const formatDate = (dateString: string) => {
 
         {/* Sub Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="documents" className="financial-body">
-              <FileText className="h-4 w-4 mr-2" />
-              Documents
-            </TabsTrigger>
-            <TabsTrigger value="pl" className="financial-body">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              P&L
-            </TabsTrigger>
-            <TabsTrigger value="analysis" className="financial-body">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Analysis
-            </TabsTrigger>
-          </TabsList>
+          <TabsList className="grid w-full grid-cols-4 mb-8">
+  <TabsTrigger value="documents" className="financial-body">
+    <FileText className="h-4 w-4 mr-2" />
+    Documents
+  </TabsTrigger>
+  
+  <TabsTrigger value="pl" className="financial-body">
+    <BarChart3 className="h-4 w-4 mr-2" />
+    P&L
+  </TabsTrigger>
+  <TabsTrigger value="analysis" className="financial-body">
+    <TrendingUp className="h-4 w-4 mr-2" />
+    Analysis
+  </TabsTrigger>
+  <TabsTrigger value="notes" className="financial-body">
+    <StickyNote className="h-4 w-4 mr-2" />
+    Notes
+  </TabsTrigger>
+</TabsList>
 
           <TabsContent value="pl" className="space-y-6">
             <Card className="shadow-card border-0">
@@ -835,6 +841,9 @@ const formatDate = (dateString: string) => {
               </Card>
             )}
           </TabsContent>
+          <TabsContent value="notes" className="space-y-6">
+  <CompanyNotesManager isin={companyData.isin} />
+</TabsContent>
         </Tabs>
       </main>
     </div>
