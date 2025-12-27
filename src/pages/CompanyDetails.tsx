@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CompanyTagsManager } from '@/components/tags-components/company-tags-manager';
 import { Badge } from '@/components/ui/badge';
-import { Building2, FileText, ExternalLink, Calendar, TrendingUp, BarChart3, FileSpreadsheet } from 'lucide-react';
-import { authService } from '@/lib/auth';
-import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
+import { authService } from '@/lib/auth';
 import { getDocumentUrl } from '@/lib/documents-api';
+import { Tag } from '@/lib/tags-api';
+import { BarChart3, Building2, Calendar, ExternalLink, FileSpreadsheet, FileText, TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 
 interface EarningsCall {
@@ -101,6 +103,7 @@ export default function CompanyDetails() {
   const [activeTab, setActiveTab] = useState('documents');
   const [activeDocTab, setActiveDocTab] = useState('earnings_calls');
   const [expertInterviewFilter, setExpertInterviewFilter] = useState<'k' | 't' | 'both'>('k');
+  const [companyTags, setCompanyTags] = useState<Tag[]>([]);
 
   // Helper function to get filtered expert interviews count
   const getFilteredExpertInterviewsCount = () => {
@@ -311,6 +314,14 @@ const formatDate = (dateString: string) => {
                     {companyData.earnings_calls.length} Documents
                   </Badge>
                 </div>
+
+                {/* Company Tags Section */}
+  <div className="mt-4 pt-4 border-t border-border">
+  <CompanyTagsManager 
+    isin={companyData.isin} 
+    onTagsUpdate={(tags) => setCompanyTags(tags)}
+  />
+</div>
               </div>
             </div>
           </CardHeader>
