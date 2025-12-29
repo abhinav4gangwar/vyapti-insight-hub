@@ -17,9 +17,9 @@ interface CatalogFiltersProps {
   minMarketCap?: number;
   maxMarketCap?: number;
   onMarketCapChange: (min?: number, max?: number) => void;
-  sortBy: 'name' | 'market_cap';
+  sortBy: 'name' | 'market_cap' | 'last_note_date';
   sortOrder: 'asc' | 'desc';
-  onSortChange: (sortBy: 'name' | 'market_cap', order: 'asc' | 'desc') => void;
+  onSortChange: (sortBy: 'name' | 'market_cap' | 'last_note_date', order: 'asc' | 'desc') => void;
 }
 
 export function CatalogFilters({
@@ -158,7 +158,7 @@ export function CatalogFilters({
         <Select
           value={`${sortBy}-${sortOrder}`}
           onValueChange={(value) => {
-            const [field, order] = value.split('-') as ['name' | 'market_cap', 'asc' | 'desc'];
+            const [field, order] = value.split('-') as ['name' | 'market_cap' | 'last_note_date', 'asc' | 'desc'];
             onSortChange(field, order);
           }}
         >
@@ -170,6 +170,8 @@ export function CatalogFilters({
             <SelectItem value="name-desc">Name (Z-A)</SelectItem>
             <SelectItem value="market_cap-desc">Market Cap (High-Low)</SelectItem>
             <SelectItem value="market_cap-asc">Market Cap (Low-High)</SelectItem>
+            <SelectItem value="last_note_date-desc">Last Note (Newest)</SelectItem>
+            <SelectItem value="last_note_date-asc">Last Note (Oldest)</SelectItem>
           </SelectContent>
         </Select>
 

@@ -35,6 +35,7 @@ export default function CompanyCatalog() {
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [selectedCompanyForAction, setSelectedCompanyForAction] = useState<CompanyCatalogItem | null>(null);
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -182,160 +183,170 @@ export default function CompanyCatalog() {
   const hasPrevPage = currentPage > 1;
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <Card className="shadow-card border-0 mb-6 animate-fade-in">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <CardTitle className="financial-heading text-2xl mb-2 flex items-center">
-                  <Building2 className="h-6 w-6 mr-3 text-accent" />
-                  Company Catalog
-                </CardTitle>
-                <CardDescription className="financial-body">
-                  Browse and manage all companies • Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalCompanies)} of {totalCompanies.toLocaleString()}
-                </CardDescription>
-              </div>
-              {selectedCompanies.size > 0 && (
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className="text-sm">
-                    {selectedCompanies.size} selected
-                  </Badge>
-                  <Button onClick={handleAddToWatchlist} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add to Watchlist
-                  </Button>
-                </div>
-              )}
+    <div className="min-h-screen bg-gradient-subtle flex flex-col">
+      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
+        <div className="flex gap-4 flex-1">
+          {/* Toggle Button for Filters */}
+          <div className="flex-shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+              className="h-10 w-10"
+              title={isFiltersExpanded ? 'Collapse filters' : 'Expand filters'}
+            >
+              {isFiltersExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          {/* Filter Sidebar */}
+          {isFiltersExpanded && (
+            <div className="w-64 flex-shrink-0 space-y-5">
+              <Card className="shadow-card border-0">
+                <CardContent>
+                  <CatalogFilters
+                    allTags={allTags}
+                    selectedTags={filters.tags || []}
+                    onTagsChange={(tags) => handleFilterChange({ tags })}
+                    searchQuery={filters.search || ''}
+                    onSearchChange={(search) => handleFilterChange({ search })}
+                    minMarketCap={filters.min_market_cap}
+                    maxMarketCap={filters.max_market_cap}
+                    onMarketCapChange={(min, max) =>
+                      handleFilterChange({ min_market_cap: min, max_market_cap: max })
+                    }
+                    sortBy={(filters.sort_by as 'name' | 'market_cap' | 'last_note_date') || 'name'}
+                    sortOrder={filters.order || 'asc'}
+                    onSortChange={(sort_by: 'name' | 'market_cap' | 'last_note_date', order: 'asc' | 'desc') => handleFilterChange({ sort_by, order })}
+                  />
+                </CardContent>
+              </Card>
             </div>
-          </CardHeader>
-        </Card>
+          )}
 
-        {/* Filters */}
-        <Card className="shadow-card border-0 mb-6">
-          <CardContent className="pt-6">
-            <CatalogFilters
-              allTags={allTags}
-              selectedTags={filters.tags || []}
-              onTagsChange={(tags) => handleFilterChange({ tags })}
-              searchQuery={filters.search || ''}
-              onSearchChange={(search) => handleFilterChange({ search })}
-              minMarketCap={filters.min_market_cap}
-              maxMarketCap={filters.max_market_cap}
-              onMarketCapChange={(min, max) =>
-                handleFilterChange({ min_market_cap: min, max_market_cap: max })
-              }
-              sortBy={filters.sort_by || 'name'}
-              sortOrder={filters.order || 'asc'}
-              onSortChange={(sort_by, order) => handleFilterChange({ sort_by, order })}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Pagination */}
-        {!isLoading && companies.length > 0 && (
-          <Card className="shadow-card border-0">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="financial-body text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages > 0 ? totalPages : '~'}
+          {/* Main Grid Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Header */}
+            <Card className="shadow-card border-0 mb-6 animate-fade-in">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="financial-heading text-2xl mb-2 flex items-center">
+                      <Building2 className="h-6 w-6 mr-3 text-accent" />
+                      Company Catalog
+                    </CardTitle>
+                    <CardDescription className="financial-body">
+                      Browse and manage all companies • Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalCompanies)} of {totalCompanies.toLocaleString()}
+                    </CardDescription>
+                  </div>
+                  {selectedCompanies.size > 0 && (
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-sm">
+                        {selectedCompanies.size} selected
+                      </Badge>
+                      <Button onClick={handleAddToWatchlist} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add to Watchlist
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={!hasPrevPage}
-                    className="gap-1"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={!hasNextPage}
-                    className="gap-1"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardHeader>
+            </Card>
 
-        {/* Table */}
-        <Card className="shadow-card border-0 mb-6">
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-8 space-y-4">
-                {[...Array(10)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : companies.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-secondary/30 border-b">
-                    <tr>
-                      <th className="p-4 text-left w-12">
-                        <Checkbox
-                          checked={
-                            companies.length > 0 &&
-                            selectedCompanies.size === companies.length
-                          }
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </th>
-                      <th className="p-4 text-left financial-subheading text-sm">
-                        Company
-                      </th>
-                      <th className="p-4 text-left financial-subheading text-sm">
-                        Tags
-                      </th>
-                      <th className="p-4 text-right financial-subheading text-sm">
-                        Market Cap
-                      </th>
-                      <th className="p-4 text-left financial-subheading text-sm">
-                        Last Note
-                      </th>
-                      <th className="p-4 text-left financial-subheading text-sm">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {companies.map((company) => (
-                      <CompanyTableRow
-                        key={company.isin}
-                        company={company}
-                        isSelected={selectedCompanies.has(company.isin)}
-                        onSelectionChange={(selected) =>
-                          handleCompanySelection(company.isin, selected)
-                        }
-                        onQuickAddTag={() => openQuickAddTag(company)}
-                        onQuickAddNote={() => openQuickAddNote(company)}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="financial-subheading mb-2">No Companies Found</h3>
-                <p className="financial-body">
-                  Try adjusting your filters to see more results
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            {/* Content - scrollable independently */}
+            <div className="flex-1 overflow-auto">
+              {/* Pagination */}
+              {!isLoading && companies.length > 0 && (
+                <Card className="shadow-card border-0 mb-6">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="financial-body text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages > 0 ? totalPages : '~'}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={!hasPrevPage}
+                          className="gap-1"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={!hasNextPage}
+                          className="gap-1"
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
+              {/* Table */}
+              <Card className="shadow-card border-0 mb-6">
+                <CardContent className="p-0">
+                  {isLoading ? (
+                    <div className="p-8 space-y-4">
+                      {[...Array(10)].map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : companies.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-secondary/30 border-b">
+                          <tr>
+                            <th className="p-4 text-left w-12">
+                              <Checkbox
+                                checked={
+                                  companies.length > 0 &&
+                                  selectedCompanies.size === companies.length
+                                }
+                                onCheckedChange={handleSelectAll}
+                              />
+                            </th>
+                            <th className="p-4 text-left financial-subheading text-sm">Company</th>
+                            <th className="p-4 text-left financial-subheading text-sm">Tags</th>
+                            <th className="p-4 text-right financial-subheading text-sm">Market Cap</th>
+                            <th className="p-4 text-left financial-subheading text-sm">Last Note</th>
+                            <th className="p-4 text-left financial-subheading text-sm">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {companies.map((company) => (
+                            <CompanyTableRow
+                              key={company.isin}
+                              company={company}
+                              isSelected={selectedCompanies.has(company.isin)}
+                              onSelectionChange={(selected) => handleCompanySelection(company.isin, selected)}
+                              onQuickAddTag={() => openQuickAddTag(company)}
+                              onQuickAddNote={() => openQuickAddNote(company)}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-16">
+                      <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="financial-subheading mb-2">No Companies Found</h3>
+                      <p className="financial-body">Try adjusting your filters to see more results</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
 
         {/* Quick Action Dialogs */}
         {selectedCompanyForAction && (

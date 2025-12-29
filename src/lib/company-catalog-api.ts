@@ -15,10 +15,18 @@ export interface CompanyCatalogFilters {
   min_market_cap?: number;
   max_market_cap?: number;
   search?: string;
-  sort_by?: 'name' | 'market_cap';
+  sort_by?: 'name' | 'market_cap' | 'last_note_date';
   order?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
+}
+
+export interface CompanyCatalogPaginatedResponse {
+  total: number;
+  page_size: number;
+  total_pages: number;
+  current_page: number;
+  items: CompanyCatalogItem[];
 }
 
 class CompanyCatalogApiClient {
@@ -29,7 +37,7 @@ class CompanyCatalogApiClient {
     },
   });
 
-  async getCompanies(filters?: CompanyCatalogFilters): Promise<CompanyCatalogItem[]> {
+  async getCompanies(filters?: CompanyCatalogFilters): Promise<CompanyCatalogItem[] | CompanyCatalogPaginatedResponse> {
     const params = new URLSearchParams();
     
     if (filters?.tags) {
@@ -57,7 +65,7 @@ class CompanyCatalogApiClient {
       params.append('offset', filters.offset.toString());
     }
 
-    const response = await this.client.get<CompanyCatalogItem[]>('/company-catalog', {
+    const response = await this.client.get<CompanyCatalogItem[] | CompanyCatalogPaginatedResponse>('/company-catalog', {
       params,
     });
     return response.data;
