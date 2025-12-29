@@ -11,7 +11,7 @@ import { CatalogFilters } from '@/components/company-catalog-components/catalog-
 import { CompanyTableRow } from '@/components/company-catalog-components/company-table-row';
 import { QuickAddNoteDialog, QuickAddTagDialog } from '@/components/company-catalog-components/quick-actions';
 import { Building2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const ITEMS_PER_PAGE = 100;
 
@@ -22,6 +22,7 @@ export default function CompanyCatalog() {
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCompanies, setTotalCompanies] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [filters, setFilters] = useState<CompanyCatalogFilters>({
     tags: [],
     sort_by: 'name',
@@ -39,10 +40,6 @@ export default function CompanyCatalog() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    loadCompanies();
-  }, [filters]);
-
   const loadData = async () => {
     try {
       const tagsData = await tagsApi.getAllTags();
@@ -57,18 +54,47 @@ export default function CompanyCatalog() {
     }
   };
 
-  const loadCompanies = async () => {
+  const loadCompanies = useCallback(async () => {
     try {
       setIsLoading(true);
-      const companiesData = await companyCatalogApi.getCompanies(filters);
-      setCompanies(companiesData);
-      
-      // Store total for pagination calculation
-      // Note: If API doesn't return total count, we estimate it
-      if (companiesData.length === ITEMS_PER_PAGE) {
-        setTotalCompanies((filters.offset || 0) + companiesData.length + 1);
+      const res = await companyCatalogApi.getCompanies(filters);
+
+      // If API returns legacy array response
+      if (Array.isArray(res)) {
+        const companiesData = res as CompanyCatalogItem[];
+        setCompanies(companiesData);
+
+        // Store total for pagination calculation (legacy estimation)
+        if (companiesData.length === ITEMS_PER_PAGE) {
+          setTotalCompanies((filters.offset || 0) + companiesData.length + 1);
+        } else {
+          setTotalCompanies((filters.offset || 0) + companiesData.length);
+        }
+
+        // Estimate total pages from available data
+        setTotalPages(Math.ceil(((filters.offset || 0) + companiesData.length) / ITEMS_PER_PAGE));
+      } else if (res && typeof res === 'object' && 'items' in res) {
+        // New paginated response shape
+        const payload = res as {
+          items?: CompanyCatalogItem[];
+          total?: number;
+          total_pages?: number;
+          current_page?: number;
+          page_size?: number;
+        };
+        setCompanies(payload.items || []);
+        setTotalCompanies(payload.total ?? ((filters.offset || 0) + (payload.items?.length ?? 0)));
+        setTotalPages(payload.total_pages ?? Math.ceil((payload.total ?? 0) / ITEMS_PER_PAGE));
+
+        // Align currentPage with API if provided
+        if (payload.current_page) {
+          setCurrentPage(payload.current_page);
+        }
       } else {
-        setTotalCompanies((filters.offset || 0) + companiesData.length);
+        // Fallback
+        setCompanies([]);
+        setTotalCompanies(0);
+        setTotalPages(0);
       }
     } catch (error) {
       console.error('Failed to load companies:', error);
@@ -80,7 +106,12 @@ export default function CompanyCatalog() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filters]);
+
+  // Trigger companies load when the loadCompanies callback changes
+  useEffect(() => {
+    loadCompanies();
+  }, [loadCompanies]);
 
   const handleFilterChange = (newFilters: Partial<CompanyCatalogFilters>) => {
     setFilters(prev => ({
@@ -147,8 +178,7 @@ export default function CompanyCatalog() {
     setAllTags(tagsData);
   };
 
-  const totalPages = Math.ceil(totalCompanies / ITEMS_PER_PAGE);
-  const hasNextPage = companies.length === ITEMS_PER_PAGE;
+  const hasNextPage = totalPages ? currentPage < totalPages : companies.length === ITEMS_PER_PAGE;
   const hasPrevPage = currentPage > 1;
 
   return (
@@ -202,6 +232,41 @@ export default function CompanyCatalog() {
             />
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {!isLoading && companies.length > 0 && (
+          <Card className="shadow-card border-0">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="financial-body text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages > 0 ? totalPages : '~'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={!hasPrevPage}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!hasNextPage}
+                    className="gap-1"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Table */}
         <Card className="shadow-card border-0 mb-6">
@@ -271,40 +336,6 @@ export default function CompanyCatalog() {
           </CardContent>
         </Card>
 
-        {/* Pagination */}
-        {!isLoading && companies.length > 0 && (
-          <Card className="shadow-card border-0">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="financial-body text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages > 0 ? totalPages : '~'}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={!hasPrevPage}
-                    className="gap-1"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={!hasNextPage}
-                    className="gap-1"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Quick Action Dialogs */}
         {selectedCompanyForAction && (
