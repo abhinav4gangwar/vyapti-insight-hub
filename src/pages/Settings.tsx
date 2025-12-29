@@ -9,6 +9,7 @@ export default function Settings() {
   const user = authService.getUser();
   const isAdmin = user?.username === "admin";
   const isPromptRegistryAuthorized = authService.isPromptRegistryAuthorized();
+  const isPromptTriggerQuestionsAuthorized = authService.isPromptTriggerQuestionsAuthorized();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,7 +83,7 @@ export default function Settings() {
           )}
 
           {/* Prompt Trigger Questions - Only for Authorized Users */}
-          {isPromptRegistryAuthorized && (
+          {isPromptTriggerQuestionsAuthorized && (
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/prompt-trigger-questions')}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">

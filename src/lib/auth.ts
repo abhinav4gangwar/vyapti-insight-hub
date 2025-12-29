@@ -150,6 +150,15 @@ class AuthService {
   }
 
   isPromptRegistryAuthorized(): boolean {
+    const authorizedUsers = ['admin', 'yajas', 'abhinav']
+      .map(u => u.toLowerCase());
+
+    return this.user
+      ? authorizedUsers.includes(this.user.username.toLowerCase())
+      : false;
+  }
+
+  isPromptTriggerQuestionsAuthorized(): boolean {
     const authorizedUsers = ['admin', 'yajas', 'abhinav', 'rishabh']
       .map(u => u.toLowerCase());
 

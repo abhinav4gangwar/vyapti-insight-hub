@@ -28,7 +28,8 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
 
   // Check if the selected model is a Gemini model
   const isGeminiModel = parameters.model?.toLowerCase().includes('gemini') || false
-  const maxTopK = isGeminiModel ? 1000 : 250
+  const maxTopK = isGeminiModel ? 1000 : 400
+  const maxCharacters = isGeminiModel ? 2000000 : 1000000
 
   // Validate source date ranges
   const validateSourceDateRanges = () => {
@@ -81,6 +82,13 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
       updateParameter('top_k', maxTopK)
     }
   }, [maxTopK, parameters.top_k, updateParameter])
+
+  // Adjust max_characters if it exceeds the new max when switching models
+  useEffect(() => {
+    if (parameters.max_characters > maxCharacters) {
+      updateParameter('max_characters', maxCharacters)
+    }
+  }, [maxCharacters, parameters.max_characters, updateParameter])
 
   return (
     <div className="space-y-4">
@@ -172,12 +180,12 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <Slider
                     value={[parameters.max_characters]}
                     onValueChange={(value) => updateParameter('max_characters', value[0])}
-                    max={1000000}
+                    max={maxCharacters}
                     min={10000}
                     step={5000}
                     className="w-full"
                   />
-                  <div className="text-xs text-gray-500">Maximum characters to include in context</div>
+                  <div className="text-xs text-gray-500">Maximum characters to include in context (max: {(maxCharacters / 1000000).toFixed(1)}M for {isGeminiModel ? 'Gemini' : 'other'} models)</div>
                 </div>
 
                 <div className="space-y-2">

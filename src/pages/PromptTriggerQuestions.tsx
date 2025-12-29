@@ -41,11 +41,8 @@ import {
   Pencil,
   Trash2,
   FolderPlus,
-  ArrowRight,
   Sparkles,
   History,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 import {
   getGroupsWithQuestions,
@@ -531,11 +528,7 @@ export default function PromptTriggerQuestions() {
                               onClick={() => handleToggleActive(question)}
                               title={question.is_active ? 'Deactivate' : 'Activate'}
                             >
-                              {question.is_active ? (
-                                <EyeOff className="h-3 w-3" />
-                              ) : (
-                                <Eye className="h-3 w-3" />
-                              )}
+                              <span className="text-xs">{question.is_active ? 'Deactivate' : 'Activate'}</span>
                             </Button>
                             <Button
                               variant="ghost"
@@ -549,7 +542,7 @@ export default function PromptTriggerQuestions() {
                               size="sm"
                               onClick={() => openMoveQuestion(question, group.name)}
                             >
-                              <ArrowRight className="h-3 w-3" />
+                              <span className="text-xs">Move</span>
                             </Button>
                             <Button
                               variant="ghost"
