@@ -397,11 +397,6 @@ export default function AnalysisResultsView() {
                                   <Badge variant="outline" className="text-xs">
                                     {bucket}
                                   </Badge>
-                                  {question.was_verified && (
-                                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                                      Verified
-                                    </Badge>
-                                  )}
                                 </div>
                                 <p className="text-sm font-medium mb-2">{question.question}</p>
                                 <p className="text-sm text-muted-foreground line-clamp-2">
@@ -454,9 +449,8 @@ export default function AnalysisResultsView() {
                                 )}
                                 {question.was_verified && question.verification_reasoning && (
                                   <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                    <h5 className="text-sm font-medium mb-2">
                                       Verification Reasoning
-                                      <Badge variant="outline" className="text-xs">Verified</Badge>
                                     </h5>
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {question.verification_reasoning}
@@ -561,9 +555,8 @@ export default function AnalysisResultsView() {
                                 )}
                                 {question.was_verified && question.verification_reasoning && (
                                   <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                    <h5 className="text-sm font-medium mb-2">
                                       Verifier Reasoning
-                                      <Badge variant="outline" className="text-xs">Verified</Badge>
                                     </h5>
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {question.verification_reasoning}

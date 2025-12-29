@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,25 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
 import {
-  ChevronLeft,
   ChevronDown,
   ChevronRight,
   Plus,
   Pencil,
-  Trash2,
   FolderPlus,
   Sparkles,
   History,
@@ -48,10 +37,8 @@ import {
   getGroupsWithQuestions,
   createQuestion,
   updateQuestion,
-  deleteQuestion,
   moveQuestion,
   renameGroup,
-  deleteGroup,
   toggleQuestionActiveStatus,
 } from '@/lib/prompt-triggers-api';
 import { QuestionHistoryDialog } from '@/components/QuestionHistoryDialog';
@@ -80,8 +67,6 @@ export default function PromptTriggerQuestions() {
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
   const [isRenameGroupOpen, setIsRenameGroupOpen] = useState(false);
   const [isMoveQuestionOpen, setIsMoveQuestionOpen] = useState(false);
-  const [isDeleteQuestionOpen, setIsDeleteQuestionOpen] = useState(false);
-  const [isDeleteGroupOpen, setIsDeleteGroupOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyQuestionId, setHistoryQuestionId] = useState<number | null>(null);
   const [historyQuestionText, setHistoryQuestionText] = useState('');
@@ -192,25 +177,6 @@ export default function PromptTriggerQuestions() {
     }
   };
 
-  // Delete Question
-  const handleDeleteQuestion = async () => {
-    if (!selectedQuestion) return;
-
-    try {
-      await deleteQuestion(selectedQuestion.id);
-      toast({ title: 'Success', description: 'Question deleted successfully' });
-      setIsDeleteQuestionOpen(false);
-      setSelectedQuestion(null);
-      fetchGroups();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete question',
-        variant: 'destructive',
-      });
-    }
-  };
-
   // Move Question
   const handleMoveQuestion = async () => {
     if (!selectedQuestion || !moveToGroup) return;
@@ -291,25 +257,6 @@ export default function PromptTriggerQuestions() {
     }
   };
 
-  // Delete Group
-  const handleDeleteGroup = async (deleteQuestions: boolean) => {
-    if (!selectedGroup) return;
-
-    try {
-      await deleteGroup(selectedGroup, deleteQuestions);
-      toast({ title: 'Success', description: 'Group deleted successfully' });
-      setIsDeleteGroupOpen(false);
-      setSelectedGroup('');
-      fetchGroups();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete group',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const resetForm = () => {
     setNewQuestionText('');
     setNewSourceShorthand('A');
@@ -337,16 +284,6 @@ export default function PromptTriggerQuestions() {
     setIsEditQuestionOpen(true);
   };
 
-  const openDeleteQuestion = (question: GroupWithQuestions['questions'][0], groupName: string) => {
-    setSelectedQuestion({
-      id: question.id,
-      question_text: question.question_text,
-      group_name: groupName,
-      source_shorthand: question.source_shorthand,
-    });
-    setIsDeleteQuestionOpen(true);
-  };
-
   const openMoveQuestion = (question: GroupWithQuestions['questions'][0], groupName: string) => {
     setSelectedQuestion({
       id: question.id,
@@ -362,11 +299,6 @@ export default function PromptTriggerQuestions() {
     setSelectedGroup(groupName);
     setRenameGroupNewName(groupName);
     setIsRenameGroupOpen(true);
-  };
-
-  const openDeleteGroup = (groupName: string) => {
-    setSelectedGroup(groupName);
-    setIsDeleteGroupOpen(true);
   };
 
   const openQuestionHistory = (question: GroupWithQuestions['questions'][0]) => {
@@ -415,25 +347,19 @@ export default function PromptTriggerQuestions() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Button variant="ghost" onClick={() => navigate('/settings')} className="mb-4">
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back to Settings
-        </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <h1 className="text-2xl font-bold text-gray-900">Prompt Trigger Questions</h1>
+          <p className="text-gray-600 mt-1">Manage questions and groups used for AI document analysis</p>
+        </div>
+      </header>
 
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="financial-heading text-3xl mb-2 flex items-center">
-              <Sparkles className="h-8 w-8 mr-3 text-accent" />
-              Prompt Trigger Questions
-            </h1>
-            <p className="financial-body">
-              Manage questions and groups used for AI document analysis
-            </p>
-          </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Add Group Button */}
+        <div className="mb-6 flex justify-end">
           <Button onClick={() => setIsAddGroupOpen(true)}>
             <FolderPlus className="h-4 w-4 mr-2" />
             Add New Group
@@ -443,26 +369,26 @@ export default function PromptTriggerQuestions() {
         {/* Groups List */}
         <div className="space-y-4">
           {groups.map((group) => (
-            <Card key={group.name} className="shadow-card border-0">
+            <Card key={group.name} className="hover:shadow-md transition-shadow">
               <Collapsible open={expandedGroups.has(group.name)}>
                 <CollapsibleTrigger asChild>
                   <CardHeader
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => toggleGroup(group.name)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {expandedGroups.has(group.name) ? (
-                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
                         ) : (
-                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
                         )}
-                        <CardTitle className="financial-heading text-lg">{group.name}</CardTitle>
+                        <h3 className="font-semibold text-gray-900">{group.name}</h3>
                         <Badge variant="outline">{group.question_count} questions</Badge>
                       </div>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => openAddQuestion(group.name)}
                         >
@@ -470,19 +396,11 @@ export default function PromptTriggerQuestions() {
                           Add Question
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => openRenameGroup(group.name)}
                         >
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openDeleteGroup(group.name)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -494,13 +412,13 @@ export default function PromptTriggerQuestions() {
                       {group.questions.map((question) => (
                         <div
                           key={question.id}
-                          className="flex items-start justify-between p-3 bg-secondary/30 rounded-lg"
+                          className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
                         >
                           <div className="flex-1 min-w-0 pr-4">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-sm">{question.question_text}</p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-sm text-gray-900">{question.question_text}</p>
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">
                                 {SOURCE_LABELS[question.source_shorthand]}
                               </Badge>
@@ -510,53 +428,47 @@ export default function PromptTriggerQuestions() {
                               >
                                 {question.is_active ? 'Active' : 'Inactive'}
                               </Badge>
-                              <span className="text-xs text-muted-foreground">v{question.version}</span>
+                              <span className="text-xs text-gray-500">v{question.version}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => openQuestionHistory(question)}
                               title="View History"
                             >
-                              <History className="h-3 w-3" />
+                              <History className="h-4 w-4 mr-1" />
+                              History
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleToggleActive(question)}
                               title={question.is_active ? 'Deactivate' : 'Activate'}
                             >
-                              <span className="text-xs">{question.is_active ? 'Deactivate' : 'Activate'}</span>
+                              {question.is_active ? 'Deactivate' : 'Activate'}
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => openEditQuestion(question, group.name)}
                             >
-                              <Pencil className="h-3 w-3" />
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Edit
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => openMoveQuestion(question, group.name)}
                             >
-                              <span className="text-xs">Move</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openDeleteQuestion(question, group.name)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3" />
+                              Move
                             </Button>
                           </div>
                         </div>
                       ))}
                       {group.questions.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">
+                        <p className="text-sm text-gray-600 text-center py-4">
                           No questions in this group
                         </p>
                       )}
@@ -568,17 +480,18 @@ export default function PromptTriggerQuestions() {
           ))}
 
           {groups.length === 0 && (
-            <div className="text-center py-16">
-              <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="financial-subheading mb-2">No Groups Found</h3>
-              <p className="financial-body mb-4">
-                Create your first group to start adding questions
-              </p>
-              <Button onClick={() => setIsAddGroupOpen(true)}>
-                <FolderPlus className="h-4 w-4 mr-2" />
-                Add New Group
-              </Button>
-            </div>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center">
+                <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-4">
+                  No groups available. Create your first group to start adding questions.
+                </p>
+                <Button onClick={() => setIsAddGroupOpen(true)}>
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Add New Group
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </div>
       </main>
@@ -593,10 +506,11 @@ export default function PromptTriggerQuestions() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Question Text</Label>
-              <Input
+              <Textarea
                 value={newQuestionText}
                 onChange={(e) => setNewQuestionText(e.target.value)}
                 placeholder="Enter the question..."
+                rows={4}
               />
             </div>
             <div className="space-y-2">
@@ -635,10 +549,11 @@ export default function PromptTriggerQuestions() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Question Text</Label>
-              <Input
+              <Textarea
                 value={newQuestionText}
                 onChange={(e) => setNewQuestionText(e.target.value)}
                 placeholder="Enter the question..."
+                rows={4}
               />
             </div>
             <div className="space-y-2">
@@ -687,10 +602,11 @@ export default function PromptTriggerQuestions() {
             </div>
             <div className="space-y-2">
               <Label>First Question</Label>
-              <Input
+              <Textarea
                 value={newQuestionText}
                 onChange={(e) => setNewQuestionText(e.target.value)}
                 placeholder="Enter the first question..."
+                rows={4}
               />
             </div>
             <div className="space-y-2">
@@ -781,48 +697,6 @@ export default function PromptTriggerQuestions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Question Alert */}
-      <AlertDialog open={isDeleteQuestionOpen} onOpenChange={setIsDeleteQuestionOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Question</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this question? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteQuestion}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Group Alert */}
-      <AlertDialog open={isDeleteGroupOpen} onOpenChange={setIsDeleteGroupOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Group "{selectedGroup}"</AlertDialogTitle>
-            <AlertDialogDescription>
-              What would you like to do with the questions in this group?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleDeleteGroup(true)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Group & Questions
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Question History Dialog */}
       <QuestionHistoryDialog
