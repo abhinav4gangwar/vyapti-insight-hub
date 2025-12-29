@@ -43,6 +43,9 @@ import {
   FolderPlus,
   ArrowRight,
   Sparkles,
+  History,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import {
   getGroupsWithQuestions,
@@ -52,7 +55,9 @@ import {
   moveQuestion,
   renameGroup,
   deleteGroup,
+  toggleQuestionActiveStatus,
 } from '@/lib/prompt-triggers-api';
+import { QuestionHistoryDialog } from '@/components/QuestionHistoryDialog';
 import type {
   GroupWithQuestions,
   PromptTriggerQuestion,
@@ -80,6 +85,9 @@ export default function PromptTriggerQuestions() {
   const [isMoveQuestionOpen, setIsMoveQuestionOpen] = useState(false);
   const [isDeleteQuestionOpen, setIsDeleteQuestionOpen] = useState(false);
   const [isDeleteGroupOpen, setIsDeleteGroupOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyQuestionId, setHistoryQuestionId] = useState<number | null>(null);
+  const [historyQuestionText, setHistoryQuestionText] = useState('');
 
   // Form states
   const [selectedGroup, setSelectedGroup] = useState<string>('');
@@ -364,6 +372,41 @@ export default function PromptTriggerQuestions() {
     setIsDeleteGroupOpen(true);
   };
 
+  const openQuestionHistory = (question: GroupWithQuestions['questions'][0]) => {
+    setHistoryQuestionId(question.id);
+    setHistoryQuestionText(question.question_text);
+    setIsHistoryOpen(true);
+  };
+
+  const handleToggleActive = async (question: GroupWithQuestions['questions'][0]) => {
+    const newStatus = !question.is_active;
+    const action = newStatus ? 'activated' : 'deactivated';
+    const actionVerb = newStatus ? 'Activate' : 'Deactivate';
+
+    try {
+      await toggleQuestionActiveStatus(question.id, {
+        is_active: newStatus,
+        reason: `Manual ${actionVerb.toLowerCase()} from UI`,
+      });
+
+      toast({
+        title: newStatus ? '✓ Question Activated' : '○ Question Deactivated',
+        description: newStatus
+          ? `"${question.question_text.substring(0, 50)}${question.question_text.length > 50 ? '...' : ''}" is now active and will be used.`
+          : `"${question.question_text.substring(0, 50)}${question.question_text.length > 50 ? '...' : ''}" is now inactive and will be skipped.`,
+        variant: newStatus ? 'default' : 'destructive',
+      });
+
+      fetchGroups();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: `Failed to ${actionVerb.toLowerCase()} question`,
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
@@ -457,12 +500,43 @@ export default function PromptTriggerQuestions() {
                           className="flex items-start justify-between p-3 bg-secondary/30 rounded-lg"
                         >
                           <div className="flex-1 min-w-0 pr-4">
-                            <p className="text-sm">{question.question_text}</p>
-                            <Badge variant="outline" className="mt-2 text-xs">
-                              {SOURCE_LABELS[question.source_shorthand]}
-                            </Badge>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm">{question.question_text}</p>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs">
+                                {SOURCE_LABELS[question.source_shorthand]}
+                              </Badge>
+                              <Badge
+                                variant={question.is_active ? 'default' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {question.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">v{question.version}</span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openQuestionHistory(question)}
+                              title="View History"
+                            >
+                              <History className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleActive(question)}
+                              title={question.is_active ? 'Deactivate' : 'Activate'}
+                            >
+                              {question.is_active ? (
+                                <EyeOff className="h-3 w-3" />
+                              ) : (
+                                <Eye className="h-3 w-3" />
+                              )}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -756,6 +830,15 @@ export default function PromptTriggerQuestions() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Question History Dialog */}
+      <QuestionHistoryDialog
+        questionId={historyQuestionId}
+        questionText={historyQuestionText}
+        open={isHistoryOpen}
+        onOpenChange={setIsHistoryOpen}
+        onRestored={fetchGroups}
+      />
     </div>
   );
 }

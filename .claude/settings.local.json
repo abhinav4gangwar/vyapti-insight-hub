@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat \"d:\\\\Repos\\\\vyapti-insight-hub\\\\db-migration-prompt-trigger-questions-history.sql\")"
+    ]
+  }
+}

@@ -7,6 +7,7 @@ import type {
   PromptTriggersParams,
   FilterParams,
   PromptTriggerQuestion,
+  PromptTriggerQuestionHistory,
   GroupInfo,
   GroupWithQuestions,
   CreateQuestionParams,
@@ -15,6 +16,8 @@ import type {
   RenameGroupResponse,
   DeleteGroupResponse,
   MoveQuestionParams,
+  RestoreQuestionParams,
+  ToggleActiveParams,
   SourceShorthand,
 } from '@/types/prompt-triggers';
 
@@ -232,6 +235,51 @@ export async function deleteGroup(
   const client = authService.createAuthenticatedClient();
   const response = await client.delete(
     `${QUESTIONS_BASE_URL}/groups/${encodeURIComponent(groupName)}?delete_questions=${deleteQuestions}`
+  );
+  return response.data;
+}
+
+// ============================================
+// NEW: History Management API
+// ============================================
+
+/**
+ * Get question history
+ */
+export async function getQuestionHistory(
+  questionId: number
+): Promise<PromptTriggerQuestionHistory[]> {
+  const client = authService.createAuthenticatedClient();
+  const response = await client.get(`${QUESTIONS_BASE_URL}/questions/${questionId}/history`);
+  return response.data;
+}
+
+/**
+ * Restore a question to a previous version
+ */
+export async function restoreQuestionVersion(
+  questionId: number,
+  params: RestoreQuestionParams
+): Promise<PromptTriggerQuestion> {
+  const client = authService.createAuthenticatedClient();
+  const response = await client.post(
+    `${QUESTIONS_BASE_URL}/questions/${questionId}/restore`,
+    params
+  );
+  return response.data;
+}
+
+/**
+ * Toggle question active status
+ */
+export async function toggleQuestionActiveStatus(
+  questionId: number,
+  params: ToggleActiveParams
+): Promise<PromptTriggerQuestion> {
+  const client = authService.createAuthenticatedClient();
+  const response = await client.post(
+    `${QUESTIONS_BASE_URL}/questions/${questionId}/toggle-active`,
+    params
   );
   return response.data;
 }

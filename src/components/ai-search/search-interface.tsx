@@ -26,6 +26,10 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
   const [dateValidationError, setDateValidationError] = useState<string | null>(null)
   const { parameters, updateParameter, resetToDefaults, hasChanges } = useAdvancedSettings()
 
+  // Check if the selected model is a Gemini model
+  const isGeminiModel = parameters.model?.toLowerCase().includes('gemini') || false
+  const maxTopK = isGeminiModel ? 1000 : 250
+
   // Validate source date ranges
   const validateSourceDateRanges = () => {
     for (const [source, range] of Object.entries(parameters.source_date_ranges)) {
@@ -70,6 +74,13 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
       setDateValidationError(null)
     }
   }, [parameters.source_date_ranges, dateValidationError])
+
+  // Adjust top_k if it exceeds the new max when switching models
+  useEffect(() => {
+    if (parameters.top_k > maxTopK) {
+      updateParameter('top_k', maxTopK)
+    }
+  }, [maxTopK, parameters.top_k, updateParameter])
 
   return (
     <div className="space-y-4">
@@ -144,12 +155,14 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                   <Slider
                     value={[parameters.top_k]}
                     onValueChange={(value) => updateParameter('top_k', value[0])}
-                    max={250}
+                    max={maxTopK}
                     min={1}
                     step={1}
                     className="w-full"
                   />
-                  <div className="text-xs text-gray-500">Controls how many search results to retrieve</div>
+                  <div className="text-xs text-gray-500">
+                    Controls how many search results to retrieve (max: {maxTopK} for {isGeminiModel ? 'Gemini' : 'other'} models)
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -444,7 +457,6 @@ export function SearchInterface({ onSearch, isLoading, debugMode, onDebugModeCha
                       <SelectItem value="gpt-5-mini-2025-08-07">GPT 5 Mini (Moderate)</SelectItem>
                       <SelectItem value="gpt-5-nano-2025-08-07">GPT 5 Nano (Cheap)</SelectItem>
                       <SelectItem value="global.anthropic.claude-sonnet-4-5-20250929-v1:0">Claude Sonnet 4.5</SelectItem>
-                      <SelectItem value="global.anthropic.claude-sonnet-4-20250514-v1:0">Claude Sonnet 4</SelectItem>
                       <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview</SelectItem>
                       <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
                       <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>

@@ -152,8 +152,12 @@ export interface PromptTriggerQuestion {
   question_text: string;
   group_name: string;
   source_shorthand: SourceShorthand;
+  version: number;
+  is_active: boolean;
   created_at: string;
-  modified_at: string;
+  created_by: string | null;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export interface GroupInfo {
@@ -181,6 +185,7 @@ export interface UpdateQuestionParams {
   question_text?: string;
   group_name?: string;
   source_shorthand?: SourceShorthand;
+  reason?: string;
 }
 
 export interface RenameGroupParams {
@@ -202,4 +207,30 @@ export interface DeleteGroupResponse {
 
 export interface MoveQuestionParams {
   new_group_name: string;
+}
+
+// History Tracking Types
+
+export interface PromptTriggerQuestionHistory {
+  id: number;
+  question_id: number;
+  question_text: string;
+  group_name: string;
+  source_shorthand: SourceShorthand;
+  version: number;
+  created_at: string;
+  created_by: string | null;
+  replaced_at: string;
+  replaced_by: string | null;
+  reason: string | null;
+}
+
+export interface RestoreQuestionParams {
+  history_id: number;
+  reason?: string;
+}
+
+export interface ToggleActiveParams {
+  is_active: boolean;
+  reason?: string;
 }
