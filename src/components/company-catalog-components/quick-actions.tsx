@@ -54,14 +54,15 @@ export function QuickAddTagDialog({
     : availableTags;
 
   const showCreateOption = searchValue.trim() && 
-    !allTags.some(tag => tag.name.toLowerCase() === searchValue.trim().toLowerCase());
+    !Object.values(mergedTagsById).some(tag => tag.name.toLowerCase() === searchValue.trim().toLowerCase());
 
-  const handleCreateNewTag = async () => {
-    if (!searchValue.trim()) return;
+  const handleCreateNewTag = async (value?: string) => {
+    const nameToCreate = (value ?? searchValue).trim();
+    if (!nameToCreate) return;
     
     setIsCreatingTag(true);
     try {
-      const newTag = await tagsApi.createTag(searchValue.trim());
+      const newTag = await tagsApi.createTag(nameToCreate);
       
       setSelectedTagIds(prev => [...prev, newTag.id]);
       setCreatedTags(prev => [...prev, newTag]);
@@ -189,7 +190,8 @@ export function QuickAddTagDialog({
                 {showCreateOption && !isCreatingTag && (
                   <CommandGroup>
                     <CommandItem
-                      onSelect={handleCreateNewTag}
+                      value={searchValue}
+                      onSelect={(value) => handleCreateNewTag(value)}
                       className="cursor-pointer bg-accent/50"
                     >
                       <Plus className="h-4 w-4 mr-2" />

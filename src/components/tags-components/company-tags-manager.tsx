@@ -115,12 +115,13 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
     }
   };
 
-  const handleCreateNewTag = async () => {
-    if (!searchValue.trim()) return;
+  const handleCreateNewTag = async (value?: string) => {
+    const nameToCreate = (value ?? searchValue).trim();
+    if (!nameToCreate) return;
     
     setIsCreatingTag(true);
     try {
-      const newTag = await tagsApi.createTag(searchValue.trim());
+      const newTag = await tagsApi.createTag(nameToCreate);
       setAllTags([...allTags, newTag]);
       await handleAddTag(newTag);
       toast({
@@ -328,7 +329,9 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
                     {showCreateOption && !isCreatingTag && (
                       <CommandGroup>
                         <CommandItem
-                          onSelect={handleCreateNewTag}
+                          value={searchValue}
+                          onSelect={(value) => handleCreateNewTag(value)}
+                          
                           className="cursor-pointer"
                         >
                           <Plus className="h-4 w-4 mr-2" />
