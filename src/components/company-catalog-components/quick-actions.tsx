@@ -39,8 +39,13 @@ export function QuickAddTagDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [createdTags, setCreatedTags] = useState<Tag[]>([]);
 
-  const availableTags = allTags.filter(tag => !currentTags.includes(tag.name));
+  const mergedTagsById = [...allTags, ...createdTags].reduce<Record<string, Tag>>((acc, t) => {
+    acc[t.id] = t;
+    return acc;
+  }, {});
+  const availableTags = Object.values(mergedTagsById).filter(tag => !currentTags.includes(tag.name));
   
   const filteredTags = searchValue
     ? availableTags.filter(tag =>
@@ -58,8 +63,8 @@ export function QuickAddTagDialog({
     try {
       const newTag = await tagsApi.createTag(searchValue.trim());
       
-      // Add the newly created tag to selection
       setSelectedTagIds(prev => [...prev, newTag.id]);
+      setCreatedTags(prev => [...prev, newTag]);
       
       toast({
         title: 'Tag Created',
@@ -67,6 +72,7 @@ export function QuickAddTagDialog({
       });
       
       setSearchValue('');
+      onTagsUpdated();
     } catch (error) {
       console.error('Failed to create tag:', error);
       toast({
@@ -115,6 +121,9 @@ export function QuickAddTagDialog({
 
   // Get tag name by ID (for selected tags display)
   const getTagById = (tagId: string) => {
+    // check locally created tags first, then parent-provided tags
+    const local = createdTags.find(t => t.id === tagId);
+    if (local) return local;
     return allTags.find(t => t.id === tagId);
   };
 

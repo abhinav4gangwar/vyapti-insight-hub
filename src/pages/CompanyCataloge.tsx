@@ -60,22 +60,22 @@ export default function CompanyCatalog() {
       setIsLoading(true);
       const res = await companyCatalogApi.getCompanies(filters);
 
-      // If API returns legacy array response
+      
       if (Array.isArray(res)) {
         const companiesData = res as CompanyCatalogItem[];
         setCompanies(companiesData);
 
-        // Store total for pagination calculation (legacy estimation)
+        
         if (companiesData.length === ITEMS_PER_PAGE) {
           setTotalCompanies((filters.offset || 0) + companiesData.length + 1);
         } else {
           setTotalCompanies((filters.offset || 0) + companiesData.length);
         }
 
-        // Estimate total pages from available data
+        
         setTotalPages(Math.ceil(((filters.offset || 0) + companiesData.length) / ITEMS_PER_PAGE));
       } else if (res && typeof res === 'object' && 'items' in res) {
-        // New paginated response shape
+        
         const payload = res as {
           items?: CompanyCatalogItem[];
           total?: number;
@@ -87,12 +87,12 @@ export default function CompanyCatalog() {
         setTotalCompanies(payload.total ?? ((filters.offset || 0) + (payload.items?.length ?? 0)));
         setTotalPages(payload.total_pages ?? Math.ceil((payload.total ?? 0) / ITEMS_PER_PAGE));
 
-        // Align currentPage with API if provided
+        
         if (payload.current_page) {
           setCurrentPage(payload.current_page);
         }
       } else {
-        // Fallback
+        
         setCompanies([]);
         setTotalCompanies(0);
         setTotalPages(0);
@@ -109,7 +109,7 @@ export default function CompanyCatalog() {
     }
   }, [filters]);
 
-  // Trigger companies load when the loadCompanies callback changes
+
   useEffect(() => {
     loadCompanies();
   }, [loadCompanies]);
@@ -118,10 +118,10 @@ export default function CompanyCatalog() {
     setFilters(prev => ({
       ...prev,
       ...newFilters,
-      offset: 0, // Reset pagination on filter change
+      offset: 0, 
     }));
     setCurrentPage(1);
-    setSelectedCompanies(new Set()); // Clear selection on filter change
+    setSelectedCompanies(new Set()); 
   };
 
   const handlePageChange = (newPage: number) => {
@@ -131,7 +131,7 @@ export default function CompanyCatalog() {
       offset: newOffset,
     }));
     setCurrentPage(newPage);
-    setSelectedCompanies(new Set()); // Clear selection on page change
+    setSelectedCompanies(new Set()); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -316,7 +316,7 @@ export default function CompanyCatalog() {
                             </th>
                             <th className="p-4 text-left financial-subheading text-sm">Company</th>
                             <th className="p-4 text-left financial-subheading text-sm">Tags</th>
-                            <th className="p-4 text-right financial-subheading text-sm">Market Cap</th>
+                            <th className="p-2 text-right financial-subheading text-sm">Market Cap</th>
                             <th className="p-4 text-left financial-subheading text-sm">Last Note</th>
                             <th className="p-4 text-left financial-subheading text-sm">Actions</th>
                           </tr>
