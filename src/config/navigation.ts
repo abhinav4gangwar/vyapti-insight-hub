@@ -32,12 +32,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     href: '/triggers',
     icon: BellRing,
   },
-  {
-    key: 'prompt-triggers',
-    label: 'Prompt Triggers',
-    href: '/prompt-triggers',
-    icon: Sparkles,
-  },
+  // {
+  //   key: 'prompt-triggers',
+  //   label: 'Prompt Triggers',
+  //   href: '/prompt-triggers',
+  //   icon: Sparkles,
+  // },
   {
     key: 'data-catalogue',
     label: 'Data Catalogue',
@@ -50,12 +50,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     href:"/dgtr-db",
     icon: Clipboard,
   },
-  {
-    key:'full-text-search',
-    label:"Full Text Search",
-    href:"/fts",
-    icon: TextSearch,
-  },
+  // {
+  //   key:'full-text-search',
+  //   label:"Full Text Search",
+  //   href:"/fts",
+  //   icon: TextSearch,
+  // },
   {
     key: 'notifications',
     label: 'Notifications',
