@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, Clipboard, Database, FileText, LucideIcon, Search, Settings, TextSearch, Sparkles } from 'lucide-react';
+import { Bell, BellRing, Building2, ChartNoAxesColumnIncreasing, Clipboard, Database, FileText, LucideIcon, Search, Settings, Sparkles, TextSearch } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -13,6 +13,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Company Search',
     href: '/dashboard',
     icon: Building2,
+  },
+  {
+    key: 'company-catalogue',
+    label: 'Company Catalogue',
+    href: '/company-catalogue',
+    icon: ChartNoAxesColumnIncreasing,
   },
   {
     key: 'expert-interviews',
