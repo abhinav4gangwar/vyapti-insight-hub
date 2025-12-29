@@ -254,13 +254,6 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
           >
             <TagIcon className="h-3 w-3" />
             {tag.name}
-            <button
-              onClick={() => handleRemoveTag(tag.id, tag.name)}
-              disabled={isLoading}
-              className="ml-1 hover:bg-muted rounded-sm p-0.5 transition-colors disabled:opacity-50"
-            >
-              <X className="h-3 w-3" />
-            </button>
           </Badge>
         ))}
         
