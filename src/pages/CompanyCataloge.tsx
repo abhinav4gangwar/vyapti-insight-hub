@@ -121,7 +121,6 @@ export default function CompanyCatalog() {
       offset: 0, 
     }));
     setCurrentPage(1);
-    setSelectedCompanies(new Set()); 
   };
 
   const handlePageChange = (newPage: number) => {
@@ -131,15 +130,22 @@ export default function CompanyCatalog() {
       offset: newOffset,
     }));
     setCurrentPage(newPage);
-    setSelectedCompanies(new Set()); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectAll = () => {
-    if (selectedCompanies.size === companies.length) {
-      setSelectedCompanies(new Set());
+   
+    const currentIsins = companies.map(c => c.isin);
+    const allVisibleSelected = currentIsins.length > 0 && currentIsins.every(isin => selectedCompanies.has(isin));
+    if (allVisibleSelected) {
+      
+      const newSelection = new Set(Array.from(selectedCompanies).filter(id => !currentIsins.includes(id)));
+      setSelectedCompanies(newSelection);
     } else {
-      setSelectedCompanies(new Set(companies.map(c => c.isin)));
+      
+      const newSelection = new Set(selectedCompanies);
+      currentIsins.forEach(isin => newSelection.add(isin));
+      setSelectedCompanies(newSelection);
     }
   };
 
@@ -309,9 +315,9 @@ export default function CompanyCatalog() {
                               <Checkbox
                                 checked={
                                   companies.length > 0 &&
-                                  selectedCompanies.size === companies.length
+                                  companies.every(c => selectedCompanies.has(c.isin))
                                 }
-                                onCheckedChange={handleSelectAll}
+                                onCheckedChange={() => handleSelectAll()}
                               />
                             </th>
                             <th className="p-4 text-left financial-subheading text-sm">Company</th>
