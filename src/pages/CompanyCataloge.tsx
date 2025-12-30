@@ -254,7 +254,7 @@ const addSelectedCompaniesToWatchlist = async () => {
   };
 
   const refreshCompanies = async () => {
-    await loadCompanies();
+    await Promise.all([loadCompanies(), loadData()]);
   };
 
   const hasNextPage = totalPages ? currentPage < totalPages : companies.length === ITEMS_PER_PAGE;

@@ -2,14 +2,14 @@ import { CatalogFilters } from '@/components/company-catalog-components/catalog-
 import { IndividualWatchlistRow } from '@/components/company-catalog-components/individual-watchlist-row';
 import { QuickAddNoteDialog, QuickAddTagDialog } from '@/components/company-catalog-components/quick-actions';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -149,7 +149,7 @@ const IndividualWatchlistPage = () => {
   };
 
   const refreshCompanies = async () => {
-    await loadCompanies();
+    await Promise.all([loadCompanies(), loadTags()]);
   };
 
   const confirmRemoveCompany = (isinToRemove: string) => {
