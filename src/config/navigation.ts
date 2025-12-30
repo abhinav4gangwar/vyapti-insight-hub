@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, ChartNoAxesColumnIncreasing, Clipboard, Database, FileText, LucideIcon, Search, Settings, Sparkles, TextSearch } from 'lucide-react';
+import { Bell, BellRing, Building2, ChartNoAxesColumnIncreasing, Clipboard, Database, FileText, LayoutList, LucideIcon, Search, Settings, Sparkles, TextSearch } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -49,6 +49,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Data Catalogue',
     href: '/data-catalogue',
     icon: Database,
+  },
+  {
+    key: 'custom-watchlists',
+    label: 'Custom Watchlists',
+    href: '/custom-watchlists',
+    icon: LayoutList,
   },
   {
     key:'anti-dumping-duties',

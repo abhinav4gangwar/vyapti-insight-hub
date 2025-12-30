@@ -11,7 +11,7 @@ import { Watchlist, watchlistsApi } from '@/lib/watchlist-api';
 import { CatalogFilters } from '@/components/company-catalog-components/catalog-filter';
 import { CompanyTableRow } from '@/components/company-catalog-components/company-table-row';
 import { QuickAddNoteDialog, QuickAddTagDialog } from '@/components/company-catalog-components/quick-actions';
-import { Building2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Building2, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 const ITEMS_PER_PAGE = 100;
@@ -46,6 +46,11 @@ export default function CompanyCatalog() {
   const [isCreatingWatchlist, setIsCreatingWatchlist] = useState(false);
   const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
   const [loadingWatchlists, setLoadingWatchlists] = useState(false);
+  const [watchlistSearch, setWatchlistSearch] = useState('');
+
+  const filteredWatchlists = watchlists.filter(w =>
+    w.name.toLowerCase().includes(watchlistSearch.trim().toLowerCase())
+  );
 
   useEffect(() => {
     loadData();
@@ -274,13 +279,21 @@ const addSelectedCompaniesToWatchlist = async () => {
               <div>
                 <div className="mb-2 text-sm font-medium">Existing Watchlists</div>
                 <div className="max-h-48 overflow-auto border rounded-md p-2">
+                  <div className="mb-2">
+                    <input
+                      className="w-full px-3 py-2 border rounded-md text-sm"
+                      placeholder="Search watchlists"
+                      value={watchlistSearch}
+                      onChange={(e) => setWatchlistSearch(e.target.value)}
+                    />
+                  </div>
                   {loadingWatchlists ? (
                     <div className="text-sm text-muted-foreground">Loading...</div>
-                  ) : watchlists.length === 0 ? (
+                  ) : filteredWatchlists.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No watchlists found</div>
                   ) : (
                     <ul className="space-y-2">
-                      {watchlists.map(w => (
+                      {filteredWatchlists.map(w => (
                         <li key={w.id} className="flex items-center justify-between">
                           <label className="flex items-center gap-3 cursor-pointer">
                             <input type="radio" name="watchlist" checked={selectedWatchlistId === w.id} onChange={() => setSelectedWatchlistId(w.id)} />
@@ -379,6 +392,9 @@ const addSelectedCompaniesToWatchlist = async () => {
                       <Badge variant="secondary" className="text-sm">
                         {selectedCompanies.size} selected
                       </Badge>
+                      <Button variant="ghost" size="icon" onClick={() => setSelectedCompanies(new Set())} title="Deselect all" className="h-8 w-8">
+                        <X />
+                      </Button>
                       <Button onClick={handleAddToWatchlist} className="gap-2">
                         <Plus className="h-4 w-4" />
                         Add to Watchlist
