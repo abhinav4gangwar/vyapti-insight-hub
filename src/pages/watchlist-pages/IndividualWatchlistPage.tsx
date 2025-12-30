@@ -1,5 +1,5 @@
 import { CatalogFilters } from '@/components/company-catalog-components/catalog-filter';
-import { CompanyTableRow } from '@/components/company-catalog-components/company-table-row';
+import { IndividualWatchlistRow } from '@/components/company-catalog-components/individual-watchlist-row';
 import { QuickAddNoteDialog, QuickAddTagDialog } from '@/components/company-catalog-components/quick-actions';
 import {
     AlertDialog,
@@ -25,7 +25,7 @@ import { useParams } from 'react-router-dom';
 const ITEMS_PER_PAGE = 100;
 
 const IndividualWatchlistPage = () => {
-  const { isin } = useParams(); // watchlist id param
+  const { isin } = useParams();
   const watchlistId = isin || '';
 
   const [companies, setCompanies] = useState<CompanyCatalogItem[]>([]);
@@ -295,11 +295,9 @@ const IndividualWatchlistPage = () => {
                         </thead>
                         <tbody>
                           {companies.map((company) => (
-                            <CompanyTableRow
+                            <IndividualWatchlistRow
                               key={company.isin}
                               company={company}
-                              isSelected={false}
-                              onSelectionChange={() => {}}
                               onQuickAddTag={() => openQuickAddTag(company)}
                               onQuickAddNote={() => openQuickAddNote(company)}
                               onRemoveFromWatchlist={() => confirmRemoveCompany(company.isin)}

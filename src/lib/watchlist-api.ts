@@ -82,7 +82,6 @@ class WatchlistsApiClient {
       offset?: number;
     }
   ): Promise<GetWatchlistCompaniesResponse> {
-    // Build params explicitly so arrays (tags) are sent as repeated params: tags=A&tags=B
     const params = new URLSearchParams();
     if (options) {
       if (options.search) params.append('search', options.search);
