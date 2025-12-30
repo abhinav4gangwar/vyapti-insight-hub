@@ -34,6 +34,7 @@ import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-p
 import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
 import FullTextSearch from "./pages/full-text-search/FullTextSearch";
 import CustomWatchlistPage from "./pages/watchlist-pages/CustomWatchlistPage";
+import IndividualWatchlistPage from "./pages/watchlist-pages/IndividualWatchlistPage";
 
 const queryClient = new QueryClient();
 
@@ -216,6 +217,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <CustomWatchlistPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/custom-watchlists/:isin" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <IndividualWatchlistPage />
               </DashboardLayout>
             </ProtectedRoute>
           } />

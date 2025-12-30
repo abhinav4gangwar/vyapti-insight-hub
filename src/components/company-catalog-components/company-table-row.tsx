@@ -11,6 +11,7 @@ interface CompanyTableRowProps {
   onSelectionChange: (selected: boolean) => void;
   onQuickAddTag: () => void;
   onQuickAddNote: () => void;
+  onRemoveFromWatchlist?: () => void;
 }
 
 export function CompanyTableRow({
@@ -19,6 +20,7 @@ export function CompanyTableRow({
   onSelectionChange,
   onQuickAddTag,
   onQuickAddNote,
+  onRemoveFromWatchlist,
 }: CompanyTableRowProps) {
   const formatMarketCap = (cap: number | null) => {
     if (!cap) return 'N/A';
@@ -121,6 +123,18 @@ export function CompanyTableRow({
             <StickyNote className="h-3 w-3" />
             Note
           </Button>
+          {onRemoveFromWatchlist && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveFromWatchlist();
+              }}
+            >
+              Remove
+            </Button>
+          )}
         </div>
       </td>
     </tr>

@@ -127,7 +127,7 @@ const CustomWatchlistPage = () => {
               {filtered.map(w => (
                 <div key={w.id} className="flex items-center justify-between border rounded-md p-3">
                   <div className="flex-1">
-                    <div className="font-medium">{w.name}</div>
+                    <a href={`/custom-watchlists/${w.id}`} target="_blank" rel="noreferrer" className="font-medium hover:underline">{w.name}</a>
                     <div className="text-sm text-muted-foreground">
                       Created: {new Date(w.created_at).toLocaleString()} • Updated: {new Date(w.updated_at).toLocaleString()}
                     </div>

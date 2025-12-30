@@ -20,6 +20,9 @@ export interface WatchlistCompany {
 
 export interface GetWatchlistCompaniesResponse {
   watchlist_id: string;
+  watchlist_name?: string;
+  created_at?: string;
+  updated_at?: string;
   companies: WatchlistCompany[];
 }
 
@@ -79,10 +82,21 @@ class WatchlistsApiClient {
       offset?: number;
     }
   ): Promise<GetWatchlistCompaniesResponse> {
-    // axios will serialize arrays as repeated params by default in many setups; this should work for tags=TagA&tags=TagB
+    // Build params explicitly so arrays (tags) are sent as repeated params: tags=A&tags=B
+    const params = new URLSearchParams();
+    if (options) {
+      if (options.search) params.append('search', options.search);
+      if (options.tags && options.tags.length > 0) {
+        options.tags.forEach(t => params.append('tags', t));
+      }
+      if (options.sort_by) params.append('sort_by', options.sort_by);
+      if (options.order) params.append('order', options.order);
+      if (options.limit !== undefined) params.append('limit', String(options.limit));
+      if (options.offset !== undefined) params.append('offset', String(options.offset));
+    }
+
     const response = await this.client.get<GetWatchlistCompaniesResponse>(`/watchlists/${watchlistId}`, {
-      params: options,
-      // If needed, a custom paramsSerializer can be added here.
+      params,
     });
     return response.data;
   }
