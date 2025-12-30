@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { companyCatalogApi, CompanyCatalogFilters, CompanyCatalogItem } from '@/lib/company-catalog-api';
 import { Tag, tagsApi } from '@/lib/tags-api';
+import { Watchlist, watchlistsApi } from '@/lib/watchlist-api';
 
 import { CatalogFilters } from '@/components/company-catalog-components/catalog-filter';
 import { CompanyTableRow } from '@/components/company-catalog-components/company-table-row';
@@ -36,6 +37,15 @@ export default function CompanyCatalog() {
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [selectedCompanyForAction, setSelectedCompanyForAction] = useState<CompanyCatalogItem | null>(null);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
+
+  // Watchlist dialog states
+  const [watchlistDialogOpen, setWatchlistDialogOpen] = useState(false);
+  const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
+  const [selectedWatchlistId, setSelectedWatchlistId] = useState<string | null>(null);
+  const [newWatchlistName, setNewWatchlistName] = useState('');
+  const [isCreatingWatchlist, setIsCreatingWatchlist] = useState(false);
+  const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
+  const [loadingWatchlists, setLoadingWatchlists] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -159,15 +169,75 @@ export default function CompanyCatalog() {
     setSelectedCompanies(newSelection);
   };
 
-  const handleAddToWatchlist = () => {
-    console.log('Adding to watchlist:', Array.from(selectedCompanies));
-    toast({
-      title: 'Added to Watchlist',
-      description: `${selectedCompanies.size} companies added to watchlist`,
-    });
-    setSelectedCompanies(new Set());
-  };
+const handleAddToWatchlist = () => {
+  openAddToWatchlistDialog();
+ };
 
+const openAddToWatchlistDialog = async () => {
+  if (selectedCompanies.size === 0) {
+    toast({ title: 'No companies selected', description: 'Select at least one company to add', variant: 'destructive' });
+    return;
+  }
+  setWatchlistDialogOpen(true);
+  await loadWatchlists();
+};
+
+const loadWatchlists = async () => {
+  try {
+    setLoadingWatchlists(true);
+    const data = await watchlistsApi.getAllWatchlists();
+    setWatchlists(data);
+    if (data.length > 0) setSelectedWatchlistId(data[0].id);
+  } catch (error) {
+    console.error('Failed to load watchlists:', error);
+    toast({ title: 'Error', description: 'Failed to load watchlists', variant: 'destructive' });
+  } finally {
+    setLoadingWatchlists(false);
+  }
+};
+
+const createWatchlistAndSelect = async () => {
+  const name = newWatchlistName.trim();
+  if (!name) {
+    toast({ title: 'Validation', description: 'Please enter a watchlist name', variant: 'destructive' });
+    return;
+  }
+  try {
+    setIsCreatingWatchlist(true);
+    const created = await watchlistsApi.createWatchlist(name);
+    setWatchlists(prev => [created, ...prev]);
+    setSelectedWatchlistId(created.id);
+    setNewWatchlistName('');
+    toast({ title: 'Watchlist created', description: `Created "${created.name}"` });
+  } catch (error) {
+    console.error('Failed to create watchlist:', error);
+    toast({ title: 'Error', description: 'Failed to create watchlist', variant: 'destructive' });
+  } finally {
+    setIsCreatingWatchlist(false);
+  }
+};
+
+const addSelectedCompaniesToWatchlist = async () => {
+  if (!selectedWatchlistId) {
+    toast({ title: 'Select watchlist', description: 'Please select a watchlist first', variant: 'destructive' });
+    return;
+  }
+  try {
+    setIsAddingToWatchlist(true);
+    const isins = Array.from(selectedCompanies);
+    const res = await watchlistsApi.addCompaniesToWatchlist(selectedWatchlistId, isins);
+    toast({ title: 'Added to Watchlist', description: `${res.added.length} added, ${res.ignored.length} ignored` });
+    setSelectedCompanies(new Set());
+    setWatchlistDialogOpen(false);
+  } catch (error) {
+    console.error('Failed to add companies to watchlist:', error);
+    toast({ title: 'Error', description: 'Failed to add companies to watchlist', variant: 'destructive' });
+  } finally {
+    setIsAddingToWatchlist(false);
+  }
+};
+
+  // Quick add helpers
   const openQuickAddTag = (company: CompanyCatalogItem) => {
     setSelectedCompanyForAction(company);
     setTagDialogOpen(true);
@@ -180,9 +250,6 @@ export default function CompanyCatalog() {
 
   const refreshCompanies = async () => {
     await loadCompanies();
-    // Refresh tags list in case new tags were created
-    const tagsData = await tagsApi.getAllTags();
-    setAllTags(tagsData);
   };
 
   const hasNextPage = totalPages ? currentPage < totalPages : companies.length === ITEMS_PER_PAGE;
@@ -190,6 +257,68 @@ export default function CompanyCatalog() {
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
+      {/* Watchlist modal */}
+      {watchlistDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setWatchlistDialogOpen(false)} />
+          <div className="bg-background w-full max-w-2xl mx-4 rounded-lg shadow-lg z-10 p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Add to Watchlist</h3>
+                <p className="text-sm text-muted-foreground">Select an existing watchlist or create a new one</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setWatchlistDialogOpen(false)}>×</Button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <div className="mb-2 text-sm font-medium">Existing Watchlists</div>
+                <div className="max-h-48 overflow-auto border rounded-md p-2">
+                  {loadingWatchlists ? (
+                    <div className="text-sm text-muted-foreground">Loading...</div>
+                  ) : watchlists.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No watchlists found</div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {watchlists.map(w => (
+                        <li key={w.id} className="flex items-center justify-between">
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input type="radio" name="watchlist" checked={selectedWatchlistId === w.id} onChange={() => setSelectedWatchlistId(w.id)} />
+                            <span className="text-md hover:font-semibold">{w.name}</span>
+                          </label>
+                          <span className="text-xs text-muted-foreground">{new Date(w.updated_at).toLocaleDateString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 text-sm font-medium">Create New Watchlist</div>
+                <div className="flex gap-2">
+                  <input
+                    className="input bg-transparent flex-1 px-3 py-2 border rounded-md"
+                    placeholder="Watchlist name"
+                    value={newWatchlistName}
+                    onChange={(e) => setNewWatchlistName(e.target.value)}
+                  />
+                  <Button onClick={createWatchlistAndSelect} disabled={isCreatingWatchlist}>
+                    {isCreatingWatchlist ? 'Creating...' : 'Create'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setWatchlistDialogOpen(false)}>Cancel</Button>
+              <Button onClick={addSelectedCompaniesToWatchlist} disabled={isAddingToWatchlist || selectedCompanies.size === 0}>
+                {isAddingToWatchlist ? 'Adding...' : `Add ${selectedCompanies.size} to Watchlist`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
         <div className="flex gap-4 flex-1">
           {/* Toggle Button for Filters */}
