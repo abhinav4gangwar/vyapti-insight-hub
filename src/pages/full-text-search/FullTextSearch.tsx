@@ -2,11 +2,12 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FilterSidebar } from "./components/FilterSidebar";
-import { ResultsSection } from "./components/ResultSection";
-import { SearchInput } from "./components/SearchInput";
+
+import { FilterSidebar } from "@/components/fts-components/FilterSidebar";
+import { ResultsSection } from "@/components/fts-components/ResultSection";
+import { SearchInput } from "@/components/fts-components/SearchInput";
+import { useFTSSearch } from "@/hooks/useFTSSearch";
 import { SearchMode, SourceType } from "./fts-types";
-import { useFTSSearch } from "./useFTSSearch";
 
 const FullTextSearch = () => {
     const {
@@ -68,7 +69,7 @@ const FullTextSearch = () => {
     });
   };
 
-  // Clear search: reset input and hide results
+  
   const handleClearSearch = () => {
     setClearSignal((s) => s + 1);
     setCleared(true);

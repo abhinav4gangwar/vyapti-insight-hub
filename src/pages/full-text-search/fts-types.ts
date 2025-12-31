@@ -1,4 +1,4 @@
-export type SearchMode = 'all_words' | 'any_word' | 'exact_phrase';
+export type SearchMode = 'all_words' | 'any_word' | 'exact_phrase' | 'literal';
 export type SourceType = 'earnings_call' | 'sebi_drhp' | 'expert_interview' | 'investor_presentation';
 
 export interface FTSSearchRequest {
