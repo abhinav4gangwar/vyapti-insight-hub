@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,14 +11,17 @@ import { authService } from '@/lib/auth';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 import { ColDef } from 'ag-grid-community';
-import { X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Search, ChevronLeft, ChevronRight, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
+import axios from 'axios';
+import { getDocumentUrl } from '@/lib/documents-api';
 
 // Register ag-grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface Document {
   id: number;
+  sebi_id?: number;
   ingestion_time: string;
   source_type: string;
   source: string;
@@ -28,6 +32,7 @@ interface Document {
   url: string;
   file_type: string;
   indexed: boolean;
+  screener_earnings_call_id?: number;
 }
 
 interface PaginationInfo {
@@ -46,6 +51,7 @@ interface FilterMetadata {
 }
 
 export default function DataCatalogue() {
+  const navigate = useNavigate();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,7 +73,7 @@ export default function DataCatalogue() {
   // Filter states
   const [dateFrom, setDateFrom] = useState<string>(getTodayDate());
   const [dateTo, setDateTo] = useState<string>(getTodayDate());
-  const [selectedSourceTypes, setSelectedSourceTypes] = useState<string[]>(['earnings_call', 'investor_ppt']);
+  const [selectedSourceTypes, setSelectedSourceTypes] = useState<string[]>(['earnings_call', 'investor_ppt', 'expert_interview', 'sebi_doc']);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedIndexed, setSelectedIndexed] = useState<string[]>(['true', 'false']);
   const [companySearch, setCompanySearch] = useState('');
@@ -83,19 +89,87 @@ export default function DataCatalogue() {
   const [sortBy, setSortBy] = useState('fetched_at');
   const [sortOrder, setSortOrder] = useState('desc');
 
+  // Track which documents are being analyzed
+  const [analyzingIds, setAnalyzingIds] = useState<Set<number>>(new Set());
+
+  // Function to trigger prompt analysis for an earnings call
+  const triggerPromptAnalysis = async (screenerEarningCallId: number) => {
+    setAnalyzingIds(prev => new Set(prev).add(screenerEarningCallId));
+
+    const aiApiBaseUrl = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8006';
+
+    try {
+      const response = await axios.post(
+        `${aiApiBaseUrl}/api/prompt-triggers/analyze`,
+        {
+          screener_earning_call_id: screenerEarningCallId,
+          document_type: 'earnings_calls_20_25',
+          full_document_mode: true,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authService.getAccessToken()}`,
+          },
+        }
+      );
+
+      toast({
+        title: 'Analysis Complete',
+        description: 'Prompt trigger analysis completed successfully. Opening results...',
+      });
+
+      // Store analysis data in sessionStorage and open in new tab
+      const analysisKey = `analysis_${Date.now()}`;
+      sessionStorage.setItem(analysisKey, JSON.stringify(response.data));
+      window.open(`/analysis-results?key=${analysisKey}`, '_blank');
+    } catch (error: any) {
+      console.error('Failed to trigger prompt analysis:', error);
+      toast({
+        title: 'Analysis Failed',
+        description: error.response?.data?.detail || 'Failed to trigger prompt analysis. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAnalyzingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(screenerEarningCallId);
+        return newSet;
+      });
+    }
+  };
+
   // Fetch all companies on mount for client-side filtering
   useEffect(() => {
     const fetchAllCompanies = async () => {
       try {
         const client = authService.createAuthenticatedClient();
-        const response = await client.get('/companies/names');
-        // Transform to match new interface - these are all listed companies
-        const listedCompanies = (response.data || []).map((company: any) => ({
+
+        // Fetch both listed and unlisted companies
+        const [listedResponse, unlistedResponse] = await Promise.all([
+          client.get('/companies/names'),
+          client.get('/companies/unlisted/names')
+        ]);
+
+        // Transform listed companies
+        const listedCompanies = (listedResponse.data || []).map((company: any) => ({
           isin: company.isin,
           name: company.name,
           isListed: true
         }));
-        setCompanyOptions(listedCompanies);
+
+        // Transform unlisted companies
+        const unlistedCompanies = (unlistedResponse.data || []).map((company: any) => ({
+          isin: company.name, // Use name as identifier for unlisted companies
+          name: company.name,
+          isListed: false
+        }));
+
+        // Combine and sort by name
+        const allCompanies = [...listedCompanies, ...unlistedCompanies]
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setCompanyOptions(allCompanies);
       } catch (error) {
         console.error('Failed to fetch companies:', error);
       }
@@ -129,9 +203,34 @@ export default function DataCatalogue() {
       if (selectedSourceTypes.length > 0) {
         params.append('source_types', selectedSourceTypes.join(','));
       }
+
+      // Separate listed and unlisted companies
       if (selectedCompanies.length > 0) {
-        params.append('companies', selectedCompanies.join(','));
+        const listedCompanies: string[] = [];
+        const unlistedCompanies: string[] = [];
+
+        selectedCompanies.forEach(companyId => {
+          const company = companyOptions.find(c => c.isin === companyId);
+          if (company) {
+            if (company.isListed) {
+              listedCompanies.push(company.isin);
+            } else {
+              unlistedCompanies.push(company.name);
+            }
+          }
+        });
+
+        // Add listed companies as ISINs
+        if (listedCompanies.length > 0) {
+          params.append('companies', listedCompanies.join(','));
+        }
+
+        // Add unlisted companies as names
+        if (unlistedCompanies.length > 0) {
+          params.append('company_names', unlistedCompanies.join(','));
+        }
       }
+
       if (selectedIndexed.length > 0) {
         params.append('indexed_status', selectedIndexed.join(','));
       }
@@ -148,7 +247,7 @@ export default function DataCatalogue() {
     } finally {
       setIsLoading(false);
     }
-  }, [dateFrom, dateTo, selectedSourceTypes, selectedCompanies, selectedIndexed, sortBy, sortOrder]);
+  }, [dateFrom, dateTo, selectedSourceTypes, selectedCompanies, selectedIndexed, sortBy, sortOrder, companyOptions]);
 
   useEffect(() => {
     fetchDocuments(currentPage);
@@ -182,7 +281,7 @@ export default function DataCatalogue() {
     const today = getTodayDate();
     setDateFrom(today);
     setDateTo(today);
-    setSelectedSourceTypes(['earnings_call', 'investor_ppt']);
+    setSelectedSourceTypes(['earnings_call', 'investor_ppt', 'expert_interview', 'sebi_doc']);
     setSelectedCompanies([]);
     setSelectedIndexed(['true', 'false']);
   };
@@ -218,22 +317,75 @@ export default function DataCatalogue() {
       field: 'source_type',
       headerName: 'Type',
       sortable: true,
-      width: 140,
-      cellRenderer: (params: any) => (
-              <a
-                href={params.data.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
-              >
-        <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium">
+      width: 160,
+      cellRenderer: (params: any) => {
+        const getSourceTypeLabel = (type: string) => {
+          switch (type) {
+            case 'earnings_call':
+              return 'Earnings Call';
+            case 'investor_ppt':
+              return 'Investor PPT';
+            case 'expert_interview':
+              return 'Expert Interview';
+            case 'sebi_doc':
+              return 'SEBI Doc';
+            default:
+              return type;
+          }
+        };
 
-                          {params.value === 'earnings_call' ? 'Earnings Call' : 'Investor PPT'}
-        </Badge>
+        // For expert interviews, open in new tab
+        if (params.value === 'expert_interview') {
+          return (
+            <button
+              onClick={() => window.open(`/expert-interviews/${params.data.id}`, '_blank')}
+              className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+            >
+              <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium cursor-pointer">
+                {getSourceTypeLabel(params.value)}
+              </Badge>
+            </button>
+          );
+        }
 
+        // For sebi_doc, investor_ppt, and earnings_call, navigate to document details page
+        if (params.value === 'sebi_doc' || params.value === 'investor_ppt' || params.value === 'earnings_call') {
+          // For SEBI docs, use sebi_id if available, otherwise fall back to id
+          const docId = params.value === 'sebi_doc'
+            ? (params.data.sebi_id || params.data.id)
+            : params.data.id;
 
-              </a>
-      ),
+          return (
+            <button
+              onClick={() => window.open(getDocumentUrl(params.value, docId), '_blank')}
+              className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+            >
+              <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium cursor-pointer">
+                {getSourceTypeLabel(params.value)}
+              </Badge>
+            </button>
+          );
+        }
+
+        // For other types, use external link
+        return (
+          <a
+            href={params.data.url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 hover:underline truncate font-medium"
+            onClick={(e) => {
+              if (!params.data.url) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <Badge variant="outline" className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate font-medium">
+              {getSourceTypeLabel(params.value)}
+            </Badge>
+          </a>
+        );
+      },
     },
     {
       field: 'date',
@@ -281,6 +433,77 @@ export default function DataCatalogue() {
           {params.value ? 'Yes' : 'No'}
         </Badge>
       ),
+    },
+    {
+      headerName: 'External URL',
+      sortable: false,
+      width: 120,
+      cellRenderer: (params: any) => {
+        // Only show for sebi_doc, investor_ppt, and earnings_call
+        if (params.data?.source_type !== 'sebi_doc' &&
+            params.data?.source_type !== 'investor_ppt' &&
+            params.data?.source_type !== 'earnings_call') {
+          return null;
+        }
+
+        if (!params.data?.url) {
+          return null;
+        }
+
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(params.data.url, '_blank');
+            }}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            title="Open PDF in new tab"
+          >
+            <ExternalLink className="h-3 w-3" />
+            <span>View PDF</span>
+          </button>
+        );
+      },
+    },
+    {
+      headerName: 'Actions',
+      sortable: false,
+      width: 120,
+      cellRenderer: (params: any) => {
+        // Only show for earnings calls that have a screener_earnings_call_id
+        if (params.data?.source_type !== 'earnings_call' || !params.data?.screener_earnings_call_id) {
+          return null;
+        }
+
+        const screenerEarningsCallId = params.data.screener_earnings_call_id;
+        const isAnalyzing = analyzingIds.has(screenerEarningsCallId);
+
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isAnalyzing) {
+                triggerPromptAnalysis(screenerEarningsCallId);
+              }
+            }}
+            disabled={isAnalyzing}
+            className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Trigger prompt analysis"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3 w-3" />
+                <span>Analyze</span>
+              </>
+            )}
+          </button>
+        );
+      },
     },
   ];
 
@@ -471,9 +694,19 @@ export default function DataCatalogue() {
                         <button
                           key={company.isin}
                           onClick={() => handleAddCompany(company.isin, company.name)}
-                          className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
+                          className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex items-center justify-between gap-2"
                         >
-                          {company.name}
+                          <span className="truncate">{company.name}</span>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs flex-shrink-0 ${
+                              company.isListed
+                                ? 'bg-green-100 text-green-700 border-green-300'
+                                : 'bg-blue-100 text-blue-700 border-blue-300'
+                            }`}
+                          >
+                            {company.isListed ? 'Listed' : 'Unlisted'}
+                          </Badge>
                         </button>
                       ))}
                     </div>
@@ -484,11 +717,25 @@ export default function DataCatalogue() {
                     {selectedCompanies.map((isin) => {
                       const company = companyOptions.find(c => c.isin === isin);
                       return (
-                        <div key={isin} className="flex items-center justify-between bg-muted px-2 py-1 rounded text-sm">
-                          <span>{company?.name || isin}</span>
+                        <div key={isin} className="flex items-center justify-between gap-2 bg-muted px-2 py-1 rounded text-sm">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="truncate">{company?.name || isin}</span>
+                            {company && (
+                              <Badge
+                                variant="outline"
+                                className={`text-xs flex-shrink-0 ${
+                                  company.isListed
+                                    ? 'bg-green-100 text-green-700 border-green-300'
+                                    : 'bg-blue-100 text-blue-700 border-blue-300'
+                                }`}
+                              >
+                                {company.isListed ? 'L' : 'U'}
+                              </Badge>
+                            )}
+                          </div>
                           <button
                             onClick={() => handleRemoveCompany(isin)}
-                            className="text-muted-foreground hover:text-foreground"
+                            className="text-muted-foreground hover:text-foreground flex-shrink-0"
                           >
                             <X className="h-3 w-3" />
                           </button>

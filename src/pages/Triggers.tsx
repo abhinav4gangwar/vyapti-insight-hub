@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft, Filter, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronLeft, Filter, Copy, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getDocumentUrl } from '@/lib/documents-api';
 
 
 interface Trigger {
@@ -617,15 +618,37 @@ export default function Triggers() {
 
                         {trigger.url && (
                           <div className="mt-4 pt-4 border-t border-border">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDocument(trigger.url)}
-                              className="financial-body"
-                            >
-                              <FileText className="h-3 w-3 mr-2" />
-                              View Document
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              {/* Document Details button - only for earnings_call, ppt/investor_ppt */}
+                              {(trigger.data?.source === 'earnings_calls' ||
+                                trigger.data?.source === 'earnings_call' ||
+                                trigger.data?.source === 'ppt' ||
+                                trigger.data?.source === 'investor_ppt') && trigger.id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const docType = trigger.data?.source === 'ppt' || trigger.data?.source === 'investor_ppt'
+                                      ? 'investor_ppt'
+                                      : 'earnings_call';
+                                    window.open(getDocumentUrl(docType, trigger.id), '_blank');
+                                  }}
+                                  className="financial-body"
+                                >
+                                  <FileText className="h-3 w-3 mr-2" />
+                                  Document Details
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openDocument(trigger.url)}
+                                className="financial-body"
+                              >
+                                <ExternalLink className="h-3 w-3 mr-2" />
+                                View PDF
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>

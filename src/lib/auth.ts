@@ -149,6 +149,16 @@ class AuthService {
     return this.user;
   }
 
+  isPromptRegistryAuthorized(): boolean {
+    const authorizedUsers = ['admin', 'yajas', 'abhinav', 'rishabh']
+      .map(u => u.toLowerCase());
+
+    return this.user
+      ? authorizedUsers.includes(this.user.username.toLowerCase())
+      : false;
+  }
+
+
   // Create axios instance with auth headers
   createAuthenticatedClient() {
     const client = axios.create({

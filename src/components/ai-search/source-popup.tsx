@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { FileText, Calendar, Building, User, ExternalLink, Copy } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import type { ChunkData, EarningsCallChunkData, ExpertInterviewChunkData, SebiChunkData } from '@/hooks/use-bulk-chunks'
+import { getDocumentUrl } from '@/lib/documents-api'
 
 interface DocumentInfo {
   exchange: string
@@ -313,28 +314,36 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
             {/* Document Actions */}
             <div className="flex items-center gap-4">
               {chunkData.source_type === 'earnings_call' ? (
-                // Earnings Call Document Button
-                documentInfo?.pdf_url ? (
-                  <Button onClick={handleViewFullDoc} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
-                    <ExternalLink className="h-4 w-4" />
-                    View Full Document
+                // Earnings Call Document Buttons - Two buttons: Details + External URL
+                <>
+                  <Button
+                    onClick={() => {
+                      const earningsChunk = chunkData as EarningsCallChunkData;
+                      // Use screener_earning_call_id if available, otherwise fall back to id
+                      const earningCallId = Number(earningsChunk.screener_earning_call_id || earningsChunk.id);
+                      window.open(getDocumentUrl('earnings_call', earningCallId), '_blank');
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Document Details
                   </Button>
-                ) : (chunkData as EarningsCallChunkData).exchange && ((chunkData as EarningsCallChunkData).source_file) ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                    Loading document...
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 italic">
-                    Document not available
-                  </div>
-                )
+                  {documentInfo?.pdf_url ? (
+                    <Button onClick={handleViewFullDoc} variant="outline" className="flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      View PDF
+                    </Button>
+                  ) : (chunkData as EarningsCallChunkData).exchange && ((chunkData as EarningsCallChunkData).source_file) ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                      Loading PDF...
+                    </div>
+                  ) : null}
+                </>
               ) : chunkData.source_type === 'expert_interview' ? (
-                // Expert Interview Document Button
+                // Expert Interview Document Button - Single button (no change needed)
                 (() => {
                   const expertChunk = chunkData as ExpertInterviewChunkData;
-
-                  // Use interview_id if available, otherwise fall back to the main id field
                   const interviewId = expertChunk.interview_id;
 
                   return interviewId ? (
@@ -352,20 +361,31 @@ export function SourcePopup({ isOpen, onClose, chunkId }: SourcePopupProps) {
                   );
                 })()
               ) : (
-                // SEBI Document Button
-                (chunkData as SebiChunkData).pdf_url ? (
-                  <Button
-                    onClick={() => window.open((chunkData as SebiChunkData).pdf_url, '_blank')}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    View Full DRHP
-                  </Button>
-                ) : (
-                  <div className="text-sm text-gray-500 italic">
-                    Document not available
-                  </div>
-                )
+                // SEBI Document Buttons - Two buttons: Details + External URL
+                <>
+                  {(chunkData as SebiChunkData).sebi_id && (
+                    <Button
+                      onClick={() => {
+                        const sebiId = Number((chunkData as SebiChunkData).sebi_id);
+                        window.open(getDocumentUrl('sebi_doc', sebiId), '_blank');
+                      }}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Document Details
+                    </Button>
+                  )}
+                  {(chunkData as SebiChunkData).pdf_url ? (
+                    <Button
+                      onClick={() => window.open((chunkData as SebiChunkData).pdf_url, '_blank')}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View PDF
+                    </Button>
+                  ) : null}
+                </>
               )}
             </div>
 
