@@ -18,6 +18,7 @@ import {
 } from "@/lib/company-catalog-api";
 import { Tag, tagsApi } from "@/lib/tags-api";
 import { Watchlist, watchlistsApi } from "@/lib/watchlist-api";
+import { useSelectedCompaniesStore } from "@/stores/useCompanyStore";
 import {
   AllCommunityModule,
   ColDef,
@@ -47,9 +48,15 @@ export default function CompanyCatalog() {
   const [companies, setCompanies] = useState<CompanyCatalogItem[]>([]);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(
-    new Set()
-  );
+  // Replace local state with Zustand store
+  const {
+    selectedCompanies,
+    addCompanies,
+    removeCompanies,
+    clearSelectedCompanies,
+    getSelectedArray,
+    getSelectedCount,
+  } = useSelectedCompaniesStore();
   const gridRef = useRef<AgGridReact>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCompanies, setTotalCompanies] = useState(0);
@@ -87,7 +94,26 @@ export default function CompanyCatalog() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    
+    const handleBeforeUnload = () => {
+      clearSelectedCompanies();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        clearSelectedCompanies();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearSelectedCompanies();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [clearSelectedCompanies]);
 
   const loadData = async () => {
     try {
@@ -161,15 +187,14 @@ export default function CompanyCatalog() {
     loadCompanies();
   }, [loadCompanies]);
 
-  // Restore selection after companies load
   useEffect(() => {
-    if (gridRef.current && companies.length > 0 && selectedCompanies.size > 0) {
+    if (gridRef.current && companies.length > 0) {
       setTimeout(() => {
         const api = gridRef.current?.api;
         if (api) {
-          selectedCompanies.forEach((isin) => {
-            const node = api.getRowNode(isin);
-            if (node) {
+          api.deselectAll();
+          api.forEachNode((node) => {
+            if (node.data?.isin && selectedCompanies.has(node.data.isin)) {
               node.setSelected(true);
             }
           });
@@ -203,25 +228,18 @@ export default function CompanyCatalog() {
       currentIsins.length > 0 &&
       currentIsins.every((isin) => selectedCompanies.has(isin));
     if (allVisibleSelected) {
-      const newSelection = new Set(
-        Array.from(selectedCompanies).filter((id) => !currentIsins.includes(id))
-      );
-      setSelectedCompanies(newSelection);
+      removeCompanies(currentIsins);
     } else {
-      const newSelection = new Set(selectedCompanies);
-      currentIsins.forEach((isin) => newSelection.add(isin));
-      setSelectedCompanies(newSelection);
+      addCompanies(currentIsins);
     }
   };
 
   const handleCompanySelection = (isin: string, selected: boolean) => {
-    const newSelection = new Set(selectedCompanies);
     if (selected) {
-      newSelection.add(isin);
+      addCompanies([isin]);
     } else {
-      newSelection.delete(isin);
+      removeCompanies([isin]);
     }
-    setSelectedCompanies(newSelection);
   };
 
   const handleAddToWatchlist = () => {
@@ -302,21 +320,14 @@ export default function CompanyCatalog() {
     }
     try {
       setIsAddingToWatchlist(true);
-      const isins = Array.from(selectedCompanies);
-      const res = await watchlistsApi.addCompaniesToWatchlist(
+      const isins = getSelectedArray();
+      await watchlistsApi.addCompaniesToWatchlist(
         selectedWatchlistId,
         isins
       );
       toast({ title: "Added to Watchlist" });
 
-      setCompanies((prev) => prev.filter((c) => !isins.includes(c.isin)));
-
-      setTotalCompanies((prevTotal) => {
-        const newTotal = Math.max(0, prevTotal - isins.length);
-        setTotalPages(Math.max(0, Math.ceil(newTotal / ITEMS_PER_PAGE)));
-        return newTotal;
-      });
-      setSelectedCompanies(new Set());
+      clearSelectedCompanies();
       setWatchlistDialogOpen(false);
     } catch (error) {
       console.error("Failed to add companies to watchlist:", error);
@@ -613,11 +624,11 @@ export default function CompanyCatalog() {
               </Button>
               <Button
                 onClick={addSelectedCompaniesToWatchlist}
-                disabled={isAddingToWatchlist || selectedCompanies.size === 0}
+                disabled={isAddingToWatchlist || getSelectedCount() === 0}
               >
                 {isAddingToWatchlist
                   ? "Adding..."
-                  : `Add ${selectedCompanies.size} to Watchlist`}
+                  : `Add ${getSelectedCount()} to Watchlist`}
               </Button>
             </div>
           </div>
@@ -685,15 +696,15 @@ export default function CompanyCatalog() {
             <div className="border-0 animate-fade-in pb-4">
               <div>
                 <div className="flex items-end justify-end">
-                  {selectedCompanies.size > 0 && (
+                  {getSelectedCount() > 0 && (
                     <div className="flex items-center gap-3">
                       <Badge variant="secondary" className="text-sm">
-                        {selectedCompanies.size} selected
+                        {getSelectedCount()} selected
                       </Badge>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setSelectedCompanies(new Set())}
+                        onClick={() => clearSelectedCompanies()}
                         title="Deselect all"
                         className="h-8 w-8"
                       >
@@ -722,15 +733,37 @@ export default function CompanyCatalog() {
                     rowSelection="multiple"
                     suppressRowClickSelection={true}
                     rowHeight={ROW_HEIGHT}
+                    getRowId={(params) => params.data.isin}
                     onSelectionChanged={(event) => {
-                      const selectedNodes = event.api.getSelectedNodes();
-                      const newSelection = new Set<string>();
-                      selectedNodes.forEach((node) => {
-                        if (node.data?.isin) {
-                          newSelection.add(node.data.isin);
+                      const api = event.api;
+                      const currentVisibleIsins = companies.map((c) => c.isin);
+                      const selectedNodes = api.getSelectedNodes();
+                      const selectedIsins = new Set(
+                        selectedNodes
+                          .map((node) => node.data?.isin)
+                          .filter(Boolean)
+                      );
+
+                      const toAdd: string[] = [];
+                      const toRemove: string[] = [];
+
+                      currentVisibleIsins.forEach((isin) => {
+                        const isSelectedInGrid = selectedIsins.has(isin);
+                        const isSelectedInStore = selectedCompanies.has(isin);
+
+                        if (isSelectedInGrid && !isSelectedInStore) {
+                          toAdd.push(isin);
+                        } else if (!isSelectedInGrid && isSelectedInStore) {
+                          toRemove.push(isin);
                         }
                       });
-                      setSelectedCompanies(newSelection);
+
+                      if (toAdd.length > 0) {
+                        addCompanies(toAdd);
+                      }
+                      if (toRemove.length > 0) {
+                        removeCompanies(toRemove);
+                      }
                     }}
                   />
                 </div>
