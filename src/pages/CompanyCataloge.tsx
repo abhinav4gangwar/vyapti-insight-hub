@@ -376,7 +376,7 @@ export default function CompanyCatalog() {
       field: "name",
       headerName: "Company",
       sortable: true,
-      width: 300,
+      width: 350,
       cellRenderer: (params: any) => (
         <div className="space-y-1">
           <a
@@ -395,11 +395,11 @@ export default function CompanyCatalog() {
       field: "tags",
       headerName: "Tags",
       sortable: false,
-      width: 250,
+      width: 300,
       cellRenderer: (params: any) => {
         const tags = params.value || [];
-        const displayTags = tags.slice(0, 3);
-        const remainingCount = tags.length - 3;
+        const displayTags = tags.slice(0, 5);
+        const remainingCount = tags.length - 5;
 
         return (
           <div className="flex flex-wrap gap-1 items-center py-2">
@@ -434,7 +434,7 @@ export default function CompanyCatalog() {
       field: "market_cap",
       headerName: "Market Cap",
       sortable: true,
-      width: 150,
+      width: 170,
       cellRenderer: (params: any) => (
         <span className="font-mono text-sm text-right">
           {formatMarketCap(params.value)}
@@ -468,7 +468,7 @@ export default function CompanyCatalog() {
     {
       headerName: "Actions",
       sortable: false,
-      width: 220,
+      width: 240,
       cellRenderer: (params: any) => (
         <div className="flex gap-2">
           <Button
