@@ -1,3 +1,6 @@
+// This component is deprecated - AG Grid is now used for rendering company rows
+// Kept for reference only. Safe to delete if no longer needed elsewhere.
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
