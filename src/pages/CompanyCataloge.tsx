@@ -468,7 +468,7 @@ const addSelectedCompaniesToWatchlist = async () => {
                             <th className="p-4 text-left financial-subheading text-sm">Company</th>
                             <th className="p-4 text-left financial-subheading text-sm">Tags</th>
                             <th className="p-2 text-right financial-subheading text-sm">Market Cap</th>
-                            <th className="p-4 text-left financial-subheading text-sm">Last Note</th>
+                            <th className="text-left financial-subheading text-sm">Last Note</th>
                             <th className="p-4 text-left financial-subheading text-sm">Actions</th>
                           </tr>
                         </thead>

@@ -130,7 +130,7 @@ export function QuickAddTagDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TagIcon className="h-5 w-5" />
@@ -153,10 +153,10 @@ export function QuickAddTagDialog({
                     <Badge
                       key={tagId}
                       variant="default"
-                      className="cursor-pointer"
+                      className="cursor-pointer max-w-[450px]"
                       onClick={() => toggleTag(tagId)}
                     >
-                      {tag.name}
+                      <p className='truncate'>{tag.name}</p> 
                       <Plus className="h-3 w-3 ml-1 rotate-45" />
                     </Badge>
                   );
@@ -168,7 +168,7 @@ export function QuickAddTagDialog({
           {/* Search and Select Tags */}
           <div className="space-y-2">
             <label className="financial-subheading text-sm">Search or Create Tags</label>
-            <Command className="border rounded-lg">
+            <Command className="border rounded-lg max-w-[550px]">
               <CommandInput
                 placeholder="Search or create tag..."
                 value={searchValue}
@@ -211,7 +211,7 @@ export function QuickAddTagDialog({
                       >
                         <div className="flex items-center flex-1">
                           <TagIcon className="h-4 w-4 mr-2" />
-                          {tag.name}
+                         <p className='truncate max-w-[400px]'>{tag.name}</p> 
                         </div>
                         {selectedTagIds.includes(tag.id) && (
                           <Badge variant="secondary" className="ml-2">

@@ -37,7 +37,7 @@ export function RichTextEditor({ onSubmit, placeholder = 'Write your research no
     ],
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2',
+        class: 'prose prose-sm max-w-[620px] focus:outline-none min-h-[120px] px-3 py-2',
       },
     },
   });

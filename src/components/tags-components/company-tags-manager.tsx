@@ -254,7 +254,7 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
             className="financial-body gap-1 pr-1 hover:bg-secondary/80 transition-colors"
           >
             <TagIcon className="h-3 w-3" />
-            {tag.name}
+           <p className='max-w-[200px] truncate'>{tag.name}</p> 
           </Badge>
         ))}
         
@@ -269,7 +269,7 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
               Add Tags
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="max-w-[500px]">
             <DialogHeader>
               <DialogTitle className="financial-heading">Manage Company Tags</DialogTitle>
               <DialogDescription className="financial-body">
@@ -287,10 +287,10 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
                       <Badge
                         key={tag.id}
                         variant="secondary"
-                        className="financial-body gap-1 pr-1"
+                        className="financial-body gap-1 pr-1 max-w-[450px]"
                       >
                         <TagIcon className="h-3 w-3" />
-                        {tag.name}
+                       <p className='truncate'>{tag.name}</p> 
                         <button
                           onClick={() => handleRemoveTag(tag.id, tag.name)}
                           disabled={isLoading}
@@ -307,7 +307,7 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
               {/* Add Tags */}
               <div className="space-y-2">
                 <label className="financial-subheading text-sm">Add Tags</label>
-                <Command className="border rounded-lg">
+                <Command className="border rounded-lg max-w-[450px]">
                   <CommandInput
                     placeholder="Search or create tag..."
                     value={searchValue}
@@ -353,7 +353,7 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
                               onClick={() => handleAddTag(tag)}
                             >
                               <TagIcon className="h-4 w-4 mr-2" />
-                              {tag.name}
+                             <p className='truncate max-w-[350px]'>{tag.name}</p> 
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
@@ -445,7 +445,7 @@ export function CompanyTagsManager({ isin, onTagsUpdate }: CompanyTagsManagerPro
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this tag?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the tag "{deletingTag?.name}" from all companies. 
+              This will permanently delete the tag from all companies. 
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -72,7 +72,7 @@ export function CompanyTableRow({
         <div className="flex flex-wrap gap-1">
           {company.tags.length > 0 ? (
             company.tags.map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
+              <Badge key={index} variant="secondary" className="text-xs max-w-[100px]">
                 {tag}
               </Badge>
             ))
@@ -90,7 +90,7 @@ export function CompanyTableRow({
       </td>
 
       {/* Last Note Date */}
-      <td className="p-4">
+      <td className="p-2">
         <span className="text-xs text-muted-foreground">
           {formatLastNote(company.last_note_date)}
         </span>
