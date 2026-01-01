@@ -572,7 +572,7 @@ export default function CompanyCatalog() {
                               checked={selectedWatchlistId === w.id}
                               onChange={() => setSelectedWatchlistId(w.id)}
                             />
-                            <span className="text-md hover:font-semibold">
+                            <span className="text-md hover:font-semibold capitalize">
                               {w.name}
                             </span>
                           </label>

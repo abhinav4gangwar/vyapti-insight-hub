@@ -22,7 +22,7 @@ import { WatchlistCompany, watchlistsApi } from '@/lib/watchlist-api';
 import { AllCommunityModule, ColDef, ModuleRegistry, themeQuartz } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { format } from 'date-fns';
-import { Building2, ChevronLeft, ChevronRight, Pen, StickyNote, Tag as TagIcon, Trash2 } from 'lucide-react';
+import { Building2, ChevronLeft, ChevronRight, ListCheckIcon, Pen, StickyNote, Tag as TagIcon, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
@@ -68,6 +68,15 @@ const IndividualWatchlistPage = () => {
   // Rename watchlist
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+
+  const formatDate = (dateString: string) => {
+      try {
+        const date = new Date(dateString);
+        return format(date, 'd MMM yyyy');
+      } catch {
+        return 'Invalid date';
+      }
+    };
 
   useEffect(() => {
     loadTags();
@@ -416,12 +425,12 @@ const IndividualWatchlistPage = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="financial-heading text-2xl mb-2 flex items-center">
-                      <Building2 className="h-6 w-6 mr-3 text-accent" />
-                      {watchlistName || 'Watchlist'}
+                      <ListCheckIcon className="h-6 w-6 mr-3 text-accent" />
+                      <span className='capitalize'>{watchlistName || 'Watchlist'}</span>
                     </CardTitle>
                     <CardDescription className="financial-body">
-                      {watchlistCreatedAt && (<span>Created: {new Date(watchlistCreatedAt).toLocaleString()} </span>)}
-                      {watchlistUpdatedAt && (<span>• Updated: {new Date(watchlistUpdatedAt).toLocaleString()}</span>)}
+                      {watchlistCreatedAt && (<span>Created: {formatDate(watchlistCreatedAt)} </span>)}
+                      {watchlistUpdatedAt && (<span>• Updated: {formatDate(watchlistUpdatedAt)} </span>)}
                     </CardDescription>
                   </div>
                   <Button
@@ -431,7 +440,6 @@ const IndividualWatchlistPage = () => {
                     className="gap-2"
                   >
                     <Pen className="h-4 w-4" />
-                    Rename
                   </Button>
                 </div>
               </CardHeader>

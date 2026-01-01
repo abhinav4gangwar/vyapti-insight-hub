@@ -9,14 +9,33 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { Watchlist, watchlistsApi } from '@/lib/watchlist-api';
-import { ArrowDownUp, Pen, Trash } from 'lucide-react';
+import { format } from 'date-fns';
+import { FolderOpen, MoreVertical, Pen, RefreshCw, Trash } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const CustomWatchlistPage = () => {
+  const navigate = useNavigate();
+
   const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -100,86 +119,182 @@ const CustomWatchlistPage = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return format(date, 'd MMM yyyy');
+    } catch {
+      return 'Invalid date';
+    }
+  };
+
   return (
-    <div className="p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Custom Watchlists</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex gap-2 items-center">
-            <input
-              className="px-3 py-2 border rounded-md flex-1"
-              placeholder="Search watchlists"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Button variant="outline" onClick={() => setSortAsc(s => !s)}>
-             <ArrowDownUp /> Sort by created: {sortAsc ? 'Asc' : 'Desc'}
-            </Button>
-            <Button onClick={loadWatchlists}>Refresh</Button>
-          </div>
+    <div className="min-h-screen bg-gradient-subtle flex flex-col">
+      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
+        {/* Header */}
+        <Card className="shadow-card border-0 mb-6 animate-fade-in">
+          <CardHeader>
+            <CardTitle className="financial-heading text-2xl flex items-center">
+              <FolderOpen className="h-6 w-6 mr-3 text-accent" />
+              Custom Watchlists
+            </CardTitle>
+            <CardDescription className="financial-body">
+              Manage and organize your custom watchlists
+            </CardDescription>
+          </CardHeader>
+        </Card>
 
-          {loading ? (
-            <div>Loading...</div>
-          ) : (
-            <div className="space-y-3">
-              {filtered.map(w => (
-                <div key={w.id} className="flex items-center justify-between border rounded-md p-3">
-                  <div className="flex-1">
-                    <a href={`/custom-watchlists/${w.id}`} target="_blank" rel="noreferrer" className="font-medium hover:underline">{w.name}</a>
-                    <div className="text-sm text-muted-foreground">
-                      Created: {new Date(w.created_at).toLocaleString()} • Updated: {new Date(w.updated_at).toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button onClick={() => openRenameDialog(w)}><Pen /></Button>
-                    <Button variant="destructive" onClick={() => confirmDeleteWatchlist(w)}><Trash /></Button>
-                  </div>
-                </div>
-              ))}
-
-              {filtered.length === 0 && <div className="text-sm text-muted-foreground">No watchlists found</div>}
+        {/* Toolbar */}
+        <Card className="shadow-card border-0 mb-4">
+          <CardContent className="pt-6">
+            <div className="flex gap-3 items-center">
+              <Input
+                className="flex-1 max-w-md"
+                placeholder="Search watchlists..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={() => setSortAsc(s => !s)}
+                className="gap-2"
+              >
+                Sort: {sortAsc ? 'Oldest First' : 'Newest First'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={loadWatchlists}
+                disabled={loading}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Watchlist</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the watchlist "{deleteTarget?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doDeleteWatchlist}>Yes, delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Rename dialog */}
-      <AlertDialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rename Watchlist</AlertDialogTitle>
-            <AlertDialogDescription>
-              Enter a new name for "{renameTarget?.name}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className=" pb-4">
-            <Input className="w-full px-3 py-2 border rounded-md" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
+        {/* Content */}
+        {loading ? (
+          <Card className="shadow-card border-0">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : filtered.length > 0 ? (
+          <Card className="shadow-card border-0">
+            <CardContent className="pt-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40%]">Name</TableHead>
+                    <TableHead className="w-[25%]">Created At</TableHead>
+                    <TableHead className="w-[25%]">Updated At</TableHead>
+                    <TableHead className="w-[10%] text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((watchlist) => (
+                    <TableRow key={watchlist.id}>
+                      <TableCell>
+                        <button
+                          onClick={() => navigate(`/custom-watchlists/${watchlist.id}`)}
+                          className="font-medium hover:text-accent hover:underline text-left capitalize"
+                        >
+                          {watchlist.name}
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(watchlist.created_at)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(watchlist.updated_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => openRenameDialog(watchlist)}
+                              className="gap-2"
+                            >
+                              <Pen className="h-4 w-4" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => confirmDeleteWatchlist(watchlist)}
+                              className="gap-2 text-destructive focus:text-destructive"
+                            >
+                              <Trash className="h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="text-center py-16 bg-card rounded-lg border border-border">
+            <FolderOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="financial-subheading mb-2">No Watchlists Found</h3>
+            <p className="financial-body">
+              {search ? 'Try adjusting your search' : 'Create your first watchlist to get started'}
+            </p>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doRenameWatchlist}>Save</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        )}
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Watchlist</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the watchlist "{deleteTarget?.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={doDeleteWatchlist}>Yes, delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Rename dialog */}
+        <AlertDialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Rename Watchlist</AlertDialogTitle>
+              <AlertDialogDescription>
+                Enter a new name for "{renameTarget?.name}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="pb-4">
+              <Input
+                className="w-full px-3 py-2 border rounded-md"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="Watchlist name"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={doRenameWatchlist}>Save</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </main>
     </div>
   );
 };
