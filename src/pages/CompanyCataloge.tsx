@@ -467,7 +467,7 @@ export default function CompanyCatalog() {
       sortable: false,
       width: 240,
       cellRenderer: (params: any) => (
-        <div className="flex gap-2">
+        <div className="flex gap-2 py-2">
           <Button
             variant="outline"
             size="sm"

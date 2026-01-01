@@ -47,7 +47,7 @@ export default function TriggersTab() {
   const pageSize = 10;
 
   const toggleDay = (date: string): void => {
-    setOpenDays(prev => {
+    setOpenDays((prev) => {
       const next = new Set(prev);
       if (next.has(date)) {
         next.delete(date);
@@ -60,7 +60,11 @@ export default function TriggersTab() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+    return date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
   };
 
   const fetchTriggers = async () => {
@@ -70,13 +74,13 @@ export default function TriggersTab() {
         page: page.toString(),
         page_size: pageSize.toString(),
       });
-      
+
       if (dateFilter) {
         params.append("date", dateFilter);
       }
 
       const res = await dgtrApiClient.get(`/dgtr/triggers?${params}`);
-      
+
       // Handle single date response
       if (res.data.date) {
         setDays([res.data.data]);
@@ -87,7 +91,7 @@ export default function TriggersTab() {
         const daysList = res.data.days || [];
         setDays(daysList);
         setTotalDays(res.data.total_days || 0);
-        
+
         // Open all days by default
         const allDates = daysList.map((d: DayData) => d.date);
         setOpenDays(new Set(allDates));
@@ -110,13 +114,15 @@ export default function TriggersTab() {
   }, [page, dateFilter]);
 
   const totalPages = Math.ceil(totalDays / pageSize);
+  const startIndex = totalDays === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIndex = Math.min(page * pageSize, totalDays);
 
   const getMarkerBadge = (marker: string) => {
     if (marker === "new_investigation") {
-      return <Badge className="bg-blue-600 text-xs">New Investigation</Badge>;
+      return <Badge className="bg-blue-600 text-xs whitespace-nowrap">New Investigation</Badge>;
     }
     if (marker === "status_changed") {
-      return <Badge className="bg-amber-600 text-xs">Status Changed</Badge>;
+      return <Badge className="bg-amber-600 text-xs whitespace-nowrap">Status Changed</Badge>;
     }
     if (marker === "new_pdf") {
       return <Badge className="bg-purple-600 text-xs">New PDF</Badge>;
@@ -126,21 +132,21 @@ export default function TriggersTab() {
 
   // Frontend filtering function
   const filterEvents = (events: DayEvent[]) => {
-    return events.filter(event => {
+    return events.filter((event) => {
       const inv = event.investigation;
-      
+
       const markers = inv.markers.length === 0 ? ["new_pdf"] : inv.markers;
-      
+
       // Status filter
       if (statusFilter && inv.status !== statusFilter) {
         return false;
       }
-      
+
       // Marker filter
       if (markerFilter && !markers.includes(markerFilter)) {
         return false;
       }
-      
+
       return true;
     });
   };
@@ -196,9 +202,11 @@ export default function TriggersTab() {
           {days.map((day) => {
             const isOpen = openDays.has(day.date);
             const displayDate = formatDate(day.date);
-            
+
             // Apply frontend filtering
-            const filteredEvents = day.new_pdfs ? filterEvents(day.new_pdfs) : [];
+            const filteredEvents = day.new_pdfs
+              ? filterEvents(day.new_pdfs)
+              : [];
             const hasFilteredEvents = filteredEvents.length > 0;
 
             // Skip rendering empty date cards when filters are applied
@@ -207,16 +215,22 @@ export default function TriggersTab() {
             }
 
             return (
-              <div key={day.date} className="border rounded-xl overflow-hidden shadow-md bg-white">
+              <div
+                key={day.date}
+                className="border rounded-xl overflow-hidden shadow-md bg-white"
+              >
                 <button
                   onClick={() => toggleDay(day.date)}
                   className="w-full px-6 py-5 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 transition-all flex items-center justify-between text-left"
                 >
                   <div className="flex items-center gap-4">
-                    <h3 className="text-xl font-bold text-gray-800">{displayDate}</h3>
+                    <h3 className="text-xl font-bold text-gray-800">
+                      {displayDate}
+                    </h3>
                     {day.change_detected && hasFilteredEvents && (
                       <Badge variant="secondary" className="text-sm">
-                        {filteredEvents.length} change{filteredEvents.length > 1 ? "s" : ""}
+                        {filteredEvents.length} change
+                        {filteredEvents.length > 1 ? "s" : ""}
                       </Badge>
                     )}
                     {(!day.change_detected || !hasFilteredEvents) && (
@@ -225,7 +239,11 @@ export default function TriggersTab() {
                       </Badge>
                     )}
                   </div>
-                  {isOpen ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
+                  {isOpen ? (
+                    <ChevronUp className="w-6 h-6" />
+                  ) : (
+                    <ChevronDown className="w-6 h-6" />
+                  )}
                 </button>
 
                 {isOpen && day.change_detected && hasFilteredEvents && (
@@ -233,37 +251,40 @@ export default function TriggersTab() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50">
-  <tr>
-    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
-      PDF Title
-    </th>
-    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
-      Investigation
-    </th>
-    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
-      Country
-    </th>
-    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
-      Status
-    </th>
-    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
-      Trigger Type
-    </th>
-    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
-      Vyapti Link
-    </th>
-    <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
-      DGTR Link
-    </th>
-  </tr>
-</thead>
+                          <tr>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              PDF Title
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              Investigation
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              Country
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              Status
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              Trigger Type
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              Vyapti Link
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              DGTR Link
+                            </th>
+                          </tr>
+                        </thead>
 
                         <tbody className="divide-y divide-gray-200">
                           {filteredEvents.map((event) => {
                             const inv = event.investigation;
                             const pdf = event.pdf;
-                            
-                            const displayMarkers = inv.markers.length === 0 ? ["new_pdf"] : inv.markers;
+
+                            const displayMarkers =
+                              inv.markers.length === 0
+                                ? ["new_pdf"]
+                                : inv.markers;
 
                             return (
                               <tr key={pdf.id} className="hover:bg-gray-50">
@@ -297,14 +318,25 @@ export default function TriggersTab() {
                                   )}
                                 </td>
                                 <td className="px-6 py-4 text-gray-700">
-                                  <span className="line-clamp-2" title={inv.country}>
+                                  <span
+                                    className="line-clamp-2"
+                                    title={inv.country}
+                                  >
                                     {inv.country || "—"}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4">
                                   <Badge
-                                    variant={inv.status === "Ongoing" ? "default" : "destructive"}
-                                    className={inv.status === "Ongoing" ? "bg-green-600" : "bg-red-600"}
+                                    variant={
+                                      inv.status === "Ongoing"
+                                        ? "default"
+                                        : "destructive"
+                                    }
+                                    className={
+                                      inv.status === "Ongoing"
+                                        ? "bg-green-600"
+                                        : "bg-red-600"
+                                    }
                                   >
                                     {inv.status || "Unknown"}
                                   </Badge>
@@ -312,28 +344,33 @@ export default function TriggersTab() {
                                 <td className="px-4 py-4">
                                   <div className="flex flex-wrap gap-1">
                                     {displayMarkers.map((marker, idx) => (
-                                      <div key={idx}>{getMarkerBadge(marker)}</div>
+                                      <div key={idx}>
+                                        {getMarkerBadge(marker)}
+                                      </div>
                                     ))}
                                   </div>
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-4">
-                                    <a href={`/dgtr-db/${inv.uuid}`} target="_blank" className="text-blue-600 hover:underline text-sm font-medium">
+                                    <a
+                                      href={`/dgtr-db/${inv.uuid}`}
+                                      target="_blank"
+                                      className="text-blue-600 hover:underline text-sm font-medium whitespace-nowrap"
+                                    >
                                       View Details
                                     </a>
-                                    
                                   </div>
                                 </td>
 
                                 <td className="px-6 py-4">
                                   <a
-                                      href={inv.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-gray-500 hover:text-gray-700"
-                                    >
-                                      <ExternalLink className="w-4 h-4" />
-                                    </a>
+                                    href={inv.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-500 hover:text-gray-700"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
                                 </td>
                               </tr>
                             );
@@ -346,7 +383,9 @@ export default function TriggersTab() {
 
                 {isOpen && (!day.change_detected || !hasFilteredEvents) && (
                   <div className="p-8 text-center text-gray-500">
-                    {!hasFilteredEvents && day.change_detected ? "No changes match the selected filters." : (day.message || "No changes detected on this day.")}
+                    {!hasFilteredEvents && day.change_detected
+                      ? "No changes match the selected filters."
+                      : day.message || "No changes detected on this day."}
                   </div>
                 )}
               </div>
@@ -357,63 +396,69 @@ export default function TriggersTab() {
 
       {/* Pagination */}
       {!dateFilter && totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-8">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm font-medium"
-          >
-            Previous
-          </button>
-
-          {/* Page Numbers */}
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-              // Always show first page, last page, current page, and pages around current
-              const showPage = 
-                pageNum === 1 ||
-                pageNum === totalPages ||
-                (pageNum >= page - 1 && pageNum <= page + 1);
-
-              // Show ellipsis
-              const showEllipsisBefore = pageNum === page - 2 && page > 4;
-              const showEllipsisAfter = pageNum === page + 2 && page < totalPages - 3;
-
-              if (showEllipsisBefore || showEllipsisAfter) {
-                return (
-                  <span key={pageNum} className="px-2 text-gray-400">
-                    ...
-                  </span>
-                );
-              }
-
-              if (!showPage && pageNum !== page - 2 && pageNum !== page + 2) {
-                return null;
-              }
-
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    page === pageNum
-                      ? 'bg-blue-600 text-white'
-                      : 'border hover:bg-gray-50'
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-8">
+          <div className="text-sm text-gray-600">
+            Showing {startIndex}-{endIndex} of {totalDays} results
           </div>
 
-          <button
-            onClick={() => setPage(p => p + 1)}
-            disabled={page === totalPages}
-            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm font-medium"
-          >
-            Next
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm font-medium"
+            >
+              Previous
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (pageNum) => {
+                  const showPage =
+                    pageNum === 1 ||
+                    pageNum === totalPages ||
+                    (pageNum >= page - 1 && pageNum <= page + 1);
+
+                  const showEllipsisBefore = pageNum === page - 2 && page > 4;
+                  const showEllipsisAfter =
+                    pageNum === page + 2 && page < totalPages - 3;
+
+                  if (showEllipsisBefore || showEllipsisAfter) {
+                    return (
+                      <span key={pageNum} className="px-2 text-gray-400">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  if (!showPage && pageNum !== page - 2 && pageNum !== page + 2) {
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        page === pageNum
+                          ? "bg-blue-600 text-white"
+                          : "border hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                }
+              )}
+            </div>
+
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page === totalPages}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm font-medium"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

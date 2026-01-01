@@ -328,7 +328,7 @@ const IndividualWatchlistPage = () => {
       sortable: false,
       width: 350,
       cellRenderer: (params: any) => (
-        <div className="flex gap-2">
+        <div className="flex gap-2 py-2">
           <Button
             variant="outline"
             size="sm"
@@ -420,7 +420,7 @@ const IndividualWatchlistPage = () => {
           {/* Main Grid Area */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Header */}
-            <Card className="shadow-card border-0 mb-6 animate-fade-in">
+            <Card className="shadow-card border-0 mb-2 animate-fade-in">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

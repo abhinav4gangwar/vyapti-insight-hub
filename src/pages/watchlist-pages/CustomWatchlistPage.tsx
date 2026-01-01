@@ -6,18 +6,24 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -25,24 +31,24 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { toast } from '@/hooks/use-toast';
-import { Watchlist, watchlistsApi } from '@/lib/watchlist-api';
-import { format } from 'date-fns';
-import { FolderOpen, MoreVertical, Pen, RefreshCw, Trash } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+} from "@/components/ui/table";
+import { toast } from "@/hooks/use-toast";
+import { Watchlist, watchlistsApi } from "@/lib/watchlist-api";
+import { format } from "date-fns";
+import { FolderOpen, MoreVertical, Pen, RefreshCw, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const CustomWatchlistPage = () => {
   const navigate = useNavigate();
 
   const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<Watchlist | null>(null);
-  const [renameValue, setRenameValue] = useState('');
+  const [renameValue, setRenameValue] = useState("");
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Watchlist | null>(null);
@@ -54,7 +60,11 @@ const CustomWatchlistPage = () => {
       setWatchlists(data);
     } catch (err) {
       console.error(err);
-      toast({ title: 'Error', description: 'Failed to load watchlists', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Failed to load watchlists",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -65,7 +75,7 @@ const CustomWatchlistPage = () => {
   }, []);
 
   const filtered = watchlists
-    .filter(w => w.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((w) => w.name.toLowerCase().includes(search.trim().toLowerCase()))
     .sort((a, b) => {
       const da = new Date(a.created_at).getTime();
       const db = new Date(b.created_at).getTime();
@@ -81,11 +91,15 @@ const CustomWatchlistPage = () => {
     if (!deleteTarget) return;
     try {
       await watchlistsApi.deleteWatchlist(deleteTarget.id);
-      toast({ title: 'Deleted', description: 'Watchlist deleted' });
-      setWatchlists(prev => prev.filter(w => w.id !== deleteTarget.id));
+      toast({ title: "Deleted", description: "Watchlist deleted" });
+      setWatchlists((prev) => prev.filter((w) => w.id !== deleteTarget.id));
     } catch (err) {
       console.error(err);
-      toast({ title: 'Error', description: 'Failed to delete watchlist', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Failed to delete watchlist",
+        variant: "destructive",
+      });
     } finally {
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -102,29 +116,42 @@ const CustomWatchlistPage = () => {
     if (!renameTarget) return;
     const name = renameValue.trim();
     if (!name) {
-      toast({ title: 'Validation', description: 'Please enter a name', variant: 'destructive' });
+      toast({
+        title: "Validation",
+        description: "Please enter a name",
+        variant: "destructive",
+      });
       return;
     }
     try {
-      const updated = await watchlistsApi.renameWatchlist(renameTarget.id, name);
-      setWatchlists(prev => prev.map(w => (w.id === renameTarget.id ? updated : w)));
-      toast({ title: 'Renamed', description: 'Watchlist renamed' });
+      const updated = await watchlistsApi.renameWatchlist(
+        renameTarget.id,
+        name
+      );
+      setWatchlists((prev) =>
+        prev.map((w) => (w.id === renameTarget.id ? updated : w))
+      );
+      toast({ title: "Renamed", description: "Watchlist renamed" });
     } catch (err) {
       console.error(err);
-      toast({ title: 'Error', description: 'Failed to rename watchlist', variant: 'destructive' });
+      toast({
+        title: "Error",
+        description: "Failed to rename watchlist",
+        variant: "destructive",
+      });
     } finally {
       setRenameDialogOpen(false);
       setRenameTarget(null);
-      setRenameValue('');
+      setRenameValue("");
     }
   };
 
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return format(date, 'd MMM yyyy');
+      return format(date, "d MMM yyyy");
     } catch {
-      return 'Invalid date';
+      return "Invalid date";
     }
   };
 
@@ -145,7 +172,7 @@ const CustomWatchlistPage = () => {
         </Card>
 
         {/* Toolbar */}
-        <Card className="shadow-card border-0 mb-4">
+        <Card className="shadow-card border-0">
           <CardContent className="pt-6">
             <div className="flex gap-3 items-center">
               <Input
@@ -156,10 +183,10 @@ const CustomWatchlistPage = () => {
               />
               <Button
                 variant="outline"
-                onClick={() => setSortAsc(s => !s)}
+                onClick={() => setSortAsc((s) => !s)}
                 className="gap-2"
               >
-                Sort: {sortAsc ? 'Oldest First' : 'Newest First'}
+                Sort: {sortAsc ? "Oldest First" : "Newest First"}
               </Button>
               <Button
                 variant="outline"
@@ -167,7 +194,9 @@ const CustomWatchlistPage = () => {
                 disabled={loading}
                 className="gap-2"
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
             </div>
@@ -194,19 +223,21 @@ const CustomWatchlistPage = () => {
                     <TableHead className="w-[40%]">Name</TableHead>
                     <TableHead className="w-[25%]">Created At</TableHead>
                     <TableHead className="w-[25%]">Updated At</TableHead>
-                    <TableHead className="w-[10%] text-right">Actions</TableHead>
+                    <TableHead className="w-[10%] text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((watchlist) => (
                     <TableRow key={watchlist.id}>
                       <TableCell>
-                        <button
-                          onClick={() => navigate(`/custom-watchlists/${watchlist.id}`)}
+                        <Link
+                          to={`/custom-watchlists/${watchlist.id}`} target="_blank"
                           className="font-medium hover:text-accent hover:underline text-left capitalize"
                         >
                           {watchlist.name}
-                        </button>
+                        </Link>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(watchlist.created_at)}
@@ -217,7 +248,11 @@ const CustomWatchlistPage = () => {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -250,7 +285,9 @@ const CustomWatchlistPage = () => {
             <FolderOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="financial-subheading mb-2">No Watchlists Found</h3>
             <p className="financial-body">
-              {search ? 'Try adjusting your search' : 'Create your first watchlist to get started'}
+              {search
+                ? "Try adjusting your search"
+                : "Create your first watchlist to get started"}
             </p>
           </div>
         )}
@@ -261,12 +298,15 @@ const CustomWatchlistPage = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Watchlist</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete the watchlist "{deleteTarget?.name}"? This action cannot be undone.
+                Are you sure you want to delete the watchlist "
+                {deleteTarget?.name}"? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={doDeleteWatchlist}>Yes, delete</AlertDialogAction>
+              <AlertDialogAction onClick={doDeleteWatchlist}>
+                Yes, delete
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -290,7 +330,9 @@ const CustomWatchlistPage = () => {
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={doRenameWatchlist}>Save</AlertDialogAction>
+              <AlertDialogAction onClick={doRenameWatchlist}>
+                Save
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
