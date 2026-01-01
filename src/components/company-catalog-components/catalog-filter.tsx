@@ -63,7 +63,8 @@ export function CatalogFilters({
   const hasActiveFilters = selectedTags.length > 0 || searchQuery || minMarketCap || maxMarketCap;
 
   return (
-    <div className="space-y-4 p-4 bg-secondary/30 rounded-lg">
+    <div className="space-y-4 p-3 rounded-lg">
+      <h1 className="financial-subheading mb-4 text-base">Filters</h1>
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

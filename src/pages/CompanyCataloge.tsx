@@ -7,10 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  CardContent
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
@@ -628,9 +625,9 @@ export default function CompanyCatalog() {
       )}
 
       <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
-        <div className="flex gap-4 flex-1">
+        <div className="flex flex-1 gap-3">
           {/* Toggle Button for Filters */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 pt-4">
             <Button
               variant="outline"
               size="icon"
@@ -648,7 +645,7 @@ export default function CompanyCatalog() {
 
           {/* Filter Sidebar */}
           {isFiltersExpanded && (
-            <div className="w-64 flex-shrink-0 space-y-5">
+            <div className="flex-shrink-0 space-y-5 pt-4 w-72">
               <Card className="shadow-card border-0">
                 <CardContent>
                   <CatalogFilters
@@ -685,21 +682,9 @@ export default function CompanyCatalog() {
           {/* Main Content - Always visible */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Header */}
-            <Card className="shadow-card border-0 mb-6 animate-fade-in">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="financial-heading text-2xl mb-2 flex items-center">
-                      <Building2 className="h-6 w-6 mr-3 text-accent" />
-                      Company Catalog
-                    </CardTitle>
-                    <CardDescription className="financial-body">
-                      Browse and manage all companies • Showing{" "}
-                      {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
-                      {Math.min(currentPage * ITEMS_PER_PAGE, totalCompanies)}{" "}
-                      of {totalCompanies.toLocaleString()}
-                    </CardDescription>
-                  </div>
+            <div className="border-0 animate-fade-in pb-4">
+              <div>
+                <div className="flex items-end justify-end">
                   {selectedCompanies.size > 0 && (
                     <div className="flex items-center gap-3">
                       <Badge variant="secondary" className="text-sm">
@@ -721,13 +706,13 @@ export default function CompanyCatalog() {
                     </div>
                   )}
                 </div>
-              </CardHeader>
-            </Card>
+              </div>
+            </div>
 
             {/* Grid and Pagination */}
             {companies.length > 0 ? (
               <div className="flex-1 flex flex-col">
-                <div className="flex-1 min-h-0 bg-card rounded-lg border border-border overflow-hidden">
+                <div className="flex-1 min-h-0 bg-card rounded-lg overflow-hidden">
                   <AgGridReact
                     ref={gridRef}
                     theme={themeQuartz}
