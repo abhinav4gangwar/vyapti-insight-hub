@@ -181,23 +181,60 @@ export default function CatalogueTab() {
 
       {/* Pagination */}
       {!countrySearch && totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-8">
+        <div className="flex justify-center items-center gap-2 mt-8">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-6 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm font-medium"
           >
             Previous
           </button>
 
-          <span className="text-sm font-medium">
-            Page {page} of {totalPages}
-          </span>
+          {/* Page Numbers */}
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+              // Always show first page, last page, current page, and pages around current
+              const showPage = 
+                pageNum === 1 ||
+                pageNum === totalPages ||
+                (pageNum >= page - 1 && pageNum <= page + 1);
+
+              // Show ellipsis
+              const showEllipsisBefore = pageNum === page - 2 && page > 4;
+              const showEllipsisAfter = pageNum === page + 2 && page < totalPages - 3;
+
+              if (showEllipsisBefore || showEllipsisAfter) {
+                return (
+                  <span key={pageNum} className="px-2 text-gray-400">
+                    ...
+                  </span>
+                );
+              }
+
+              if (!showPage && pageNum !== page - 2 && pageNum !== page + 2) {
+                return null;
+              }
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    page === pageNum
+                      ? 'bg-blue-600 text-white'
+                      : 'border hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
 
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={page === totalPages}
-            className="px-6 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm font-medium"
           >
             Next
           </button>
