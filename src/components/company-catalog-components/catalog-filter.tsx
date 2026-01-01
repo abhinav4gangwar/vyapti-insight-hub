@@ -170,8 +170,7 @@ export function CatalogFilters({
             <SelectItem value="name-desc">Name (Z-A)</SelectItem>
             <SelectItem value="market_cap-desc">Market Cap (High-Low)</SelectItem>
             <SelectItem value="market_cap-asc">Market Cap (Low-High)</SelectItem>
-            <SelectItem value="last_note_date-desc">Last Note (Newest)</SelectItem>
-            <SelectItem value="last_note_date-asc">Last Note (Oldest)</SelectItem>
+            
           </SelectContent>
         </Select>
 

@@ -311,6 +311,14 @@ export default function CompanyCatalog() {
         isins
       );
       toast({ title: "Added to Watchlist" });
+
+      setCompanies((prev) => prev.filter((c) => !isins.includes(c.isin)));
+
+      setTotalCompanies((prevTotal) => {
+        const newTotal = Math.max(0, prevTotal - isins.length);
+        setTotalPages(Math.max(0, Math.ceil(newTotal / ITEMS_PER_PAGE)));
+        return newTotal;
+      });
       setSelectedCompanies(new Set());
       setWatchlistDialogOpen(false);
     } catch (error) {
@@ -661,11 +669,11 @@ export default function CompanyCatalog() {
                       (filters.sort_by as
                         | "name"
                         | "market_cap"
-                        | "last_note_date") || "name"
+                        ) || "name"
                     }
                     sortOrder={filters.order || "asc"}
                     onSortChange={(
-                      sort_by: "name" | "market_cap" | "last_note_date",
+                      sort_by: "name" | "market_cap" ,
                       order: "asc" | "desc"
                     ) => handleFilterChange({ sort_by, order })}
                   />
