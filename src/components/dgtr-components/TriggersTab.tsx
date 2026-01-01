@@ -79,6 +79,14 @@ export default function TriggersTab() {
         params.append("date", dateFilter);
       }
 
+      if (statusFilter) {
+        params.append("status", statusFilter);
+      }
+
+      if (markerFilter) {
+        params.append("marker", markerFilter);
+      }
+
       const res = await dgtrApiClient.get(`/dgtr/triggers?${params}`);
 
       // Handle single date response
@@ -107,11 +115,11 @@ export default function TriggersTab() {
 
   useEffect(() => {
     setPage(1);
-  }, [dateFilter]);
+  }, [dateFilter, statusFilter, markerFilter]);
 
   useEffect(() => {
     fetchTriggers();
-  }, [page, dateFilter]);
+  }, [page, dateFilter, statusFilter, markerFilter]);
 
   const totalPages = Math.ceil(totalDays / pageSize);
   const startIndex = totalDays === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -124,35 +132,11 @@ export default function TriggersTab() {
     if (marker === "status_changed") {
       return <Badge className="bg-amber-600 text-xs whitespace-nowrap">Status Changed</Badge>;
     }
-    if (marker === "new_pdf") {
+    if (marker === "new_pdf" || marker === "blank") {
       return <Badge className="bg-purple-600 text-xs">New PDF</Badge>;
     }
     return null;
   };
-
-  // Frontend filtering function
-  const filterEvents = (events: DayEvent[]) => {
-    return events.filter((event) => {
-      const inv = event.investigation;
-
-      const markers = inv.markers.length === 0 ? ["new_pdf"] : inv.markers;
-
-      // Status filter
-      if (statusFilter && inv.status !== statusFilter) {
-        return false;
-      }
-
-      // Marker filter
-      if (markerFilter && !markers.includes(markerFilter)) {
-        return false;
-      }
-
-      return true;
-    });
-  };
-
-  // Check if filters are at default (all statuses, all triggers)
-  const isDefaultFilters = statusFilter === "" && markerFilter === "";
 
   return (
     <div className="space-y-8">
@@ -183,7 +167,7 @@ export default function TriggersTab() {
             <option value="">All Triggers</option>
             <option value="new_investigation">New Investigation</option>
             <option value="status_changed">Status Changed</option>
-            <option value="new_pdf">New PDF</option>
+            <option value="blank">New PDF</option>
           </select>
         </div>
       </div>
@@ -203,16 +187,8 @@ export default function TriggersTab() {
             const isOpen = openDays.has(day.date);
             const displayDate = formatDate(day.date);
 
-            // Apply frontend filtering
-            const filteredEvents = day.new_pdfs
-              ? filterEvents(day.new_pdfs)
-              : [];
-            const hasFilteredEvents = filteredEvents.length > 0;
-
-            // Skip rendering empty date cards when filters are applied
-            if (!isDefaultFilters && !hasFilteredEvents) {
-              return null;
-            }
+            const eventsCount = day.new_pdfs?.length || 0;
+            const hasEvents = eventsCount > 0;
 
             return (
               <div
@@ -227,13 +203,13 @@ export default function TriggersTab() {
                     <h3 className="text-xl font-bold text-gray-800">
                       {displayDate}
                     </h3>
-                    {day.change_detected && hasFilteredEvents && (
+                    {day.change_detected && hasEvents && (
                       <Badge variant="secondary" className="text-sm">
-                        {filteredEvents.length} change
-                        {filteredEvents.length > 1 ? "s" : ""}
+                        {eventsCount} change
+                        {eventsCount > 1 ? "s" : ""}
                       </Badge>
                     )}
-                    {(!day.change_detected || !hasFilteredEvents) && (
+                    {(!day.change_detected || !hasEvents) && (
                       <Badge variant="outline" className="text-sm">
                         No changes
                       </Badge>
@@ -246,7 +222,7 @@ export default function TriggersTab() {
                   )}
                 </button>
 
-                {isOpen && day.change_detected && hasFilteredEvents && (
+                {isOpen && day.change_detected && hasEvents && (
                   <div className="border-t">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
@@ -277,7 +253,7 @@ export default function TriggersTab() {
                         </thead>
 
                         <tbody className="divide-y divide-gray-200">
-                          {filteredEvents.map((event) => {
+                          {day.new_pdfs!.map((event) => {
                             const inv = event.investigation;
                             const pdf = event.pdf;
 
@@ -381,11 +357,9 @@ export default function TriggersTab() {
                   </div>
                 )}
 
-                {isOpen && (!day.change_detected || !hasFilteredEvents) && (
+                {isOpen && (!day.change_detected || !hasEvents) && (
                   <div className="p-8 text-center text-gray-500">
-                    {!hasFilteredEvents && day.change_detected
-                      ? "No changes match the selected filters."
-                      : day.message || "No changes detected on this day."}
+                    {day.message || "No changes detected on this day."}
                   </div>
                 )}
               </div>
