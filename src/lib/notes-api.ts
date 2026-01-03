@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authService } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_ANNOTATION_URL || 'http://localhost:8000';
 
@@ -23,10 +24,16 @@ export interface CreateNoteRequest {
   username: string;
 }
 
+const token = authService.getAccessToken();
+if (!token) {
+  throw new Error("Not authenticated");
+}
+
 class NotesApiClient {
   private client = axios.create({
     baseURL: API_BASE_URL,
     headers: {
+       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
