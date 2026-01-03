@@ -9,7 +9,7 @@ import { Building2, FileText, ExternalLink, Calendar, TrendingUp, BarChart3, Fil
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getDocumentUrl } from '@/lib/documents-api';
+import { getDocumentUrl, openPdfWithFallback } from '@/lib/documents-api';
 
 
 interface EarningsCall {
@@ -176,43 +176,6 @@ const formatDate = (dateString: string) => {
   }
 };
 
-  // const openDocument = (url: string) => {
-  //   window.open(url, '_blank');
-  // };
-
-    const openDocument = async (url: string) => {
-    if (!url) return;
-
-    try {
-      // First, try the original URL with a HEAD request to check if it's accessible
-      const response = await fetch(url, { method: 'HEAD' });
-
-      if (response.ok) {
-        // If the original URL works, open it
-        window.open(url, '_blank');
-      } else {
-        // If it doesn't work and contains AttachLive, try replacing with AttachHis
-        if (url.toLowerCase().includes('attachlive')) {
-          const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
-          console.log(`Original URL failed (${response.status}), trying fallback:`, fallbackUrl);
-          window.open(fallbackUrl, '_blank');
-        } else {
-          // If it doesn't contain AttachLive, just open the original URL
-          window.open(url, '_blank');
-        }
-      }
-    } catch (error) {
-      // If there's a network error, try the AttachHis fallback if applicable
-      if (url.toLowerCase().includes('attachlive')) {
-        const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
-        console.log('Network error, trying fallback:', fallbackUrl);
-        window.open(fallbackUrl, '_blank');
-      } else {
-        // Otherwise just open the original URL
-        window.open(url, '_blank');
-      }
-    }
-  };
 
   const getAllEarningsCalls = () => {
     if (!companyData?.earnings_calls) return [];
@@ -508,7 +471,7 @@ const formatDate = (dateString: string) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDocument(call.url)}
+                              onClick={() => openPdfWithFallback(call.url)}
                               className="financial-body hover:bg-accent hover:text-accent-foreground"
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
@@ -572,7 +535,7 @@ const formatDate = (dateString: string) => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openDocument(report.url)}
+                            onClick={() => openPdfWithFallback(report.url)}
                             className="financial-body hover:bg-accent hover:text-accent-foreground"
                           >
                             <ExternalLink className="h-3 w-3 mr-1" />
@@ -640,7 +603,7 @@ const formatDate = (dateString: string) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDocument(presentation.url)}
+                              onClick={() => openPdfWithFallback(presentation.url)}
                               className="financial-body hover:bg-accent hover:text-accent-foreground"
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />

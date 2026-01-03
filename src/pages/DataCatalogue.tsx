@@ -14,7 +14,7 @@ import { ColDef } from 'ag-grid-community';
 import { X, Search, ChevronLeft, ChevronRight, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 import axios from 'axios';
-import { getDocumentUrl } from '@/lib/documents-api';
+import { getDocumentUrl, openPdfWithFallback } from '@/lib/documents-api';
 
 // Register ag-grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -86,7 +86,7 @@ export default function DataCatalogue() {
   });
 
   // Sorting states
-  const [sortBy, setSortBy] = useState('fetched_at');
+  const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Track which documents are being analyzed
@@ -454,7 +454,7 @@ export default function DataCatalogue() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              window.open(params.data.url, '_blank');
+              openPdfWithFallback(params.data.url);
             }}
             className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
             title="Open PDF in new tab"

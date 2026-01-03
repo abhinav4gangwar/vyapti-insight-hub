@@ -52,3 +52,60 @@ export async function getDocumentDetail(
 export function getDocumentUrl(documentType: string, documentId: number): string {
   return `/documents/${documentType}/${documentId}`;
 }
+
+/**
+ * Opens a PDF URL with BSE AttachLive/AttachHis fallback logic.
+ * First checks if the URL is accessible via HEAD request.
+ * If it fails and contains AttachLive, tries the AttachHis variant (and vice versa).
+ *
+ * @param url - The PDF URL to open
+ */
+export async function openPdfWithFallback(url: string): Promise<void> {
+  if (!url) return;
+
+  try {
+    // First, try the original URL with a HEAD request to check if it's accessible
+    const response = await fetch(url, { method: 'HEAD' });
+
+    if (response.ok) {
+      // If the original URL works, open it
+      window.open(url, '_blank');
+    } else {
+      // If it doesn't work, try swapping AttachLive <-> AttachHis
+      const fallbackUrl = getBseFallbackUrl(url);
+      if (fallbackUrl) {
+        console.log(`Original URL failed (${response.status}), trying fallback:`, fallbackUrl);
+        window.open(fallbackUrl, '_blank');
+      } else {
+        // No fallback available, just open the original URL
+        window.open(url, '_blank');
+      }
+    }
+  } catch (error) {
+    // If there's a network error (e.g., CORS), try the fallback
+    const fallbackUrl = getBseFallbackUrl(url);
+    if (fallbackUrl) {
+      console.log('Network error, trying fallback:', fallbackUrl);
+      window.open(fallbackUrl, '_blank');
+    } else {
+      // Otherwise just open the original URL
+      window.open(url, '_blank');
+    }
+  }
+}
+
+/**
+ * Gets the BSE fallback URL by swapping AttachLive <-> AttachHis
+ * Returns null if the URL doesn't contain either pattern
+ */
+function getBseFallbackUrl(url: string): string | null {
+  const lowerUrl = url.toLowerCase();
+
+  if (lowerUrl.includes('attachlive')) {
+    return url.replace(/AttachLive/gi, 'AttachHis');
+  } else if (lowerUrl.includes('attachhis')) {
+    return url.replace(/AttachHis/gi, 'AttachLive');
+  }
+
+  return null;
+}

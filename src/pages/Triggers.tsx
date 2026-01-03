@@ -8,7 +8,7 @@ import { Zap, ChevronDown, ChevronRight, Calendar, FileText, Building2, ChevronL
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getDocumentUrl } from '@/lib/documents-api';
+import { getDocumentUrl, openPdfWithFallback } from '@/lib/documents-api';
 
 
 interface Trigger {
@@ -300,40 +300,6 @@ export default function Triggers() {
   };
 
 
-
-  const openDocument = async (url: string) => {
-    if (!url) return;
-
-    try {
-      // First, try the original URL with a HEAD request to check if it's accessible
-      const response = await fetch(url, { method: 'HEAD' });
-
-      if (response.ok) {
-        // If the original URL works, open it
-        window.open(url, '_blank');
-      } else {
-        // If it doesn't work and contains AttachLive, try replacing with AttachHis
-        if (url.toLowerCase().includes('attachlive')) {
-          const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
-          console.log(`Original URL failed (${response.status}), trying fallback:`, fallbackUrl);
-          window.open(fallbackUrl, '_blank');
-        } else {
-          // If it doesn't contain AttachLive, just open the original URL
-          window.open(url, '_blank');
-        }
-      }
-    } catch (error) {
-      // If there's a network error, try the AttachHis fallback if applicable
-      if (url.toLowerCase().includes('attachlive')) {
-        const fallbackUrl = url.replace(/AttachLive/gi, 'AttachHis');
-        console.log('Network error, trying fallback:', fallbackUrl);
-        window.open(fallbackUrl, '_blank');
-      } else {
-        // Otherwise just open the original URL
-        window.open(url, '_blank');
-      }
-    }
-  };
 
   // No need for client-side filtering since we're doing server-side filtering now
 
@@ -642,7 +608,7 @@ export default function Triggers() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => openDocument(trigger.url)}
+                                onClick={() => openPdfWithFallback(trigger.url)}
                                 className="financial-body"
                               >
                                 <ExternalLink className="h-3 w-3 mr-2" />
