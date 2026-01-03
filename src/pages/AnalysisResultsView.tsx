@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronRight,
   Code,
-  Cpu,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -398,11 +397,6 @@ export default function AnalysisResultsView() {
                                   <Badge variant="outline" className="text-xs">
                                     {bucket}
                                   </Badge>
-                                  {question.was_verified && (
-                                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                                      Verified
-                                    </Badge>
-                                  )}
                                 </div>
                                 <p className="text-sm font-medium mb-2">{question.question}</p>
                                 <p className="text-sm text-muted-foreground line-clamp-2">
@@ -455,35 +449,14 @@ export default function AnalysisResultsView() {
                                 )}
                                 {question.was_verified && question.verification_reasoning && (
                                   <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                    <h5 className="text-sm font-medium mb-2">
                                       Verification Reasoning
-                                      <Badge variant="outline" className="text-xs">Verified</Badge>
                                     </h5>
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {question.verification_reasoning}
                                     </p>
                                   </div>
                                 )}
-                                <div>
-                                  <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                    <Cpu className="h-4 w-4" />
-                                    Model Information
-                                  </h5>
-                                  <div className="bg-muted p-3 rounded-md space-y-2">
-                                    {question.was_verified && question.verifier_model && (
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Verifier Model:</span>
-                                        <code className="bg-background px-2 py-1 rounded text-xs">{question.verifier_model}</code>
-                                      </div>
-                                    )}
-                                    {question.processing_time_seconds !== undefined && (
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Processing Time:</span>
-                                        <span>{question.processing_time_seconds.toFixed(2)}s</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
                               </div>
                             </div>
                           </CollapsibleContent>
@@ -582,35 +555,14 @@ export default function AnalysisResultsView() {
                                 )}
                                 {question.was_verified && question.verification_reasoning && (
                                   <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                    <h5 className="text-sm font-medium mb-2">
                                       Verifier Reasoning
-                                      <Badge variant="outline" className="text-xs">Verified</Badge>
                                     </h5>
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {question.verification_reasoning}
                                     </p>
                                   </div>
                                 )}
-                                <div>
-                                  <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                    <Cpu className="h-4 w-4" />
-                                    Model Information
-                                  </h5>
-                                  <div className="bg-muted p-3 rounded-md space-y-2">
-                                    {question.was_verified && question.verifier_model && (
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Verifier Model:</span>
-                                        <code className="bg-background px-2 py-1 rounded text-xs">{question.verifier_model}</code>
-                                      </div>
-                                    )}
-                                    {question.processing_time_seconds !== undefined && (
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Processing Time:</span>
-                                        <span>{question.processing_time_seconds.toFixed(2)}s</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
                               </div>
                             </div>
                           </CollapsibleContent>
