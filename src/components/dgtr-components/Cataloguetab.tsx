@@ -1,12 +1,5 @@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { dgtrApiClient } from "@/lib/dgtr-api-utils";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -93,7 +86,7 @@ export default function CatalogueTab() {
           className="md:w-72"
         />
 
-        <Select
+        {/* <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as any)}
         >
@@ -105,7 +98,7 @@ export default function CatalogueTab() {
             <SelectItem value="Ongoing">Ongoing Investigations</SelectItem>
             <SelectItem value="Concluded">Concluded / Terminated</SelectItem>
           </SelectContent>
-        </Select>
+        </Select> */}
       </div>
 
       {/* Table */}
