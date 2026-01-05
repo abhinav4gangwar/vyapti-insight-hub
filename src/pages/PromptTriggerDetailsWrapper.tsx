@@ -67,11 +67,19 @@ export default function PromptTriggerDetailsWrapper() {
         let triggers = [];
         if (data.triggers) {
           // If triggers already exists as flat array, use it
-          triggers = data.triggers;
+          // Normalize field names (question -> question_text if needed)
+          triggers = data.triggers.map((t: any) => ({
+            ...t,
+            question_text: t.question_text || t.question,
+          }));
         } else if (data.buckets) {
-          // If data comes in buckets structure, flatten it
+          // If data comes in buckets structure, flatten it and include bucket name
           triggers = data.buckets.flatMap((bucket: any) =>
-            bucket.questions ? bucket.questions : []
+            (bucket.questions || []).map((q: any) => ({
+              ...q,
+              bucket: q.bucket || bucket.bucket_name || bucket.name,
+              question_text: q.question_text || q.question,
+            }))
           );
         }
 
@@ -411,38 +419,7 @@ export default function PromptTriggerDetailsWrapper() {
                                     </p>
                                   </div>
                                 )}
-                                {trigger.usage && (
-                                  <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                      <Cpu className="h-4 w-4" />
-                                      Model Information
-                                    </h5>
-                                    <div className="bg-muted p-3 rounded-md space-y-2">
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Model:</span>
-                                        <code className="bg-background px-2 py-1 rounded text-xs">{trigger.usage.model}</code>
-                                      </div>
-                                      {trigger.was_verified && trigger.verifier_model && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Verifier Model:</span>
-                                          <code className="bg-background px-2 py-1 rounded text-xs">{trigger.verifier_model}</code>
-                                        </div>
-                                      )}
-                                      {trigger.processing_time_seconds !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Processing Time:</span>
-                                          <span>{trigger.processing_time_seconds.toFixed(2)}s</span>
-                                        </div>
-                                      )}
-                                      {trigger.total_cost !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Total Cost:</span>
-                                          <span>${trigger.total_cost.toFixed(6)}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
+                            
                               </div>
                             </div>
                           </CollapsibleContent>
@@ -550,38 +527,6 @@ export default function PromptTriggerDetailsWrapper() {
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {trigger.verification_reasoning}
                                     </p>
-                                  </div>
-                                )}
-                                {trigger.usage && (
-                                  <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                      <Cpu className="h-4 w-4" />
-                                      Model Information
-                                    </h5>
-                                    <div className="bg-muted p-3 rounded-md space-y-2">
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Model:</span>
-                                        <code className="bg-background px-2 py-1 rounded text-xs">{trigger.usage.model}</code>
-                                      </div>
-                                      {trigger.was_verified && trigger.verifier_model && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Verifier Model:</span>
-                                          <code className="bg-background px-2 py-1 rounded text-xs">{trigger.verifier_model}</code>
-                                        </div>
-                                      )}
-                                      {trigger.processing_time_seconds !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Processing Time:</span>
-                                          <span>{trigger.processing_time_seconds.toFixed(2)}s</span>
-                                        </div>
-                                      )}
-                                      {trigger.total_cost !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Total Cost:</span>
-                                          <span>${trigger.total_cost.toFixed(6)}</span>
-                                        </div>
-                                      )}
-                                    </div>
                                   </div>
                                 )}
                               </div>
