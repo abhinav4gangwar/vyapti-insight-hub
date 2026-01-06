@@ -1,15 +1,14 @@
 "use client"
 
-import React, { useMemo, useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { SourcePopup } from '@/components/ai-search/source-popup'
-import { AlertCircle, CheckCircle, RotateCcw, Copy, Filter, Zap } from 'lucide-react'
-import { toast } from '@/hooks/use-toast'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
+import { toast } from '@/hooks/use-toast'
+import { AlertCircle, CheckCircle, Copy, Filter, RotateCcw } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Streamdown } from 'streamdown'
-import type { Components } from 'react-markdown'
 
 interface ComponentStatus {
   component: string
@@ -360,6 +359,47 @@ export function StreamingResultsDisplay({
       }
 
       return <p {...props}>{processedChildren}</p>
+    },
+
+    // Handle references in blockquotes
+    blockquote: ({ children, ...props }: any) => {
+      // Recursively process children to handle references
+      const processChildren = (children: any): any => {
+        return React.Children.map(children, (child, index) => {
+          if (typeof child === 'string') {
+            // Process references in string content
+            const parts = child.split(/(\[\d+\])/)
+            return parts.map((part, partIndex) => {
+              const match = part.match(/^\[(\d+)\]$/)
+              if (match) {
+                const refNumber = match[1]
+                return (
+                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
+                    [{refNumber}]
+                  </ReferenceLink>
+                )
+              }
+              return part
+            })
+          }
+          // If child is a React element, recursively process its children
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child as any, {
+              key: child.key || index,
+              children: processChildren((child.props as any).children)
+            })
+          }
+          return child
+        })
+      }
+
+      const processedChildren = processChildren(children)
+
+      return (
+        <blockquote className="border-l-4 border-gray-300 pl-4 py-2 my-4 italic text-gray-700" {...props}>
+          {processedChildren}
+        </blockquote>
+      )
     },
 
     // Handle references in list items and flatten paragraph content
