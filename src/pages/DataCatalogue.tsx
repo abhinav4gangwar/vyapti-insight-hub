@@ -119,17 +119,11 @@ export default function DataCatalogue() {
         description: 'Prompt trigger analysis completed successfully. Opening results...',
       });
 
-      // Navigate to the prompt triggers details page
-      // The API saves the analysis and returns the document_id
-      const documentId = response.data?.document_metadata?.document_id;
-      if (documentId) {
-        window.open(`/prompt-triggers/${documentId}`, '_blank');
-      } else {
-        // Fallback to old behavior if no document_id
-        const analysisKey = `analysis_${Date.now()}`;
-        sessionStorage.setItem(analysisKey, JSON.stringify(response.data));
-        window.open(`/analysis-results?key=${analysisKey}`, '_blank');
-      }
+      // Store analysis results in sessionStorage and open the analysis results page
+      // This is a temporary view - stored results are accessed via the Prompt Triggers list
+      const analysisKey = `analysis_${Date.now()}`;
+      sessionStorage.setItem(analysisKey, JSON.stringify(response.data));
+      window.open(`/analysis-results?key=${analysisKey}`, '_blank');
     } catch (error: any) {
       console.error('Failed to trigger prompt analysis:', error);
       toast({

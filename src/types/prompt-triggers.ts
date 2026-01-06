@@ -54,7 +54,7 @@ export interface UsageInfo {
 }
 
 export interface TriggerDetail {
-  qid: number;
+  qid: number | string;
   bucket: string;
   question_text: string;
   answer: string;
