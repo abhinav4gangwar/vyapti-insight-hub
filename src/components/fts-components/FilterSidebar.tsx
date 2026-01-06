@@ -229,17 +229,32 @@ export const FilterSidebar = ({
             const breakdown = sourceTypeBreakdown.find((b) => b.source_type === type);
             const isExpanded = expandedSources.has(sourceType);
             const dateRange = sourceDateRanges[sourceType];
+            const isSelected = selectedSourceTypes.includes(sourceType);
             
             return (
-              <div key={type} className="border border-border rounded-md p-2">
+              <div 
+                key={type} 
+                className={`border border-border rounded-md p-2 cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted/30' : ''}`}
+                onClick={(e) => {
+                  // Clicking anywhere on the card (except checkbox) expands/collapses date picker
+                  const target = e.target as HTMLElement;
+                  if (!target.closest('[data-checkbox-area]')) {
+                    toggleSourceExpanded(sourceType);
+                  }
+                }}
+              >
                 <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`source-${type}`}
-                    checked={selectedSourceTypes.includes(sourceType)}
-                    onCheckedChange={() => toggleSourceType(sourceType)}
-                  />
+                  <div 
+                    data-checkbox-area
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      id={`source-${type}`}
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSourceType(sourceType)}
+                    />
+                  </div>
                   <label
-                    htmlFor={`source-${type}`}
                     className="text-sm cursor-pointer flex-1"
                   >
                     {label}
@@ -249,30 +264,28 @@ export const FilterSidebar = ({
                       {breakdown.document_count}
                     </Badge>
                   )}
-                  {selectedSourceTypes.includes(sourceType) && (
-                    <button
-                      onClick={() => toggleSourceExpanded(sourceType)}
-                      className="p-1 hover:bg-muted rounded"
-                      title="Set date range"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  )}
+                  <div className="p-1">
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
                 
                 {/* Date range summary */}
-                {selectedSourceTypes.includes(sourceType) && dateRange && (
+                {dateRange && (
                   <div className="mt-1 ml-6 text-xs text-muted-foreground">
                     {getDateRangeSummary(dateRange)}
                   </div>
                 )}
                 
                 {/* Expanded date range inputs */}
-                {selectedSourceTypes.includes(sourceType) && isExpanded && renderDateRangeInputs(sourceType)}
+                {isExpanded && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {renderDateRangeInputs(sourceType)}
+                  </div>
+                )}
               </div>
             );
           })}

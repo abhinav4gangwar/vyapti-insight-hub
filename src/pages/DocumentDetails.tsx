@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -43,9 +43,11 @@ const getConfidenceTextColor = (confidence: number): string => {
 export default function DocumentDetails() {
   const { documentType, id } = useParams<{ documentType: string; id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [triggerDetail, setTriggerDetail] = useState<PromptTriggerDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  // Initialize activeTab from URL query param, defaulting to 'overview'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
   const [jsonModalOpen, setJsonModalOpen] = useState(false);
   const [selectedTrigger, setSelectedTrigger] = useState<TriggerDetail | null>(null);

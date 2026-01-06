@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { authService } from '@/lib/auth';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
-import { ColDef } from 'ag-grid-community';
+import { ColDef, SortChangedEvent } from 'ag-grid-community';
 import { X, Search, ChevronLeft, ChevronRight, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 import axios from 'axios';
@@ -814,6 +814,25 @@ export default function DataCatalogue() {
                     rowData={documents}
                     columnDefs={columnDefs}
                     pagination={false}
+                    onSortChanged={(event: SortChangedEvent) => {
+                      const sortModel = event.api.getColumnState().find(col => col.sort);
+                      if (sortModel) {
+                        // Map AG Grid column IDs to backend sort_by values
+                        const fieldMap: Record<string, string> = {
+                          'date': 'date',
+                          'company_name': 'company_name',
+                          'source_type': 'source_type',
+                          'ingestion_time': 'ingestion_time',
+                          'source': 'source',
+                          'indexed': 'indexed',
+                        };
+                        const backendField = fieldMap[sortModel.colId];
+                        if (backendField) {
+                          setSortBy(backendField);
+                          setSortOrder(sortModel.sort as 'asc' | 'desc');
+                        }
+                      }
+                    }}
                   />
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
