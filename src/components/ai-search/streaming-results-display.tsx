@@ -130,11 +130,17 @@ export function StreamingResultsDisplay({
     return filtered
   }, [referenceMapping, sourceFilter, companyFilter, getChunk])
 
-  // Preprocess content to handle >> nested list syntax
+  // Preprocess content to handle >> nested list syntax and normalize HTML tags
   const preprocessContent = (content: string): string => {
     if (!content) return content
 
-    const lines = content.split('\n')
+    let processed = content
+
+    // Normalize HTML line breaks in table cells to double spaces + newline (markdown line break)
+    // This helps with complex table cells that have multiple lines
+    processed = processed.replace(/<br\s*\/?>/gi, '  \n')
+
+    const lines = processed.split('\n')
     const processedLines: string[] = []
 
     for (let i = 0; i < lines.length; i++) {
@@ -522,7 +528,7 @@ export function StreamingResultsDisplay({
     // Table components with reference handling
     table: ({ children, ...props }: any) => (
       <div className="my-6 overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200" {...props}>
+        <table className="min-w-full divide-y divide-gray-200 table-auto" {...props}>
           {children}
         </table>
       </div>
@@ -578,17 +584,44 @@ export function StreamingResultsDisplay({
       const processedChildren = processChildren(children)
 
       return (
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider" {...props}>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider align-top" {...props}>
           {processedChildren}
         </th>
       )
     },
     
     td: ({ children, ...props }: any) => {
-      // Process references in table cells
+      // Process references in table cells and handle complex content
       const processChildren = (children: any): any => {
         return React.Children.map(children, (child, index) => {
           if (typeof child === 'string') {
+            // Handle HTML line breaks in markdown tables
+            if (child.includes('<br>') || child.includes('<br/>') || child.includes('<br />')) {
+              const lines = child.split(/<br\s*\/?>/i)
+              return lines.map((line, lineIdx) => (
+                <React.Fragment key={`line-${index}-${lineIdx}`}>
+                  {lineIdx > 0 && <br />}
+                  {(() => {
+                    // Process references in each line
+                    const parts = line.split(/(\[\d+\])/)
+                    return parts.map((part, partIdx) => {
+                      const match = part.match(/^\[(\d+)\]$/)
+                      if (match) {
+                        const refNumber = match[1]
+                        return (
+                          <ReferenceLink key={`ref-${index}-${lineIdx}-${partIdx}`} refNumber={refNumber}>
+                            [{refNumber}]
+                          </ReferenceLink>
+                        )
+                      }
+                      return part
+                    })
+                  })()}
+                </React.Fragment>
+              ))
+            }
+            
+            // Regular reference processing
             const parts = child.split(/(\[\d+\])/)
             return parts.map((part, partIndex) => {
               const match = part.match(/^\[(\d+)\]$/)
@@ -616,8 +649,8 @@ export function StreamingResultsDisplay({
       const processedChildren = processChildren(children)
 
       return (
-        <td className="px-4 py-3 text-sm text-gray-900 whitespace-normal" {...props}>
-          {processedChildren}
+        <td className="px-4 py-3 text-sm text-gray-900 align-top" {...props}>
+          <div className="leading-relaxed">{processedChildren}</div>
         </td>
       )
     },
@@ -629,18 +662,28 @@ export function StreamingResultsDisplay({
 
     const processedContent = preprocessContent(streamedContent)
 
-    return (
-      <div className="prose prose-lg max-w-none">
-        <Streamdown
-          parseIncompleteMarkdown={true}
-          isAnimating={isStreaming}
-          components={markdownComponents}
-        >
-          {processedContent}
-        </Streamdown>
-      </div>
-    )
-  }, [streamedContent, referenceMapping, isStreaming])
+    try {
+      return (
+        <div className="prose prose-lg max-w-none">
+          <Streamdown
+            parseIncompleteMarkdown={true}
+            isAnimating={isStreaming}
+            components={markdownComponents}
+          >
+            {processedContent}
+          </Streamdown>
+        </div>
+      )
+    } catch (error) {
+      console.error('Error rendering markdown:', error)
+      // Fallback to plain text with basic formatting
+      return (
+        <div className="prose prose-lg max-w-none">
+          <pre className="whitespace-pre-wrap text-sm font-sans">{streamedContent}</pre>
+        </div>
+      )
+    }
+  }, [streamedContent, markdownComponents, isStreaming])
 
   if (error) {
     return (
