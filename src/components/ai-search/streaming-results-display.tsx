@@ -8,9 +8,8 @@ import { SourcePopup } from '@/components/ai-search/source-popup'
 import { AlertCircle, CheckCircle, RotateCcw, Copy, Filter, Zap } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
+import { Streamdown } from 'streamdown'
+import type { Components } from 'react-markdown'
 
 interface ComponentStatus {
   component: string
@@ -448,7 +447,7 @@ export function StreamingResultsDisplay({
     ),
   }), [referenceMapping, isStreaming])
 
-  // Render content with React Markdown (both streaming and completed)
+  // Render content with Streamdown (both streaming and completed)
   const renderedContent = useMemo(() => {
     if (!streamedContent) return null
 
@@ -456,13 +455,13 @@ export function StreamingResultsDisplay({
 
     return (
       <div className="prose max-w-none">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw]}
+        <Streamdown
+          parseIncompleteMarkdown={true}
+          isAnimating={isStreaming}
           components={markdownComponents}
         >
           {processedContent}
-        </ReactMarkdown>
+        </Streamdown>
       </div>
     )
   }, [streamedContent, referenceMapping, isStreaming])
