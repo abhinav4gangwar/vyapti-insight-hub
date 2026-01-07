@@ -8,25 +8,26 @@ import { useTokenExpiration } from "@/hooks/use-token-expiration";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AISearch from "./pages/AISearch";
+import AISearchNormal from "./pages/AISearchNormal";
 import ActivityLogs from "./pages/ActivityLogs";
+import AnalysisResultsView from "./pages/AnalysisResultsView";
 import ChangePassword from "./pages/ChangePassword";
 import CompanyDetails from "./pages/CompanyDetails";
-import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import Dashboard from "./pages/Dashboard";
 import DataCatalogue from "./pages/DataCatalogue";
+import DocumentDetails from "./pages/DocumentDetails";
 import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import PromptRegistry from "./pages/PromptRegistry";
-import PromptTriggers from "./pages/PromptTriggers";
-import DocumentDetails from "./pages/DocumentDetails";
 import PromptTriggerDetailsWrapper from "./pages/PromptTriggerDetailsWrapper";
 import PromptTriggerQuestions from "./pages/PromptTriggerQuestions";
-import AnalysisResultsView from "./pages/AnalysisResultsView";
+import PromptTriggers from "./pages/PromptTriggers";
 import Settings from "./pages/Settings";
 import Triggers from "./pages/Triggers";
+import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
 import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-page";
 import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
@@ -130,6 +131,13 @@ const App = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <AISearch />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/ai-search-normal" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AISearchNormal />
               </DashboardLayout>
             </ProtectedRoute>
           } />

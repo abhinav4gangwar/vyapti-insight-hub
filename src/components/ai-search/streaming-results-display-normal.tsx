@@ -8,7 +8,9 @@ import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
 import { toast } from '@/hooks/use-toast'
 import { AlertCircle, CheckCircle, Copy, Filter, RotateCcw } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
-import { Streamdown } from 'streamdown'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
+import remarkGfm from 'remark-gfm'
 
 interface ComponentStatus {
   component: string
@@ -38,7 +40,7 @@ interface StreamingResultsDisplayProps {
   componentStatuses?: ComponentStatus[]
 }
 
-export function StreamingResultsDisplay({
+export function StreamingResultsDisplayNormal({
   isStreaming,
   onRetry,
   streamedContent = '',
@@ -130,17 +132,11 @@ export function StreamingResultsDisplay({
     return filtered
   }, [referenceMapping, sourceFilter, companyFilter, getChunk])
 
-  // Preprocess content to handle >> nested list syntax and normalize HTML tags
+  // Preprocess content to handle >> nested list syntax
   const preprocessContent = (content: string): string => {
     if (!content) return content
 
-    let processed = content
-
-    // Normalize HTML line breaks in table cells to double spaces + newline (markdown line break)
-    // This helps with complex table cells that have multiple lines
-    processed = processed.replace(/<br\s*\/?>/gi, '  \n')
-
-    const lines = processed.split('\n')
+    const lines = content.split('\n')
     const processedLines: string[] = []
 
     for (let i = 0; i < lines.length; i++) {
@@ -367,47 +363,6 @@ export function StreamingResultsDisplay({
       return <p {...props}>{processedChildren}</p>
     },
 
-    // Handle references in blockquotes
-    blockquote: ({ children, ...props }: any) => {
-      // Recursively process children to handle references
-      const processChildren = (children: any): any => {
-        return React.Children.map(children, (child, index) => {
-          if (typeof child === 'string') {
-            // Process references in string content
-            const parts = child.split(/(\[\d+\])/)
-            return parts.map((part, partIndex) => {
-              const match = part.match(/^\[(\d+)\]$/)
-              if (match) {
-                const refNumber = match[1]
-                return (
-                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                    [{refNumber}]
-                  </ReferenceLink>
-                )
-              }
-              return part
-            })
-          }
-          // If child is a React element, recursively process its children
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as any, {
-              key: child.key || index,
-              children: processChildren((child.props as any).children)
-            })
-          }
-          return child
-        })
-      }
-
-      const processedChildren = processChildren(children)
-
-      return (
-        <blockquote className="border-l-4 border-gray-400 bg-gray-50 pl-4 pr-4 py-3 my-4 italic text-gray-500 rounded-r-md" {...props}>
-          {processedChildren}
-        </blockquote>
-      )
-    },
-
     // Handle references in list items and flatten paragraph content
     li: ({ children, ...props }: any) => {
       // Recursively process children to flatten paragraphs and handle references
@@ -457,24 +412,15 @@ export function StreamingResultsDisplay({
       const className = hasNestedList ? "mb-2 leading-relaxed" : "mb-1 leading-relaxed"
       return <li className={className} {...props}>{processedChildren}</li>
     },
-    // Style headers appropriately with improved visual hierarchy
+    // Style headers appropriately
     h1: ({ children, ...props }: any) => (
-      <h1 className="text-3xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b-2 border-gray-200" {...props}>{children}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-8 mb-4" {...props}>{children}</h1>
     ),
     h2: ({ children, ...props }: any) => (
-      <h2 className="text-2xl font-bold text-gray-900 mt-6 mb-3 pb-1 border-b border-gray-200" {...props}>{children}</h2>
+      <h2 className="text-xl font-bold text-gray-900 mt-6 mb-3" {...props}>{children}</h2>
     ),
     h3: ({ children, ...props }: any) => (
-      <h3 className="text-xl font-semibold text-gray-900 mt-5 mb-2" {...props}>{children}</h3>
-    ),
-    h4: ({ children, ...props }: any) => (
-      <h4 className="text-lg font-semibold text-gray-800 mt-4 mb-2" {...props}>{children}</h4>
-    ),
-    h5: ({ children, ...props }: any) => (
-      <h5 className="text-base font-semibold text-gray-800 mt-3 mb-1" {...props}>{children}</h5>
-    ),
-    h6: ({ children, ...props }: any) => (
-      <h6 className="text-sm font-semibold text-gray-700 mt-3 mb-1" {...props}>{children}</h6>
+      <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2" {...props}>{children}</h3>
     ),
     // Style lists with proper nesting support
     ul: ({ children, ...props }: any) => {
@@ -495,195 +441,31 @@ export function StreamingResultsDisplay({
     },
     // Style emphasis
     strong: ({ children, ...props }: any) => (
-      <strong className="font-semibold text-gray-900" {...props}>{children}</strong>
+      <strong className="font-semibold" {...props}>{children}</strong>
     ),
     em: ({ children, ...props }: any) => (
-      <em className="italic text-gray-800" {...props}>{children}</em>
+      <em className="italic" {...props}>{children}</em>
     ),
-    
-    // Code blocks with enhanced styling
-    code: ({ inline, children, ...props }: any) => {
-      if (inline) {
-        return (
-          <code className="px-1.5 py-0.5 bg-gray-100 text-red-600 rounded text-sm font-mono" {...props}>
-            {children}
-          </code>
-        )
-      }
-      return (
-        <code className="block bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto" {...props}>
-          {children}
-        </code>
-      )
-    },
-    pre: ({ children, ...props }: any) => (
-      <pre className="bg-gray-900 rounded-lg my-4 overflow-x-auto" {...props}>{children}</pre>
-    ),
-    
-    // Horizontal rule
-    hr: ({ ...props }: any) => (
-      <hr className="my-8 border-t-2 border-gray-200" {...props} />
-    ),
-    
-    // Table components with reference handling
-    table: ({ children, ...props }: any) => (
-      <div className="my-6 overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200 table-auto" {...props}>
-          {children}
-        </table>
-      </div>
-    ),
-    
-    thead: ({ children, ...props }: any) => (
-      <thead className="bg-gradient-to-b from-gray-50 to-gray-100" {...props}>
-        {children}
-      </thead>
-    ),
-    
-    tbody: ({ children, ...props }: any) => (
-      <tbody className="bg-white divide-y divide-gray-200" {...props}>
-        {children}
-      </tbody>
-    ),
-    
-    tr: ({ children, ...props }: any) => (
-      <tr className="hover:bg-gray-50 transition-colors" {...props}>
-        {children}
-      </tr>
-    ),
-    
-    th: ({ children, ...props }: any) => {
-      // Process references in table headers
-      const processChildren = (children: any): any => {
-        return React.Children.map(children, (child, index) => {
-          if (typeof child === 'string') {
-            const parts = child.split(/(\[\d+\])/)
-            return parts.map((part, partIndex) => {
-              const match = part.match(/^\[(\d+)\]$/)
-              if (match) {
-                const refNumber = match[1]
-                return (
-                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                    [{refNumber}]
-                  </ReferenceLink>
-                )
-              }
-              return part
-            })
-          }
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as any, {
-              key: child.key || index,
-              children: processChildren((child.props as any).children)
-            })
-          }
-          return child
-        })
-      }
-
-      const processedChildren = processChildren(children)
-
-      return (
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider align-top" {...props}>
-          {processedChildren}
-        </th>
-      )
-    },
-    
-    td: ({ children, ...props }: any) => {
-      // Process references in table cells and handle complex content
-      const processChildren = (children: any): any => {
-        return React.Children.map(children, (child, index) => {
-          if (typeof child === 'string') {
-            // Handle HTML line breaks in markdown tables
-            if (child.includes('<br>') || child.includes('<br/>') || child.includes('<br />')) {
-              const lines = child.split(/<br\s*\/?>/i)
-              return lines.map((line, lineIdx) => (
-                <React.Fragment key={`line-${index}-${lineIdx}`}>
-                  {lineIdx > 0 && <br />}
-                  {(() => {
-                    // Process references in each line
-                    const parts = line.split(/(\[\d+\])/)
-                    return parts.map((part, partIdx) => {
-                      const match = part.match(/^\[(\d+)\]$/)
-                      if (match) {
-                        const refNumber = match[1]
-                        return (
-                          <ReferenceLink key={`ref-${index}-${lineIdx}-${partIdx}`} refNumber={refNumber}>
-                            [{refNumber}]
-                          </ReferenceLink>
-                        )
-                      }
-                      return part
-                    })
-                  })()}
-                </React.Fragment>
-              ))
-            }
-            
-            // Regular reference processing
-            const parts = child.split(/(\[\d+\])/)
-            return parts.map((part, partIndex) => {
-              const match = part.match(/^\[(\d+)\]$/)
-              if (match) {
-                const refNumber = match[1]
-                return (
-                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                    [{refNumber}]
-                  </ReferenceLink>
-                )
-              }
-              return part
-            })
-          }
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as any, {
-              key: child.key || index,
-              children: processChildren((child.props as any).children)
-            })
-          }
-          return child
-        })
-      }
-
-      const processedChildren = processChildren(children)
-
-      return (
-        <td className="px-4 py-3 text-sm text-gray-900 align-top" {...props}>
-          <div className="leading-relaxed">{processedChildren}</div>
-        </td>
-      )
-    },
   }), [referenceMapping, isStreaming])
 
-  // Render content with Streamdown (both streaming and completed)
+  // Render content with React Markdown (both streaming and completed)
   const renderedContent = useMemo(() => {
     if (!streamedContent) return null
 
     const processedContent = preprocessContent(streamedContent)
 
-    try {
-      return (
-        <div className="prose prose-lg max-w-none">
-          <Streamdown
-            parseIncompleteMarkdown={true}
-            isAnimating={isStreaming}
-            components={markdownComponents}
-          >
-            {processedContent}
-          </Streamdown>
-        </div>
-      )
-    } catch (error) {
-      console.error('Error rendering markdown:', error)
-      // Fallback to plain text with basic formatting
-      return (
-        <div className="prose prose-lg max-w-none">
-          <pre className="whitespace-pre-wrap text-sm font-sans">{streamedContent}</pre>
-        </div>
-      )
-    }
-  }, [streamedContent, markdownComponents, isStreaming])
+    return (
+      <div className="prose max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={markdownComponents}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
+    )
+  }, [streamedContent, referenceMapping, isStreaming])
 
   if (error) {
     return (

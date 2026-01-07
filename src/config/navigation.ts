@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, CarFront, Clipboard, Database, FileText, FolderSearch, LucideIcon, Search, Settings, TextSearch, Sparkles } from 'lucide-react';
+import { Bell, BellRing, Building2, CarFront, Clipboard, Database, FileText, FolderSearch, LucideIcon, Search, Settings, Sparkles, TextSearch } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -24,6 +24,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     key: 'ai-search',
     label: 'AI Search',
     href: '/ai-search',
+    icon: Search,
+  },
+  {
+    key: 'ai-search-normal',
+    label: 'AI Search Normal',
+    href: '/ai-search-normal',
     icon: Search,
   },
   {
