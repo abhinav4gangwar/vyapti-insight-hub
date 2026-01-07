@@ -4,9 +4,17 @@ import { SourcePopup } from '@/components/ai-search/source-popup'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtSearchResult,
+  ChainOfThoughtSearchResults,
+  ChainOfThoughtStep
+} from '@/components/ui/chain-of-thought'
 import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
 import { toast } from '@/hooks/use-toast'
-import { AlertCircle, CheckCircle, Copy, Filter, RotateCcw } from 'lucide-react'
+import { AlertCircle, CheckCircle, Copy, Filter, RotateCcw, SearchIcon } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { Streamdown } from 'streamdown'
 
@@ -57,7 +65,6 @@ export function StreamingResultsDisplay({
     type: 'expert_interview' | 'earnings_call' | 'sebi_chunk'
   }>>({})
   const [showDebug, setShowDebug] = useState(false)
-  const [showQueries, setShowQueries] = useState(false)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews' | 'sebi_chunks'>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const { getChunk } = useBulkChunksContext()
@@ -808,94 +815,176 @@ export function StreamingResultsDisplay({
 
   return (
     <div className="space-y-6">
-      {/* Queries Section */}
-      {queries && (
+      {/* Search Queries and Processing Pipeline with Chain of Thought */}
+      {(queries || componentStatuses.length > 0) && (
         <Card>
-          <CardHeader>
-            <button
-              onClick={() => setShowQueries(!showQueries)}
-              className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
-            >
-              <CardTitle className="flex items-center gap-2 text-lg">
-                {/* <Zap className="w-5 h-5 text-amber-500" /> */}
-                Search Queries
-              </CardTitle>
-              <span className="text-gray-500">
-                {showQueries ? '▼' : '▶'}
-              </span>
-            </button>
-          </CardHeader>
-          {showQueries && (
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-sm text-gray-700 mb-2">Extracted Query</h4>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">{queries.extracted_query}</p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                  BM25 Queries ({queries.expansion_metadata.num_bm25})
-                </h4>
-                <div className="space-y-2">
-                  {queries.bm25_queries.map((query, idx) => (
-                    <div key={idx} className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md border border-blue-100">
-                      {query}
+          <CardContent className="pt-6">
+            <ChainOfThought defaultOpen={true}>
+              <ChainOfThoughtHeader>
+                <div className="flex items-center gap-2">
+                  <span>Search Query Processing</span>
+                  {isStreaming && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-blue-600">Processing...</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                  Semantic Queries ({queries.expansion_metadata.num_semantic})
-                </h4>
-                <div className="space-y-2">
-                  {queries.semantic_queries.map((query, idx) => (
-                    <div key={idx} className="text-sm text-gray-600 bg-purple-50 p-2 rounded-md border border-purple-100">
-                      {query}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {/* Component Status Section */}
-      {componentStatuses.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              {/* <Zap className="w-5 h-5 text-blue-500" /> */}
-              Processing Pipeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {componentStatuses.map((status, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="flex-shrink-0">
-                      {status.status === 'completed' ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      ) : (
-                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{status.component}</p>
-                      <p className="text-xs text-gray-500">{status.status}</p>
-                    </div>
-                  </div>
-                  {status.execution_time_ms > 0 && (
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{status.execution_time_ms.toFixed(0)}ms</p>
+                  )}
+                  {!isStreaming && queries && (
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                      <span className="text-xs text-green-600">Complete</span>
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              </ChainOfThoughtHeader>
+              <ChainOfThoughtContent>
+                {queries && (
+                  <>
+                    {/* Step 1: Extracted Query */}
+                    <ChainOfThoughtStep
+                      icon={SearchIcon}
+                      label={
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-semibold text-gray-900">Query Extraction</span>
+                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                        </div>
+                      }
+                      status="complete"
+                    >
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                        <p className="text-sm text-gray-800 font-medium leading-relaxed">{queries.extracted_query}</p>
+                      </div>
+                    </ChainOfThoughtStep>
+
+                    {/* Step 2: BM25 Query Expansion */}
+                    <ChainOfThoughtStep
+                      icon={SearchIcon}
+                      label={
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-semibold text-gray-900">BM25 Query Expansion</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <Badge variant="secondary" className="text-xs font-semibold">
+                              {queries.expansion_metadata.num_bm25} queries
+                            </Badge>
+                            {componentStatuses.some(s => s.component.toLowerCase().includes('bm25')) ? (
+                              componentStatuses.find(s => s.component.toLowerCase().includes('bm25'))?.status === 'completed' ? (
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                              ) : (
+                                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                              )
+                            ) : (
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            )}
+                          </div>
+                        </div>
+                      }
+                      status={componentStatuses.some(s => s.component.toLowerCase().includes('bm25')) 
+                        ? componentStatuses.find(s => s.component.toLowerCase().includes('bm25'))?.status === 'completed' 
+                          ? 'complete' 
+                          : 'active'
+                        : 'complete'}
+                    >
+                      <ChainOfThoughtSearchResults>
+                        {queries.bm25_queries.map((query, idx) => (
+                          <ChainOfThoughtSearchResult 
+                            key={idx}
+                            className="bg-blue-50 border-blue-300 text-blue-900 hover:bg-blue-100 transition-colors text-sm px-3 py-1.5"
+                          >
+                            {query}
+                          </ChainOfThoughtSearchResult>
+                        ))}
+                      </ChainOfThoughtSearchResults>
+                    </ChainOfThoughtStep>
+
+                    {/* Step 3: Semantic Query Expansion */}
+                    <ChainOfThoughtStep
+                      icon={SearchIcon}
+                      label={
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-semibold text-gray-900">Semantic Query Expansion</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <Badge variant="secondary" className="text-xs font-semibold">
+                              {queries.expansion_metadata.num_semantic} queries
+                            </Badge>
+                            {componentStatuses.some(s => s.component.toLowerCase().includes('semantic')) ? (
+                              componentStatuses.find(s => s.component.toLowerCase().includes('semantic'))?.status === 'completed' ? (
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                              ) : (
+                                <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                              )
+                            ) : (
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            )}
+                          </div>
+                        </div>
+                      }
+                      status={componentStatuses.some(s => s.component.toLowerCase().includes('semantic')) 
+                        ? componentStatuses.find(s => s.component.toLowerCase().includes('semantic'))?.status === 'completed' 
+                          ? 'complete' 
+                          : 'active'
+                        : 'complete'}
+                    >
+                      <ChainOfThoughtSearchResults>
+                        {queries.semantic_queries.map((query, idx) => (
+                          <ChainOfThoughtSearchResult 
+                            key={idx}
+                            className="bg-purple-50 border-purple-300 text-purple-900 hover:bg-purple-100 transition-colors text-sm px-3 py-1.5"
+                          >
+                            {query}
+                          </ChainOfThoughtSearchResult>
+                        ))}
+                      </ChainOfThoughtSearchResults>
+                    </ChainOfThoughtStep>
+                  </>
+                )}
+
+                {/* Processing Pipeline Steps */}
+                {componentStatuses.length > 0 && componentStatuses.map((status, idx) => {
+                  const isCompleted = status.status === 'completed'
+                  const stepStatus: "complete" | "active" | "pending" = isCompleted ? 'complete' : 'active'
+                  
+                  return (
+                    <ChainOfThoughtStep
+                      key={idx}
+                      icon={isCompleted ? CheckCircle : SearchIcon}
+                      label={
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-semibold text-gray-900">{status.component}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {status.execution_time_ms > 0 && (
+                              <Badge variant="outline" className="text-xs font-mono font-semibold">
+                                {status.execution_time_ms.toFixed(0)}ms
+                              </Badge>
+                            )}
+                            {isCompleted ? (
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                            )}
+                          </div>
+                        </div>
+                      }
+                      status={stepStatus}
+                    >
+                      <div className={`text-sm p-4 rounded-lg border ${
+                        isCompleted 
+                          ? 'bg-green-50 border-green-300 text-green-900' 
+                          : 'bg-amber-50 border-amber-300 text-amber-900'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold capitalize">{status.status}</span>
+                          {isCompleted && status.execution_time_ms > 0 && (
+                            <span className="text-xs opacity-75">
+                              • Completed in {status.execution_time_ms.toFixed(0)}ms
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </ChainOfThoughtStep>
+                  )
+                })}
+              </ChainOfThoughtContent>
+            </ChainOfThought>
           </CardContent>
         </Card>
       )}
