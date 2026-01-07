@@ -24,19 +24,23 @@ export interface CreateNoteRequest {
   username: string;
 }
 
-const token = authService.getAccessToken();
-if (!token) {
-  throw new Error("Not authenticated");
-}
-
 class NotesApiClient {
   private client = axios.create({
     baseURL: API_BASE_URL,
     headers: {
-       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
+
+  constructor() {
+    this.client.interceptors.request.use((config) => {
+      const token = authService.getAccessToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+  }
 
   async createNote(isin: string, data: CreateNoteRequest): Promise<CompanyNote> {
     const response = await this.client.post<CompanyNote>(`/company-note/${isin}`, data);

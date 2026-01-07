@@ -23,19 +23,24 @@ export interface RemoveTagsRequest {
   tag_ids: string[];
 }
 
-const token = authService.getAccessToken();
-if (!token) {
-  throw new Error("Not authenticated");
-}
-
 class TagsApiClient {
   private client = axios.create({
     baseURL: API_BASE_URL,
     headers: {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
+
+  constructor() {
+    // Add request interceptor to include auth token dynamically
+    this.client.interceptors.request.use((config) => {
+      const token = authService.getAccessToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+  }
 
   // Tag CRUD operations
   async getAllTags(): Promise<Tag[]> {

@@ -30,19 +30,25 @@ export interface CompanyCatalogPaginatedResponse {
   current_page: number;
   items: CompanyCatalogItem[];
 }
-const token = authService.getAccessToken();
-if (!token) {
-  throw new Error("Not authenticated");
-}
 
 class CompanyCatalogApiClient {
   private client = axios.create({
     baseURL: API_BASE_URL,
     headers: {
-      'Authorization': `Bearer ${token}`,
       "Content-Type": "application/json",
     },
   });
+
+  constructor() {
+    // Add request interceptor to include auth token dynamically
+    this.client.interceptors.request.use((config) => {
+      const token = authService.getAccessToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+  }
 
   async getCompanies(
     filters?: CompanyCatalogFilters
