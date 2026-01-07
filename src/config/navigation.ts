@@ -32,24 +32,24 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     href: '/triggers',
     icon: BellRing,
   },
-  // {
-  //   key: 'prompt-triggers',
-  //   label: 'Prompt Triggers',
-  //   href: '/prompt-triggers',
-  //   icon: Sparkles,
-  // },
+  {
+    key: 'prompt-triggers',
+    label: 'Prompt Triggers',
+    href: '/prompt-triggers',
+    icon: Sparkles,
+  },
   {
     key: 'data-catalogue',
     label: 'Data Catalogue',
     href: '/data-catalogue',
     icon: Database,
   },
-  {
-    key:'vahan-dashboard',
-    label:"Vahan Data",
-    href:"/vahan-db",
-    icon: CarFront,
-  },
+  // {
+  //   key:'vahan-dashboard',
+  //   label:"Vahan Data",
+  //   href:"/vahan-db",
+  //   icon: CarFront,
+  // },
   {
     key:'anti-dumping-duties',
     label:"Anti Dumping Duties",
@@ -62,12 +62,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   //   href:"/fts",
   //   icon: TextSearch,
   // },
-  {
-    key:'chunk-search',
-    label:"Chunk Search",
-    href:"/chunk-search",
-    icon: FolderSearch,
-  },
+  // {
+  //   key:'chunk-search',
+  //   label:"Chunk Search",
+  //   href:"/chunk-search",
+  //   icon: FolderSearch,
+  // },
   {
     key: 'notifications',
     label: 'Notifications',
