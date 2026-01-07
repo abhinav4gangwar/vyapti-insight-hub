@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, FileText, Calendar, Clock, Users, Tag, ExternalLink } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
+import { openPdfWithFallback } from '@/lib/documents-api';
 
 interface EarningsCall {
   id: number;
@@ -100,11 +101,6 @@ export default function UnlistedCompanyDetails() {
     }
   };
 
-  const openDocument = (url: string) => {
-    if (url) {
-      window.open(url, '_blank');
-    }
-  };
 
   const getAllEarningsCalls = () => {
     if (!companyData?.earnings_calls) return [];

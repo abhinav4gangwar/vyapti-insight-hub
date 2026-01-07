@@ -8,10 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
-import { ColDef } from 'ag-grid-community';
+import { ColDef, RowClickedEvent } from 'ag-grid-community';
 import { X, Search, ChevronLeft, ChevronRight, Sparkles, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { getPromptTriggers } from '@/lib/prompt-triggers-api';
+import { getDocumentUrl } from '@/lib/documents-api';
 import type {
   PromptTrigger,
   PaginationInfo,
@@ -30,7 +31,7 @@ export default function PromptTriggers() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo>({
     current_page: 1,
-    page_size: 50,
+    page_size: 100,
     total_count: 0,
     total_pages: 1,
     showing_from: 0,
@@ -61,7 +62,7 @@ export default function PromptTriggers() {
   const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
 
   // Sorting states
-  const [sortBy, setSortBy] = useState<'earning_call_date' | 'company_name'>('earning_call_date');
+  const [sortBy, setSortBy] = useState<'earning_call_date' | 'company_name' | 'document_type'>('earning_call_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Get bucket names from filter options (dynamic)
@@ -100,7 +101,7 @@ export default function PromptTriggers() {
     try {
       const response = await getPromptTriggers({
         page,
-        page_size: 50,
+        page_size: 100,
         date_range_start: dateFrom,
         date_range_end: dateTo,
         companies: selectedCompanies.length > 0 ? selectedCompanies.join(',') : undefined,
@@ -190,7 +191,7 @@ export default function PromptTriggers() {
     setSelectedQuestions([]);
   };
 
-  const handleSortChange = (field: 'earning_call_date' | 'company_name') => {
+  const handleSortChange = (field: 'earning_call_date' | 'company_name' | 'document_type') => {
     if (field === sortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -230,8 +231,14 @@ export default function PromptTriggers() {
     }
   };
 
-  const handleRowClick = (triggerId: number) => {
-    navigate(`/prompt-triggers/${triggerId}`);
+  const handleRowClick = (trigger: PromptTrigger) => {
+    // Open document details page with triggers tab selected in new tab
+    // Normalize document_type to API format (lowercase with underscores)
+    const normalizedDocType = trigger.document_type
+      .toLowerCase()
+      .replace(/\s+/g, '_');
+    const documentUrl = `${getDocumentUrl(normalizedDocType, trigger.earning_call_id)}?tab=triggers`;
+    window.open(documentUrl, '_blank');
   };
 
   // Bucket count cell renderer
@@ -257,7 +264,7 @@ export default function PromptTriggers() {
       width: 250,
       onCellClicked: (params) => {
         if (params.data) {
-          navigate(`/companies/${params.data.company_isin}`);
+          window.open(`/companies/${params.data.company_isin}`, '_blank');
         }
       },
       cellRenderer: (params: { value: string }) => (
@@ -269,7 +276,7 @@ export default function PromptTriggers() {
     {
       field: 'document_type',
       headerName: 'Document Type',
-      sortable: false,
+      sortable: true,
       width: 140,
       cellRenderer: (params: { value: string }) => (
         <Badge variant="outline" className="text-xs">
@@ -289,7 +296,7 @@ export default function PromptTriggers() {
     },
     ...bucketNames.map((bucketName) => ({
       headerName: bucketName,
-      sortable: false,
+      sortable: true,
       width: 130,
       valueGetter: (params: { data: PromptTrigger | undefined }) =>
         params.data?.bucket_counts[bucketName] ?? 0,
@@ -531,6 +538,14 @@ export default function PromptTriggers() {
                     >
                       Company {getSortIcon('company_name')}
                     </Button>
+                    <Button
+                      variant={sortBy === 'document_type' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleSortChange('document_type')}
+                      className="flex items-center gap-1"
+                    >
+                      Doc Type {getSortIcon('document_type')}
+                    </Button>
                   </div>
                 </div>
 
@@ -556,9 +571,22 @@ export default function PromptTriggers() {
                     rowData={triggers}
                     columnDefs={columnDefs}
                     pagination={false}
-                    onRowClicked={(event) => {
-                      if (event.data && event.column?.getColId() !== 'company_name') {
-                        handleRowClick(event.data.id);
+                    onRowClicked={(event: RowClickedEvent<PromptTrigger>) => {
+                      // Check if the click was on the company_name column by checking the source event
+                      const target = event.event?.target as HTMLElement | null;
+                      const isCompanyNameCell = target?.closest('[col-id="company_name"]');
+                      if (event.data && !isCompanyNameCell) {
+                        handleRowClick(event.data);
+                      }
+                    }}
+                    onSortChanged={(event) => {
+                      const sortModel = event.api.getColumnState().find(col => col.sort);
+                      if (sortModel) {
+                        const field = sortModel.colId as 'earning_call_date' | 'company_name' | 'document_type';
+                        if (field === 'earning_call_date' || field === 'company_name' || field === 'document_type') {
+                          setSortBy(field);
+                          setSortOrder(sortModel.sort as 'asc' | 'desc');
+                        }
                       }
                     }}
                     rowClass="cursor-pointer hover:bg-muted/50"

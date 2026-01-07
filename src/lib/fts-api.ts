@@ -1,17 +1,10 @@
+import { CompanyInfo, CompanyListResponse, DocumentMatchesRequest, DocumentMatchesResponse, FTSSearchRequest, FTSSearchResponse } from '@/pages/full-text-search/fts-types';
 import axios, { AxiosInstance } from 'axios';
-import {
-  CompanyInfo,
-  CompanyListResponse,
-  DocumentMatchesRequest,
-  DocumentMatchesResponse,
-  FTSSearchRequest,
-  FTSSearchResponse
-} from './fts-types';
+
 
 const AI_API_BASE_URL = import.meta.env.VITE_AI_API_BASE_URL || 'https://staging-ai.vyapti.co.in';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staging-api.vyapti.co.in';
 
-// Helper function to get auth token from localStorage
 const getAuthToken = (): string | null => {
   return localStorage.getItem('access_token');
 };
@@ -20,7 +13,6 @@ const getAuthToken = (): string | null => {
 const createAiApiClient = (): AxiosInstance => {
   const client = axios.create({
     baseURL: AI_API_BASE_URL,
-    timeout: 30000, // 30 second timeout for search operations
     headers: {
       'Content-Type': 'application/json',
     },
@@ -111,7 +103,7 @@ export const getFTSCompanies = async (): Promise<CompanyListResponse> => {
   return response.data;
 };
 
-// Get all companies (from main API - used in data catalogue)
+// Get all companies
 export const getAllCompanies = async (): Promise<CompanyInfo[]> => {
   const client = createApiClient();
   const response = await client.get('/companies/names');

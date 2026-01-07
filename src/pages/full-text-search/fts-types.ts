@@ -1,5 +1,19 @@
-export type SearchMode = 'all_words' | 'any_word' | 'exact_phrase';
+export type SearchMode = 'all_words' | 'any_word' | 'exact_phrase' | 'literal';
 export type SourceType = 'earnings_call' | 'sebi_drhp' | 'expert_interview' | 'investor_presentation';
+
+export interface SourceDateRange {
+  from_year?: number;
+  from_month?: number;
+  to_year?: number;
+  to_month?: number;
+}
+
+export interface SourceDateRanges {
+  earnings_call?: SourceDateRange;
+  sebi_drhp?: SourceDateRange;
+  expert_interview?: SourceDateRange;
+  investor_presentation?: SourceDateRange;
+}
 
 export interface FTSSearchRequest {
   query: string;
@@ -8,8 +22,7 @@ export interface FTSSearchRequest {
   source_types?: SourceType[];
   company_names?: string[];
   isins?: string[];
-  date_from?: string;
-  date_to?: string;
+  source_date_ranges?: SourceDateRanges;
   page?: number;
   per_page?: number;
   include_other_snippets?: boolean;

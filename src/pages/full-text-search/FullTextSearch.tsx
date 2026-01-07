@@ -1,12 +1,47 @@
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FilterSidebar } from "./components/FilterSidebar";
-import { ResultsSection } from "./components/ResultSection";
-import { SearchInput } from "./components/SearchInput";
-import { SearchMode, SourceType } from "./fts-types";
-import { useFTSSearch } from "./useFTSSearch";
+
+import { FilterSidebar } from "@/components/fts-components/FilterSidebar";
+import { ResultsSection } from "@/components/fts-components/ResultSection";
+import { SearchInput } from "@/components/fts-components/SearchInput";
+import { useFTSSearch } from "@/hooks/useFTSSearch";
+import { SearchMode, SourceDateRanges, SourceType } from "./fts-types";
+
+const FTS_FILTERS_STORAGE_KEY = 'fts-search-filters';
+
+interface FTSFilters {
+  sourceDateRanges: SourceDateRanges;
+  selectedSourceTypes: SourceType[];
+  selectedCompanies: string[];
+}
+
+const DEFAULT_FILTERS: FTSFilters = {
+  sourceDateRanges: {},
+  selectedSourceTypes: ['earnings_call', 'investor_presentation'],
+  selectedCompanies: [],
+};
+
+const loadFiltersFromStorage = (): FTSFilters => {
+  try {
+    const stored = localStorage.getItem(FTS_FILTERS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { ...DEFAULT_FILTERS, ...parsed };
+    }
+  } catch (error) {
+    console.warn('Failed to load FTS filters from localStorage:', error);
+  }
+  return DEFAULT_FILTERS;
+};
+
+const saveFiltersToStorage = (filters: FTSFilters) => {
+  try {
+    localStorage.setItem(FTS_FILTERS_STORAGE_KEY, JSON.stringify(filters));
+  } catch (error) {
+    console.warn('Failed to save FTS filters to localStorage:', error);
+  }
+};
 
 const FullTextSearch = () => {
     const {
@@ -25,26 +60,44 @@ const FullTextSearch = () => {
   const [clearSignal, setClearSignal] = useState<number>(0);
   const [cleared, setCleared] = useState<boolean>(false);
 
+  // Load initial filter state from localStorage
+  const initialFilters = loadFiltersFromStorage();
+
   // Filter states
-  const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
-  const [dateFrom, setDateFrom] = useState<string>(getTodayDate());
-  const [dateTo, setDateTo] = useState<string>(getTodayDate());
-  const [selectedSourceTypes, setSelectedSourceTypes] = useState<SourceType[]>([
-    'earnings_call',
-    'investor_presentation',
-  ]);
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [sourceDateRanges, setSourceDateRanges] = useState<SourceDateRanges>(initialFilters.sourceDateRanges);
+  const [selectedSourceTypes, setSelectedSourceTypes] = useState<SourceType[]>(initialFilters.selectedSourceTypes);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>(initialFilters.selectedCompanies);
 
   // Search params
   const [currentQuery, setCurrentQuery] = useState('');
   const [currentSearchMode, setCurrentSearchMode] = useState<SearchMode>('all_words');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    saveFiltersToStorage({
+      sourceDateRanges,
+      selectedSourceTypes,
+      selectedCompanies,
+    });
+  }, [sourceDateRanges, selectedSourceTypes, selectedCompanies]);
+
   // Fetch companies on mount
   useEffect(() => {
     fetchCompanies();
   }, [fetchCompanies]);
+
+  // Build source_date_ranges for selected sources only
+  const buildSourceDateRanges = () => {
+    const ranges: SourceDateRanges = {};
+    selectedSourceTypes.forEach(sourceType => {
+      if (sourceDateRanges[sourceType]) {
+        ranges[sourceType] = sourceDateRanges[sourceType];
+      }
+    });
+    return Object.keys(ranges).length > 0 ? ranges : undefined;
+  };
 
   // Handle search
   const handleSearch = (query: string, mode: SearchMode, enableSynonyms: boolean) => {
@@ -59,8 +112,7 @@ const FullTextSearch = () => {
       enable_synonyms: enableSynonyms,
       source_types: selectedSourceTypes.length > 0 ? selectedSourceTypes : undefined,
       isins: selectedCompanies.length > 0 ? selectedCompanies : undefined,
-      date_from: dateFrom,
-      date_to: dateTo,
+      source_date_ranges: buildSourceDateRanges(),
       page: 1,
       per_page: 20,
       include_other_snippets: true,
@@ -68,7 +120,7 @@ const FullTextSearch = () => {
     });
   };
 
-  // Clear search: reset input and hide results
+  
   const handleClearSearch = () => {
     setClearSignal((s) => s + 1);
     setCleared(true);
@@ -84,8 +136,7 @@ const FullTextSearch = () => {
       search_mode: currentSearchMode,
       source_types: selectedSourceTypes.length > 0 ? selectedSourceTypes : undefined,
       isins: selectedCompanies.length > 0 ? selectedCompanies : undefined,
-      date_from: dateFrom,
-      date_to: dateTo,
+      source_date_ranges: buildSourceDateRanges(),
       page,
       per_page: 20,
       include_other_snippets: true,
@@ -94,13 +145,11 @@ const FullTextSearch = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Clear all filters
+  // Clear all filters (also clears localStorage)
   const handleClearFilters = () => {
-    const today = getTodayDate();
-    setDateFrom(today);
-    setDateTo(today);
-    setSelectedSourceTypes(['earnings_call', 'investor_presentation']);
-    setSelectedCompanies([]);
+    setSourceDateRanges(DEFAULT_FILTERS.sourceDateRanges);
+    setSelectedSourceTypes(DEFAULT_FILTERS.selectedSourceTypes);
+    setSelectedCompanies(DEFAULT_FILTERS.selectedCompanies);
   };
 
 
@@ -142,10 +191,8 @@ const FullTextSearch = () => {
            {isFiltersExpanded && (
              <div className="h-full overflow-y-auto hide-scrollbar">
                <FilterSidebar
-                 dateFrom={dateFrom}
-                 dateTo={dateTo}
-                 onDateFromChange={setDateFrom}
-                 onDateToChange={setDateTo}
+                 sourceDateRanges={sourceDateRanges}
+                 onSourceDateRangesChange={setSourceDateRanges}
                  selectedSourceTypes={selectedSourceTypes}
                  onSourceTypesChange={setSelectedSourceTypes}
                  selectedCompanies={selectedCompanies}

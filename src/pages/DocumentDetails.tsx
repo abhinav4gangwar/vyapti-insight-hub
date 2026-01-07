@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -43,10 +43,12 @@ const getConfidenceTextColor = (confidence: number): string => {
 export default function DocumentDetails() {
   const { documentType, id } = useParams<{ documentType: string; id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [triggerDetail, setTriggerDetail] = useState<PromptTriggerDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
+  // Initialize activeTab from URL query param, defaulting to 'overview'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
+  const [expandedQuotes, setExpandedQuotes] = useState<Set<number | string>>(new Set());
   const [jsonModalOpen, setJsonModalOpen] = useState(false);
   const [selectedTrigger, setSelectedTrigger] = useState<TriggerDetail | null>(null);
 
@@ -79,7 +81,7 @@ export default function DocumentDetails() {
     }
   };
 
-  const toggleQuoteExpand = (qid: number) => {
+  const toggleQuoteExpand = (qid: number | string) => {
     const newExpanded = new Set(expandedQuotes);
     if (newExpanded.has(qid)) {
       newExpanded.delete(qid);
@@ -393,45 +395,12 @@ export default function DocumentDetails() {
                                 )}
                                 {trigger.was_verified && trigger.verification_reasoning && (
                                   <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                    <h5 className="text-sm font-medium mb-2">
                                       Verification Reasoning
-                                      <Badge variant="outline" className="text-xs">Verified</Badge>
                                     </h5>
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {trigger.verification_reasoning}
                                     </p>
-                                  </div>
-                                )}
-                                {trigger.usage && (
-                                  <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                      <Cpu className="h-4 w-4" />
-                                      Model Information
-                                    </h5>
-                                    <div className="bg-muted p-3 rounded-md space-y-2">
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Model:</span>
-                                        <code className="bg-background px-2 py-1 rounded text-xs">{trigger.usage.model}</code>
-                                      </div>
-                                      {trigger.was_verified && trigger.verifier_model && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Verifier Model:</span>
-                                          <code className="bg-background px-2 py-1 rounded text-xs">{trigger.verifier_model}</code>
-                                        </div>
-                                      )}
-                                      {trigger.processing_time_seconds !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Processing Time:</span>
-                                          <span>{trigger.processing_time_seconds.toFixed(2)}s</span>
-                                        </div>
-                                      )}
-                                      {trigger.total_cost !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Total Cost:</span>
-                                          <span>${trigger.total_cost.toFixed(6)}</span>
-                                        </div>
-                                      )}
-                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -536,45 +505,13 @@ export default function DocumentDetails() {
                                   <div>
                                     <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
                                       Verifier Reasoning
-                                      <Badge variant="outline" className="text-xs">Verified</Badge>
                                     </h5>
                                     <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                       {trigger.verification_reasoning}
                                     </p>
                                   </div>
                                 )}
-                                {trigger.usage && (
-                                  <div>
-                                    <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                      <Cpu className="h-4 w-4" />
-                                      Model Information
-                                    </h5>
-                                    <div className="bg-muted p-3 rounded-md space-y-2">
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">Model:</span>
-                                        <code className="bg-background px-2 py-1 rounded text-xs">{trigger.usage.model}</code>
-                                      </div>
-                                      {trigger.was_verified && trigger.verifier_model && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Verifier Model:</span>
-                                          <code className="bg-background px-2 py-1 rounded text-xs">{trigger.verifier_model}</code>
-                                        </div>
-                                      )}
-                                      {trigger.processing_time_seconds !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Processing Time:</span>
-                                          <span>{trigger.processing_time_seconds.toFixed(2)}s</span>
-                                        </div>
-                                      )}
-                                      {trigger.total_cost !== undefined && (
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="text-muted-foreground">Total Cost:</span>
-                                          <span>${trigger.total_cost.toFixed(6)}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
+                           
                               </div>
                             </div>
                           </CollapsibleContent>

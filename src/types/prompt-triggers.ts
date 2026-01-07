@@ -54,7 +54,7 @@ export interface UsageInfo {
 }
 
 export interface TriggerDetail {
-  qid: number;
+  qid: number | string;
   bucket: string;
   question_text: string;
   answer: string;
@@ -133,7 +133,7 @@ export interface PromptTriggersParams {
   companies?: string;
   buckets?: string;
   questions?: string;
-  sort_by?: 'earning_call_date' | 'company_name';
+  sort_by?: 'earning_call_date' | 'company_name' | 'document_type';
   sort_order?: 'asc' | 'desc';
   include_filter_options?: boolean;
 }

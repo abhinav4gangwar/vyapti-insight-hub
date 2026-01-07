@@ -10,11 +10,11 @@ import { toast } from '@/hooks/use-toast';
 import { authService } from '@/lib/auth';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
-import { ColDef } from 'ag-grid-community';
+import { ColDef, SortChangedEvent } from 'ag-grid-community';
 import { X, Search, ChevronLeft, ChevronRight, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 import axios from 'axios';
-import { getDocumentUrl } from '@/lib/documents-api';
+import { getDocumentUrl, openPdfWithFallback } from '@/lib/documents-api';
 
 // Register ag-grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -86,7 +86,7 @@ export default function DataCatalogue() {
   });
 
   // Sorting states
-  const [sortBy, setSortBy] = useState('fetched_at');
+  const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Track which documents are being analyzed
@@ -119,7 +119,8 @@ export default function DataCatalogue() {
         description: 'Prompt trigger analysis completed successfully. Opening results...',
       });
 
-      // Store analysis data in sessionStorage and open in new tab
+      // Store analysis results in sessionStorage and open the analysis results page
+      // This is a temporary view - stored results are accessed via the Prompt Triggers list
       const analysisKey = `analysis_${Date.now()}`;
       sessionStorage.setItem(analysisKey, JSON.stringify(response.data));
       window.open(`/analysis-results?key=${analysisKey}`, '_blank');
@@ -454,7 +455,7 @@ export default function DataCatalogue() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              window.open(params.data.url, '_blank');
+              openPdfWithFallback(params.data.url);
             }}
             className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
             title="Open PDF in new tab"
@@ -807,6 +808,25 @@ export default function DataCatalogue() {
                     rowData={documents}
                     columnDefs={columnDefs}
                     pagination={false}
+                    onSortChanged={(event: SortChangedEvent) => {
+                      const sortModel = event.api.getColumnState().find(col => col.sort);
+                      if (sortModel) {
+                        // Map AG Grid column IDs to backend sort_by values
+                        const fieldMap: Record<string, string> = {
+                          'date': 'date',
+                          'company_name': 'company_name',
+                          'source_type': 'source_type',
+                          'ingestion_time': 'ingestion_time',
+                          'source': 'source',
+                          'indexed': 'indexed',
+                        };
+                        const backendField = fieldMap[sortModel.colId];
+                        if (backendField) {
+                          setSortBy(backendField);
+                          setSortOrder(sortModel.sort as 'asc' | 'desc');
+                        }
+                      }
+                    }}
                   />
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
