@@ -44,12 +44,12 @@ class TagsApiClient {
 
   // Tag CRUD operations
   async getAllTags(): Promise<Tag[]> {
-    const response = await this.client.get<Tag[]>('/tag');
+    const response = await this.client.get<Tag[]>('/tag/');
     return response.data;
   }
 
   async createTag(name: string): Promise<Tag> {
-    const response = await this.client.post<Tag>('/tag', { name });
+    const response = await this.client.post<Tag>('/tag/', { name });
     return response.data;
   }
 

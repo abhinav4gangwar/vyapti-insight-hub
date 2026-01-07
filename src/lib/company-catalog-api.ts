@@ -82,7 +82,7 @@ class CompanyCatalogApiClient {
 
     const response = await this.client.get<
       CompanyCatalogItem[] | CompanyCatalogPaginatedResponse
-    >("/company-catalog", {
+    >("/company-catalog/", {
       params,
     });
     return response.data;
