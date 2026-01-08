@@ -127,20 +127,21 @@ const App = () => {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          <Route path="/ai-search" element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <AISearch />
-              </DashboardLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/ai-search-normal" element={
+          <Route path="/ai-search-one" element={
             <ProtectedRoute>
               <DashboardLayout>
                 <AISearchNormal />
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          <Route path="/ai-search-two" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AISearch />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          
           <Route path="/data-catalogue" element={
             <ProtectedRoute>
               <DashboardLayout>

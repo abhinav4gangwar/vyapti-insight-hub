@@ -20,16 +20,17 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     href: '/expert-interviews',
     icon: FileText,
   },
+
   {
-    key: 'ai-search',
-    label: 'AI Search',
-    href: '/ai-search',
+    key: 'ai-search-one',
+    label: 'AI Search One',
+    href: '/ai-search-one',
     icon: Search,
   },
-  {
-    key: 'ai-search-normal',
-    label: 'AI Search Normal',
-    href: '/ai-search-normal',
+    {
+    key: 'ai-search-two',
+    label: 'AI Search Two',
+    href: '/ai-search-two',
     icon: Search,
   },
   {
