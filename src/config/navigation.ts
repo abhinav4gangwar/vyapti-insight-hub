@@ -1,4 +1,4 @@
-import { Bell, BellRing, Building2, CarFront, Clipboard, Database, FileText, FolderSearch, LucideIcon, Search, Settings, TextSearch, Sparkles } from 'lucide-react';
+import { Bell, BellRing, Building2, CarFront, ChartNoAxesColumnIncreasing, Clipboard, Database, FileText, FolderSearch, LayoutList, LucideIcon, Search, Settings, Sparkles, TextSearch } from 'lucide-react';
 
 export interface NavigationItem {
   key: string;
@@ -13,6 +13,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Company Search',
     href: '/dashboard',
     icon: Building2,
+  },
+  {
+    key: 'company-catalogue',
+    label: 'Company Catalogue',
+    href: '/company-catalogue',
+    icon: ChartNoAxesColumnIncreasing,
   },
   {
     key: 'expert-interviews',
@@ -49,6 +55,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label:"Vahan Data",
     href:"/vahan-db",
     icon: CarFront,
+  },
+  {
+    key: 'custom-watchlists',
+    label: 'Custom Watchlists',
+    href: '/custom-watchlists',
+    icon: LayoutList,
   },
   {
     key:'anti-dumping-duties',

@@ -9,29 +9,33 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AISearch from "./pages/AISearch";
 import ActivityLogs from "./pages/ActivityLogs";
+import AnalysisResultsView from "./pages/AnalysisResultsView";
 import ChangePassword from "./pages/ChangePassword";
+
+import CompanyCataloge from "./pages/CompanyCataloge";
 import CompanyDetails from "./pages/CompanyDetails";
-import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import Dashboard from "./pages/Dashboard";
 import DataCatalogue from "./pages/DataCatalogue";
+import DocumentDetails from "./pages/DocumentDetails";
 import ExpertInterviewDetails from "./pages/ExpertInterviewDetails";
 import ExpertInterviewsList from "./pages/ExpertInterviewsList";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import PromptRegistry from "./pages/PromptRegistry";
-import PromptTriggers from "./pages/PromptTriggers";
-import DocumentDetails from "./pages/DocumentDetails";
 import PromptTriggerDetailsWrapper from "./pages/PromptTriggerDetailsWrapper";
 import PromptTriggerQuestions from "./pages/PromptTriggerQuestions";
-import AnalysisResultsView from "./pages/AnalysisResultsView";
+import PromptTriggers from "./pages/PromptTriggers";
 import Settings from "./pages/Settings";
 import Triggers from "./pages/Triggers";
+import UnlistedCompanyDetails from "./pages/UnlistedCompanyDetails";
 import DGTRDashboard from "./pages/analytics-dashboards/dgtr-db";
 import InvestigationPage from "./pages/analytics-dashboards/dgtr-investigation-page";
 import VahanDashboardPage from "./pages/analytics-dashboards/vahan-db";
 import ChunkSearchPage from "./pages/chunk-search/ChunkSearchPage";
 import FullTextSearch from "./pages/full-text-search/FullTextSearch";
+import CustomWatchlistPage from "./pages/watchlist-pages/CustomWatchlistPage";
+import IndividualWatchlistPage from "./pages/watchlist-pages/IndividualWatchlistPage";
 
 const queryClient = new QueryClient();
 
@@ -203,10 +207,31 @@ const App = () => {
               </DashboardLayout>
             </ProtectedRoute>
           }/>
+          <Route path="/company-catalogue" element= {
+            <ProtectedRoute>
+              <DashboardLayout>
+                <CompanyCataloge />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }/>
           <Route path="/dgtr-db/:uuid" element={
             <ProtectedRoute>
               <DashboardLayout>
                 <InvestigationPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/custom-watchlists" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <CustomWatchlistPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/custom-watchlists/:isin" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <IndividualWatchlistPage />
               </DashboardLayout>
             </ProtectedRoute>
           } />
