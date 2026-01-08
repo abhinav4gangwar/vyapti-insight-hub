@@ -8,6 +8,7 @@ import { useTokenExpiration } from "@/hooks/use-token-expiration";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AISearch from "./pages/AISearch";
+import AISearchNormal from "./pages/AISearchNormal";
 import ActivityLogs from "./pages/ActivityLogs";
 import AnalysisResultsView from "./pages/AnalysisResultsView";
 import ChangePassword from "./pages/ChangePassword";
@@ -130,13 +131,21 @@ const App = () => {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          <Route path="/ai-search" element={
+          <Route path="/ai-search-one" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AISearchNormal />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/ai-search-two" element={
             <ProtectedRoute>
               <DashboardLayout>
                 <AISearch />
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          
           <Route path="/data-catalogue" element={
             <ProtectedRoute>
               <DashboardLayout>

@@ -4,19 +4,13 @@ import { SourcePopup } from '@/components/ai-search/source-popup'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  ChainOfThought,
-  ChainOfThoughtContent,
-  ChainOfThoughtHeader,
-  ChainOfThoughtSearchResult,
-  ChainOfThoughtSearchResults,
-  ChainOfThoughtStep
-} from '@/components/ui/chain-of-thought'
 import { useBulkChunksContext } from '@/contexts/BulkChunksContext'
 import { toast } from '@/hooks/use-toast'
-import { AlertCircle, CheckCircle, Copy, Filter, RotateCcw, SearchIcon } from 'lucide-react'
+import { AlertCircle, CheckCircle, Copy, Filter, RotateCcw } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
-import { Streamdown } from 'streamdown'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
+import remarkGfm from 'remark-gfm'
 
 interface ComponentStatus {
   component: string
@@ -46,7 +40,7 @@ interface StreamingResultsDisplayProps {
   componentStatuses?: ComponentStatus[]
 }
 
-export function StreamingResultsDisplay({
+export function StreamingResultsDisplayNormal({
   isStreaming,
   onRetry,
   streamedContent = '',
@@ -65,6 +59,7 @@ export function StreamingResultsDisplay({
     type: 'expert_interview' | 'earnings_call' | 'sebi_chunk'
   }>>({})
   const [showDebug, setShowDebug] = useState(false)
+  const [showQueries, setShowQueries] = useState(false)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'earnings_calls' | 'expert_interviews' | 'sebi_chunks'>('all')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const { getChunk } = useBulkChunksContext()
@@ -137,17 +132,11 @@ export function StreamingResultsDisplay({
     return filtered
   }, [referenceMapping, sourceFilter, companyFilter, getChunk])
 
-  // Preprocess content to handle >> nested list syntax and normalize HTML tags
+  // Preprocess content to handle >> nested list syntax
   const preprocessContent = (content: string): string => {
     if (!content) return content
 
-    let processed = content
-
-    // Normalize HTML line breaks in table cells to double spaces + newline (markdown line break)
-    // This helps with complex table cells that have multiple lines
-    processed = processed.replace(/<br\s*\/?>/gi, '  \n')
-
-    const lines = processed.split('\n')
+    const lines = content.split('\n')
     const processedLines: string[] = []
 
     for (let i = 0; i < lines.length; i++) {
@@ -374,47 +363,6 @@ export function StreamingResultsDisplay({
       return <p {...props}>{processedChildren}</p>
     },
 
-    // Handle references in blockquotes
-    blockquote: ({ children, ...props }: any) => {
-      // Recursively process children to handle references
-      const processChildren = (children: any): any => {
-        return React.Children.map(children, (child, index) => {
-          if (typeof child === 'string') {
-            // Process references in string content
-            const parts = child.split(/(\[\d+\])/)
-            return parts.map((part, partIndex) => {
-              const match = part.match(/^\[(\d+)\]$/)
-              if (match) {
-                const refNumber = match[1]
-                return (
-                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                    [{refNumber}]
-                  </ReferenceLink>
-                )
-              }
-              return part
-            })
-          }
-          // If child is a React element, recursively process its children
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as any, {
-              key: child.key || index,
-              children: processChildren((child.props as any).children)
-            })
-          }
-          return child
-        })
-      }
-
-      const processedChildren = processChildren(children)
-
-      return (
-        <blockquote className="border-l-4 border-gray-400 bg-gray-50 pl-4 pr-4 py-3 my-4 italic text-gray-500 rounded-r-md" {...props}>
-          {processedChildren}
-        </blockquote>
-      )
-    },
-
     // Handle references in list items and flatten paragraph content
     li: ({ children, ...props }: any) => {
       // Recursively process children to flatten paragraphs and handle references
@@ -464,24 +412,15 @@ export function StreamingResultsDisplay({
       const className = hasNestedList ? "mb-2 leading-relaxed" : "mb-1 leading-relaxed"
       return <li className={className} {...props}>{processedChildren}</li>
     },
-    // Style headers appropriately with improved visual hierarchy
+    // Style headers appropriately
     h1: ({ children, ...props }: any) => (
-      <h1 className="text-3xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b-2 border-gray-200" {...props}>{children}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-8 mb-4" {...props}>{children}</h1>
     ),
     h2: ({ children, ...props }: any) => (
-      <h2 className="text-2xl font-bold text-gray-900 mt-6 mb-3 pb-1 border-b border-gray-200" {...props}>{children}</h2>
+      <h2 className="text-xl font-bold text-gray-900 mt-6 mb-3" {...props}>{children}</h2>
     ),
     h3: ({ children, ...props }: any) => (
-      <h3 className="text-xl font-semibold text-gray-900 mt-5 mb-2" {...props}>{children}</h3>
-    ),
-    h4: ({ children, ...props }: any) => (
-      <h4 className="text-lg font-semibold text-gray-800 mt-4 mb-2" {...props}>{children}</h4>
-    ),
-    h5: ({ children, ...props }: any) => (
-      <h5 className="text-base font-semibold text-gray-800 mt-3 mb-1" {...props}>{children}</h5>
-    ),
-    h6: ({ children, ...props }: any) => (
-      <h6 className="text-sm font-semibold text-gray-700 mt-3 mb-1" {...props}>{children}</h6>
+      <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2" {...props}>{children}</h3>
     ),
     // Style lists with proper nesting support
     ul: ({ children, ...props }: any) => {
@@ -502,195 +441,31 @@ export function StreamingResultsDisplay({
     },
     // Style emphasis
     strong: ({ children, ...props }: any) => (
-      <strong className="font-semibold text-gray-900" {...props}>{children}</strong>
+      <strong className="font-semibold" {...props}>{children}</strong>
     ),
     em: ({ children, ...props }: any) => (
-      <em className="italic text-gray-800" {...props}>{children}</em>
+      <em className="italic" {...props}>{children}</em>
     ),
-    
-    // Code blocks with enhanced styling
-    code: ({ inline, children, ...props }: any) => {
-      if (inline) {
-        return (
-          <code className="px-1.5 py-0.5 bg-gray-100 text-red-600 rounded text-sm font-mono" {...props}>
-            {children}
-          </code>
-        )
-      }
-      return (
-        <code className="block bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto" {...props}>
-          {children}
-        </code>
-      )
-    },
-    pre: ({ children, ...props }: any) => (
-      <pre className="bg-gray-900 rounded-lg my-4 overflow-x-auto" {...props}>{children}</pre>
-    ),
-    
-    // Horizontal rule
-    hr: ({ ...props }: any) => (
-      <hr className="my-8 border-t-2 border-gray-200" {...props} />
-    ),
-    
-    // Table components with reference handling
-    table: ({ children, ...props }: any) => (
-      <div className="my-6 overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200 table-auto" {...props}>
-          {children}
-        </table>
-      </div>
-    ),
-    
-    thead: ({ children, ...props }: any) => (
-      <thead className="bg-gradient-to-b from-gray-50 to-gray-100" {...props}>
-        {children}
-      </thead>
-    ),
-    
-    tbody: ({ children, ...props }: any) => (
-      <tbody className="bg-white divide-y divide-gray-200" {...props}>
-        {children}
-      </tbody>
-    ),
-    
-    tr: ({ children, ...props }: any) => (
-      <tr className="hover:bg-gray-50 transition-colors" {...props}>
-        {children}
-      </tr>
-    ),
-    
-    th: ({ children, ...props }: any) => {
-      // Process references in table headers
-      const processChildren = (children: any): any => {
-        return React.Children.map(children, (child, index) => {
-          if (typeof child === 'string') {
-            const parts = child.split(/(\[\d+\])/)
-            return parts.map((part, partIndex) => {
-              const match = part.match(/^\[(\d+)\]$/)
-              if (match) {
-                const refNumber = match[1]
-                return (
-                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                    [{refNumber}]
-                  </ReferenceLink>
-                )
-              }
-              return part
-            })
-          }
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as any, {
-              key: child.key || index,
-              children: processChildren((child.props as any).children)
-            })
-          }
-          return child
-        })
-      }
-
-      const processedChildren = processChildren(children)
-
-      return (
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider align-top" {...props}>
-          {processedChildren}
-        </th>
-      )
-    },
-    
-    td: ({ children, ...props }: any) => {
-      // Process references in table cells and handle complex content
-      const processChildren = (children: any): any => {
-        return React.Children.map(children, (child, index) => {
-          if (typeof child === 'string') {
-            // Handle HTML line breaks in markdown tables
-            if (child.includes('<br>') || child.includes('<br/>') || child.includes('<br />')) {
-              const lines = child.split(/<br\s*\/?>/i)
-              return lines.map((line, lineIdx) => (
-                <React.Fragment key={`line-${index}-${lineIdx}`}>
-                  {lineIdx > 0 && <br />}
-                  {(() => {
-                    // Process references in each line
-                    const parts = line.split(/(\[\d+\])/)
-                    return parts.map((part, partIdx) => {
-                      const match = part.match(/^\[(\d+)\]$/)
-                      if (match) {
-                        const refNumber = match[1]
-                        return (
-                          <ReferenceLink key={`ref-${index}-${lineIdx}-${partIdx}`} refNumber={refNumber}>
-                            [{refNumber}]
-                          </ReferenceLink>
-                        )
-                      }
-                      return part
-                    })
-                  })()}
-                </React.Fragment>
-              ))
-            }
-            
-            // Regular reference processing
-            const parts = child.split(/(\[\d+\])/)
-            return parts.map((part, partIndex) => {
-              const match = part.match(/^\[(\d+)\]$/)
-              if (match) {
-                const refNumber = match[1]
-                return (
-                  <ReferenceLink key={`${index}-${partIndex}`} refNumber={refNumber}>
-                    [{refNumber}]
-                  </ReferenceLink>
-                )
-              }
-              return part
-            })
-          }
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as any, {
-              key: child.key || index,
-              children: processChildren((child.props as any).children)
-            })
-          }
-          return child
-        })
-      }
-
-      const processedChildren = processChildren(children)
-
-      return (
-        <td className="px-4 py-3 text-sm text-gray-900 align-top" {...props}>
-          <div className="leading-relaxed">{processedChildren}</div>
-        </td>
-      )
-    },
   }), [referenceMapping, isStreaming])
 
-  // Render content with Streamdown (both streaming and completed)
+  // Render content with React Markdown (both streaming and completed)
   const renderedContent = useMemo(() => {
     if (!streamedContent) return null
 
     const processedContent = preprocessContent(streamedContent)
 
-    try {
-      return (
-        <div className="prose prose-lg max-w-none">
-          <Streamdown
-            parseIncompleteMarkdown={true}
-            isAnimating={isStreaming}
-            components={markdownComponents}
-          >
-            {processedContent}
-          </Streamdown>
-        </div>
-      )
-    } catch (error) {
-      console.error('Error rendering markdown:', error)
-      // Fallback to plain text with basic formatting
-      return (
-        <div className="prose prose-lg max-w-none">
-          <pre className="whitespace-pre-wrap text-sm font-sans">{streamedContent}</pre>
-        </div>
-      )
-    }
-  }, [streamedContent, markdownComponents, isStreaming])
+    return (
+      <div className="prose max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={markdownComponents}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
+    )
+  }, [streamedContent, referenceMapping, isStreaming])
 
   if (error) {
     return (
@@ -815,176 +590,94 @@ export function StreamingResultsDisplay({
 
   return (
     <div className="space-y-6">
-      {/* Search Queries and Processing Pipeline with Chain of Thought */}
-      {(queries || componentStatuses.length > 0) && (
+      {/* Queries Section */}
+      {queries && (
         <Card>
-          <CardContent className="pt-6">
-            <ChainOfThought defaultOpen={true}>
-              <ChainOfThoughtHeader>
-                <div className="flex items-center gap-2">
-                  <span>Search Query Processing</span>
-                  {isStreaming && (
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-blue-600">Processing...</span>
+          <CardHeader>
+            <button
+              onClick={() => setShowQueries(!showQueries)}
+              className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
+            >
+              <CardTitle className="flex items-center gap-2 text-lg">
+                {/* <Zap className="w-5 h-5 text-amber-500" /> */}
+                Search Queries
+              </CardTitle>
+              <span className="text-gray-500">
+                {showQueries ? '▼' : '▶'}
+              </span>
+            </button>
+          </CardHeader>
+          {showQueries && (
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">Extracted Query</h4>
+                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">{queries.extracted_query}</p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                  BM25 Queries ({queries.expansion_metadata.num_bm25})
+                </h4>
+                <div className="space-y-2">
+                  {queries.bm25_queries.map((query, idx) => (
+                    <div key={idx} className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md border border-blue-100">
+                      {query}
                     </div>
-                  )}
-                  {!isStreaming && queries && (
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-                      <span className="text-xs text-green-600">Complete</span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                  Semantic Queries ({queries.expansion_metadata.num_semantic})
+                </h4>
+                <div className="space-y-2">
+                  {queries.semantic_queries.map((query, idx) => (
+                    <div key={idx} className="text-sm text-gray-600 bg-purple-50 p-2 rounded-md border border-purple-100">
+                      {query}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* Component Status Section */}
+      {componentStatuses.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              {/* <Zap className="w-5 h-5 text-blue-500" /> */}
+              Processing Pipeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {componentStatuses.map((status, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="flex-shrink-0">
+                      {status.status === 'completed' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{status.component}</p>
+                      <p className="text-xs text-gray-500">{status.status}</p>
+                    </div>
+                  </div>
+                  {status.execution_time_ms > 0 && (
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{status.execution_time_ms.toFixed(0)}ms</p>
                     </div>
                   )}
                 </div>
-              </ChainOfThoughtHeader>
-              <ChainOfThoughtContent>
-                {queries && (
-                  <>
-                    {/* Step 1: Extracted Query */}
-                    <ChainOfThoughtStep
-                      icon={SearchIcon}
-                      label={
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-semibold text-gray-900">Query Extraction</span>
-                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                        </div>
-                      }
-                      status="complete"
-                    >
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                        <p className="text-sm text-gray-800 font-medium leading-relaxed">{queries.extracted_query}</p>
-                      </div>
-                    </ChainOfThoughtStep>
-
-                    {/* Step 2: BM25 Query Expansion */}
-                    <ChainOfThoughtStep
-                      icon={SearchIcon}
-                      label={
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-semibold text-gray-900">BM25 Query Expansion</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Badge variant="secondary" className="text-xs font-semibold">
-                              {queries.expansion_metadata.num_bm25} queries
-                            </Badge>
-                            {componentStatuses.some(s => s.component.toLowerCase().includes('bm25')) ? (
-                              componentStatuses.find(s => s.component.toLowerCase().includes('bm25'))?.status === 'completed' ? (
-                                <CheckCircle className="w-5 h-5 text-green-500" />
-                              ) : (
-                                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                              )
-                            ) : (
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                            )}
-                          </div>
-                        </div>
-                      }
-                      status={componentStatuses.some(s => s.component.toLowerCase().includes('bm25')) 
-                        ? componentStatuses.find(s => s.component.toLowerCase().includes('bm25'))?.status === 'completed' 
-                          ? 'complete' 
-                          : 'active'
-                        : 'complete'}
-                    >
-                      <ChainOfThoughtSearchResults>
-                        {queries.bm25_queries.map((query, idx) => (
-                          <ChainOfThoughtSearchResult 
-                            key={idx}
-                            className="bg-blue-50 border-blue-300 text-blue-900 hover:bg-blue-100 transition-colors text-sm px-3 py-1.5"
-                          >
-                            {query}
-                          </ChainOfThoughtSearchResult>
-                        ))}
-                      </ChainOfThoughtSearchResults>
-                    </ChainOfThoughtStep>
-
-                    {/* Step 3: Semantic Query Expansion */}
-                    <ChainOfThoughtStep
-                      icon={SearchIcon}
-                      label={
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-semibold text-gray-900">Semantic Query Expansion</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Badge variant="secondary" className="text-xs font-semibold">
-                              {queries.expansion_metadata.num_semantic} queries
-                            </Badge>
-                            {componentStatuses.some(s => s.component.toLowerCase().includes('semantic')) ? (
-                              componentStatuses.find(s => s.component.toLowerCase().includes('semantic'))?.status === 'completed' ? (
-                                <CheckCircle className="w-5 h-5 text-green-500" />
-                              ) : (
-                                <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                              )
-                            ) : (
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                            )}
-                          </div>
-                        </div>
-                      }
-                      status={componentStatuses.some(s => s.component.toLowerCase().includes('semantic')) 
-                        ? componentStatuses.find(s => s.component.toLowerCase().includes('semantic'))?.status === 'completed' 
-                          ? 'complete' 
-                          : 'active'
-                        : 'complete'}
-                    >
-                      <ChainOfThoughtSearchResults>
-                        {queries.semantic_queries.map((query, idx) => (
-                          <ChainOfThoughtSearchResult 
-                            key={idx}
-                            className="bg-purple-50 border-purple-300 text-purple-900 hover:bg-purple-100 transition-colors text-sm px-3 py-1.5"
-                          >
-                            {query}
-                          </ChainOfThoughtSearchResult>
-                        ))}
-                      </ChainOfThoughtSearchResults>
-                    </ChainOfThoughtStep>
-                  </>
-                )}
-
-                {/* Processing Pipeline Steps */}
-                {componentStatuses.length > 0 && componentStatuses.map((status, idx) => {
-                  const isCompleted = status.status === 'completed'
-                  const stepStatus: "complete" | "active" | "pending" = isCompleted ? 'complete' : 'active'
-                  
-                  return (
-                    <ChainOfThoughtStep
-                      key={idx}
-                      icon={isCompleted ? CheckCircle : SearchIcon}
-                      label={
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-semibold text-gray-900">{status.component}</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {status.execution_time_ms > 0 && (
-                              <Badge variant="outline" className="text-xs font-mono font-semibold">
-                                {status.execution_time_ms.toFixed(0)}ms
-                              </Badge>
-                            )}
-                            {isCompleted ? (
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                            ) : (
-                              <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                            )}
-                          </div>
-                        </div>
-                      }
-                      status={stepStatus}
-                    >
-                      <div className={`text-sm p-4 rounded-lg border ${
-                        isCompleted 
-                          ? 'bg-green-50 border-green-300 text-green-900' 
-                          : 'bg-amber-50 border-amber-300 text-amber-900'
-                      }`}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold capitalize">{status.status}</span>
-                          {isCompleted && status.execution_time_ms > 0 && (
-                            <span className="text-xs opacity-75">
-                              • Completed in {status.execution_time_ms.toFixed(0)}ms
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </ChainOfThoughtStep>
-                  )
-                })}
-              </ChainOfThoughtContent>
-            </ChainOfThought>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
