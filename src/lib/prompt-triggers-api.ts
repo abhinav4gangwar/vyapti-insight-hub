@@ -25,7 +25,8 @@ import type {
  * Fetch paginated list of prompt triggers with optional filters
  */
 export async function getPromptTriggers(
-  params: PromptTriggersParams = {}
+  params: PromptTriggersParams = {},
+  signal?: AbortSignal
 ): Promise<PromptTriggersResponse> {
   const client = authService.createAuthenticatedClient();
   const searchParams = new URLSearchParams();
@@ -41,7 +42,7 @@ export async function getPromptTriggers(
   if (params.sort_order) searchParams.append('sort_order', params.sort_order);
   if (params.include_filter_options) searchParams.append('include_filter_options', 'true');
 
-  const response = await client.get(`/prompt-triggers?${searchParams.toString()}`);
+  const response = await client.get(`/prompt-triggers?${searchParams.toString()}`, { signal });
   return response.data;
 }
 

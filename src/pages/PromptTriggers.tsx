@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,9 +50,9 @@ export default function PromptTriggers() {
   const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
   const get30DaysAgo = () => format(subDays(new Date(), 29), 'yyyy-MM-dd');
 
-  // Filter states
-  const [dateFrom, setDateFrom] = useState<string>(get30DaysAgo());
-  const [dateTo, setDateTo] = useState<string>(getTodayDate());
+  // Filter states - empty strings mean "all dates"
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
@@ -95,22 +95,33 @@ export default function PromptTriggers() {
     return question?.question_text || `Question ${qid}`;
   };
 
+  // Track active request for cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Fetch triggers
   const fetchTriggers = useCallback(async (page: number = 1, includeFilters: boolean = false) => {
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+    
     setIsLoading(true);
     try {
       const response = await getPromptTriggers({
         page,
         page_size: 100,
-        date_range_start: dateFrom,
-        date_range_end: dateTo,
+        date_range_start: dateFrom || undefined,
+        date_range_end: dateTo || undefined,
         companies: selectedCompanies.length > 0 ? selectedCompanies.join(',') : undefined,
         buckets: selectedBuckets.length > 0 ? selectedBuckets.join(',') : undefined,
         questions: selectedQuestions.length > 0 ? selectedQuestions.join(',') : undefined,
         sort_by: sortBy,
         sort_order: sortOrder,
         include_filter_options: includeFilters,
-      });
+      }, abortControllerRef.current.signal);
 
       setTriggers(response.data || []);
       setPagination(response.pagination);
@@ -118,7 +129,11 @@ export default function PromptTriggers() {
       if (response.filter_options) {
         setFilterOptions(response.filter_options);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore abort errors
+      if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') {
+        return;
+      }
       toast({
         title: 'Error',
         description: 'Failed to load prompt triggers',
@@ -129,20 +144,33 @@ export default function PromptTriggers() {
     }
   }, [dateFrom, dateTo, selectedCompanies, selectedBuckets, selectedQuestions, sortBy, sortOrder]);
 
+  // Track initial mount to prevent duplicate fetches
+  const isInitialMount = useRef(true);
+
   // Initial load with filter options
   useEffect(() => {
     fetchTriggers(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Refetch when filters change (but not on initial load)
+  // Refetch when page changes (not on initial load since above handles it)
   useEffect(() => {
-    fetchTriggers(currentPage);
-  }, [currentPage, dateFrom, dateTo, selectedCompanies, selectedBuckets, selectedQuestions, sortBy, sortOrder]);
+    if (currentPage !== 1) {
+      fetchTriggers(currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 and refetch when filters change (skip initial mount)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     setCurrentPage(1);
-  }, [dateFrom, dateTo, selectedCompanies, selectedBuckets, selectedQuestions]);
+    fetchTriggers(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo, selectedCompanies, selectedBuckets, selectedQuestions, sortBy, sortOrder]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.total_pages) {
@@ -184,8 +212,8 @@ export default function PromptTriggers() {
   };
 
   const handleClearAllFilters = () => {
-    setDateFrom(get30DaysAgo());
-    setDateTo(getTodayDate());
+    setDateFrom('');
+    setDateTo('');
     setSelectedCompanies([]);
     setSelectedBuckets([]);
     setSelectedQuestions([]);
