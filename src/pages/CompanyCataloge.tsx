@@ -510,7 +510,7 @@ export default function CompanyCatalog() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex flex-col">
+    <div className="flex-1 min-h-0 bg-gradient-subtle flex flex-col overflow-hidden">
       {/* Watchlist modal */}
       {watchlistDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -626,8 +626,8 @@ export default function CompanyCatalog() {
         </div>
       )}
 
-      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
-        <div className="flex flex-1 gap-3">
+      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="flex flex-1 gap-3 overflow-hidden min-h-0">
           {/* Toggle Button for Filters */}
           <div className="flex-shrink-0 pt-4">
             <Button
@@ -647,7 +647,7 @@ export default function CompanyCatalog() {
 
           {/* Filter Sidebar */}
           {isFiltersExpanded && (
-            <div className="flex-shrink-0 space-y-5 pt-4 w-72">
+            <div className="flex-shrink-0 space-y-5 pt-4 w-72 overflow-y-auto max-h-[calc(100vh-120px)]">
               <Card className="shadow-card border-0">
                 <CardContent>
                   <CatalogFilters
