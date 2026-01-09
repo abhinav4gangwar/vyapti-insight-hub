@@ -4,6 +4,8 @@ export interface TriggerQuestion {
   qid: number;
   question_text: string;
   bucket: string;
+  is_active?: boolean;
+  source_shorthand?: string | null;
 }
 
 export interface BucketInfo {

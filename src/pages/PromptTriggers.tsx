@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
@@ -61,6 +62,8 @@ export default function PromptTriggers() {
   const [questionSearch, setQuestionSearch] = useState('');
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set());
+  const [showInactiveQuestions, setShowInactiveQuestions] = useState(false);
+  const [manuallyExpandedBuckets, setManuallyExpandedBuckets] = useState<Set<string>>(new Set());
 
   // Sorting states
   const [sortBy, setSortBy] = useState<'earning_call_date' | 'company_name' | 'document_type'>('earning_call_date');
@@ -210,7 +213,7 @@ export default function PromptTriggers() {
   };
 
   const handleToggleBucketExpand = (bucketName: string) => {
-    setExpandedBuckets(prev => {
+    setManuallyExpandedBuckets(prev => {
       const next = new Set(prev);
       if (next.has(bucketName)) {
         next.delete(bucketName);
@@ -222,18 +225,50 @@ export default function PromptTriggers() {
   };
 
   const getFilteredBucketQuestions = useCallback((bucket: BucketInfo) => {
-    if (!questionSearch.trim()) return bucket.questions;
-    return bucket.questions.filter(q =>
-      q.question_text.toLowerCase().includes(questionSearch.toLowerCase())
-    );
-  }, [questionSearch]);
+    let questions = bucket.questions;
+
+    if (!showInactiveQuestions) {
+      questions = questions.filter(q => q.is_active !== false);
+    }
+
+    if (questionSearch.trim()) {
+      questions = questions.filter(q =>
+        q.question_text.toLowerCase().includes(questionSearch.toLowerCase())
+      );
+    }
+
+    return questions;
+  }, [questionSearch, showInactiveQuestions]);
 
   const bucketHasMatches = useCallback((bucket: BucketInfo) => {
-    if (!questionSearch.trim()) return true;
-    return bucket.questions.some(q =>
+    const questions = showInactiveQuestions
+      ? bucket.questions
+      : bucket.questions.filter(q => q.is_active !== false);
+
+    if (!questionSearch.trim()) return questions.length > 0;
+    return questions.some(q =>
       q.question_text.toLowerCase().includes(questionSearch.toLowerCase())
     );
-  }, [questionSearch]);
+  }, [questionSearch, showInactiveQuestions]);
+
+  // Auto-expand buckets when searching, collapse when search is cleared
+  useEffect(() => {
+    if (!filterOptions?.buckets) return;
+
+    if (questionSearch.trim()) {
+      // Expand all buckets that have matching questions
+      const bucketsToExpand = new Set<string>();
+      filterOptions.buckets.forEach(bucket => {
+        if (bucketHasMatches(bucket)) {
+          bucketsToExpand.add(bucket.name);
+        }
+      });
+      setExpandedBuckets(bucketsToExpand);
+    } else {
+      // When search is cleared, revert to manually expanded buckets
+      setExpandedBuckets(new Set(manuallyExpandedBuckets));
+    }
+  }, [questionSearch, filterOptions?.buckets, bucketHasMatches, manuallyExpandedBuckets]);
 
   const getQuestionBucket = (qid: number): string => {
     const question = filterOptions?.questions.find(q => q.qid === qid);
@@ -508,7 +543,23 @@ export default function PromptTriggers() {
 
                 {/* Question Filter */}
                 <div className="space-y-3 mb-6 pb-6 border-b border-border">
-                  <Label className="text-sm font-medium">Questions</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Questions</Label>
+                    <div className="flex items-center gap-1.5 pr-2">
+                      <Checkbox
+                        id="show-inactive-questions"
+                        checked={showInactiveQuestions}
+                        onCheckedChange={(checked) => setShowInactiveQuestions(checked as boolean)}
+                        className="rounded-sm"
+                      />
+                      <label
+                        htmlFor="show-inactive-questions"
+                        className="text-xs text-foreground/80 cursor-pointer font-medium"
+                      >
+                        Show inactive
+                      </label>
+                    </div>
+                  </div>
 
                   {/* Search Input */}
                   <div className="relative">
@@ -560,7 +611,19 @@ export default function PromptTriggers() {
                           <Collapsible
                             key={bucket.name}
                             open={expandedBuckets.has(bucket.name)}
-                            onOpenChange={() => handleToggleBucketExpand(bucket.name)}
+                            onOpenChange={() => {
+                              handleToggleBucketExpand(bucket.name);
+                              // Update expandedBuckets immediately for controlled behavior
+                              setExpandedBuckets(prev => {
+                                const next = new Set(prev);
+                                if (next.has(bucket.name)) {
+                                  next.delete(bucket.name);
+                                } else {
+                                  next.add(bucket.name);
+                                }
+                                return next;
+                              });
+                            }}
                           >
                             <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 hover:bg-muted text-sm font-medium border-b border-border last:border-0">
                               <div className="flex items-center gap-2">
@@ -617,7 +680,14 @@ export default function PromptTriggers() {
                                             </svg>
                                           )}
                                         </div>
-                                        <span className="line-clamp-2">{question.question_text}</span>
+                                        <span className={`line-clamp-2 ${question.is_active === false ? 'text-muted-foreground italic' : ''}`}>
+                                          {question.question_text}
+                                        </span>
+                                        {question.is_active === false && (
+                                          <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 text-muted-foreground flex-shrink-0">
+                                            Inactive
+                                          </Badge>
+                                        )}
                                       </div>
                                     </button>
                                   );
