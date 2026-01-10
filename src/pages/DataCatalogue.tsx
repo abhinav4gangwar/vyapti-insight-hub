@@ -557,9 +557,9 @@ export default function DataCatalogue() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex flex-col">
-      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
-        <div className="flex gap-4 flex-1">
+    <div className="flex-1 min-h-0 bg-gradient-subtle flex flex-col overflow-hidden">
+      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="flex gap-4 flex-1 overflow-hidden min-h-0">
           {/* Toggle Button for Filters */}
           <div className="flex-shrink-0">
             <Button
@@ -575,7 +575,7 @@ export default function DataCatalogue() {
 
           {/* Filter Sidebar */}
           {isFiltersExpanded && (
-            <div className="w-64 flex-shrink-0 space-y-5">
+            <div className="w-64 flex-shrink-0 space-y-5 overflow-y-auto max-h-[calc(100vh-120px)]">
             <div>
               <h3 className="financial-subheading mb-4 text-base">Filters</h3>
 
