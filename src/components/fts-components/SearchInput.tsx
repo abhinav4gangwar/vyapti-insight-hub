@@ -125,7 +125,7 @@ export const SearchInput = ({ onSearch, isLoading, clearSignal, clearSearch }: S
       </div>
 
       {/* Synonym Toggle */}
-      <div className="flex items-center gap-2">
+      {/* <div className="flex items-center gap-2">
         <Checkbox
           id="enable-synonyms"
           checked={enableSynonyms}
@@ -138,7 +138,7 @@ export const SearchInput = ({ onSearch, isLoading, clearSignal, clearSearch }: S
         >
           Enable synonym expansion (AI-powered)
         </label>
-      </div>
+      </div> */}
     </div>
   );
 };

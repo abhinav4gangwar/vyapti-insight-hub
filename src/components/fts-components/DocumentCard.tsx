@@ -1,10 +1,28 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { openPdfWithFallback } from '@/lib/documents-api';
 import { DocumentMatchesResponse, DocumentResult, SearchMode, SourceType } from '@/pages/full-text-search/fts-types';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, FileText } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+
+// Generate internal document URL based on source type
+const getInternalDocumentUrl = (sourceType: SourceType, documentId: string): string => {
+  switch (sourceType) {
+    case 'earnings_call':
+      return `/documents/earnings_call/${documentId}`;
+    case 'investor_presentation':
+      return `/documents/investor_ppt/${documentId}`;
+    case 'expert_interview':
+      return `/expert-interviews/${documentId}`;
+    case 'sebi_drhp':
+      return `/documents/sebi_doc/${documentId}`;
+    default:
+      return `/documents/${sourceType}/${documentId}`;
+  }
+};
 
 
 interface DocumentCardProps {
@@ -61,17 +79,27 @@ export const DocumentCard = ({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             {document.document_title && (
-              <a
-                href={document.source_url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium flex items-center gap-1"
-              >
-                {document.document_title}
-                <ExternalLink className="h-3 w-3" />
-              </a>
+              <>
+                <Link
+                  to={getInternalDocumentUrl(document.source_type, document.document_id)}
+                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium flex items-center gap-1"
+                >
+                  {document.document_title}
+                  <FileText className="h-3 w-3" />
+                </Link>
+                {document.source_url && (
+                  <button
+                    onClick={() => openPdfWithFallback(document.source_url!)}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 bg-transparent border-none cursor-pointer p-0"
+                    title="Open source PDF"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Source
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

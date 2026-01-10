@@ -172,7 +172,7 @@ class AuthService {
   createAuthenticatedClient() {
     const client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000, // 10 second timeout
+      timeout: 180000, // 3 minute timeout for long-running queries
       headers: {
         'Content-Type': 'application/json',
       },

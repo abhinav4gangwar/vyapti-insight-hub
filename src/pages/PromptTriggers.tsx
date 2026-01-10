@@ -19,6 +19,7 @@ import type {
   FilterOptions,
   BucketInfo,
   TriggerQuestion,
+  PromptTriggerSortField,
 } from '@/types/prompt-triggers';
 
 // Register ag-grid modules
@@ -50,9 +51,9 @@ export default function PromptTriggers() {
   const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
   const get30DaysAgo = () => format(subDays(new Date(), 29), 'yyyy-MM-dd');
 
-  // Filter states - empty strings mean "all dates"
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
+  // Filter states - default to "ALL" date range
+  const [dateFrom, setDateFrom] = useState<string>('2020-01-01');
+  const [dateTo, setDateTo] = useState<string>('2026-12-31');
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
@@ -62,7 +63,7 @@ export default function PromptTriggers() {
   const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
 
   // Sorting states
-  const [sortBy, setSortBy] = useState<'earning_call_date' | 'company_name' | 'document_type'>('earning_call_date');
+  const [sortBy, setSortBy] = useState<PromptTriggerSortField>('earning_call_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Get bucket names from filter options (dynamic)
@@ -101,9 +102,9 @@ export default function PromptTriggers() {
   // Fetch triggers
   const fetchTriggers = useCallback(async (page: number = 1, includeFilters: boolean = false) => {
     // Cancel any in-flight request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    // if (abortControllerRef.current) {
+    //   abortControllerRef.current.abort();
+    // }
     
     // Create new abort controller for this request
     abortControllerRef.current = new AbortController();
@@ -219,7 +220,7 @@ export default function PromptTriggers() {
     setSelectedQuestions([]);
   };
 
-  const handleSortChange = (field: 'earning_call_date' | 'company_name' | 'document_type') => {
+  const handleSortChange = (field: PromptTriggerSortField) => {
     if (field === sortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -228,7 +229,7 @@ export default function PromptTriggers() {
     }
   };
 
-  const getSortIcon = (field: string) => {
+  const getSortIcon = (field: PromptTriggerSortField) => {
     if (sortBy !== field) {
       return <ArrowUpDown className="h-4 w-4" />;
     }
@@ -254,7 +255,7 @@ export default function PromptTriggers() {
         break;
       case 'all':
         setDateFrom('2020-01-01');
-        setDateTo(today);
+        setDateTo('2026-12-31');
         break;
     }
   };
@@ -288,8 +289,16 @@ export default function PromptTriggers() {
     {
       field: 'company_name',
       headerName: 'Company Name',
-      sortable: true,
+      sortable: false, // We handle sorting via backend
       width: 250,
+      headerComponent: () => (
+        <button
+          onClick={() => handleSortChange('company_name')}
+          className="flex items-center gap-1 w-full text-left"
+        >
+          Company Name {getSortIcon('company_name')}
+        </button>
+      ),
       onCellClicked: (params) => {
         if (params.data) {
           window.open(`/companies/${params.data.company_isin}`, '_blank');
@@ -304,8 +313,16 @@ export default function PromptTriggers() {
     {
       field: 'document_type',
       headerName: 'Document Type',
-      sortable: true,
+      sortable: false,
       width: 140,
+      headerComponent: () => (
+        <button
+          onClick={() => handleSortChange('document_type')}
+          className="flex items-center gap-1 w-full text-left"
+        >
+          Doc Type {getSortIcon('document_type')}
+        </button>
+      ),
       cellRenderer: (params: { value: string }) => (
         <Badge variant="outline" className="text-xs">
           {params.value === 'earnings_call' ? 'Earnings Call' : params.value}
@@ -315,22 +332,65 @@ export default function PromptTriggers() {
     {
       field: 'earning_call_date',
       headerName: 'Document Date',
-      sortable: true,
+      sortable: false,
       width: 140,
+      headerComponent: () => (
+        <button
+          onClick={() => handleSortChange('earning_call_date')}
+          className="flex items-center gap-1 w-full text-left"
+        >
+          Date {getSortIcon('earning_call_date')}
+        </button>
+      ),
       valueFormatter: (params) => {
         if (!params.value) return '';
         return format(new Date(params.value), 'MMM dd, yyyy');
       },
     },
+    {
+      field: 'total_triggers',
+      headerName: 'Total',
+      sortable: false,
+      width: 100,
+      headerComponent: () => (
+        <button
+          onClick={() => handleSortChange('total_triggers')}
+          className="flex items-center gap-1 w-full text-left"
+        >
+          Total {getSortIcon('total_triggers')}
+        </button>
+      ),
+      cellRenderer: (params: { value: number }) => (
+        <Badge
+          variant={params.value > 0 ? 'default' : 'secondary'}
+          className={`text-xs ${
+            params.value > 0
+              ? 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-gray-200 text-gray-500'
+          }`}
+        >
+          {params.value}
+        </Badge>
+      ),
+    },
     ...bucketNames.map((bucketName) => ({
+      colId: bucketName,
       headerName: bucketName,
-      sortable: true,
+      sortable: false,
       width: 130,
+      headerComponent: () => (
+        <button
+          onClick={() => handleSortChange(bucketName as PromptTriggerSortField)}
+          className="flex items-center gap-1 w-full text-left text-xs"
+        >
+          {bucketName} {getSortIcon(bucketName as PromptTriggerSortField)}
+        </button>
+      ),
       valueGetter: (params: { data: PromptTrigger | undefined }) =>
         params.data?.bucket_counts[bucketName] ?? 0,
       cellRenderer: BucketCountRenderer,
     })),
-  ], [bucketNames, navigate]);
+  ], [bucketNames, sortBy, sortOrder]);
 
   if (isLoading && triggers.length === 0) {
     return (
@@ -386,7 +446,7 @@ export default function PromptTriggers() {
                       { key: 'today', label: 'Today', check: () => dateFrom === getTodayDate() && dateTo === getTodayDate() },
                       { key: '7days', label: '7 Days', check: () => dateFrom === format(subDays(new Date(), 6), 'yyyy-MM-dd') && dateTo === getTodayDate() },
                       { key: '30days', label: '30 Days', check: () => dateFrom === format(subDays(new Date(), 29), 'yyyy-MM-dd') && dateTo === getTodayDate() },
-                      { key: 'all', label: 'All', check: () => dateFrom === '2020-01-01' && dateTo === getTodayDate() },
+                      { key: 'all', label: 'All', check: () => dateFrom === '2020-01-01' && dateTo === '2026-12-31' },
                     ].map((preset) => (
                       <button
                         key={preset.key}
@@ -574,7 +634,18 @@ export default function PromptTriggers() {
                     >
                       Doc Type {getSortIcon('document_type')}
                     </Button>
+                    <Button
+                      variant={sortBy === 'total_triggers' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleSortChange('total_triggers')}
+                      className="flex items-center gap-1"
+                    >
+                      Total {getSortIcon('total_triggers')}
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Click column headers to sort by bucket counts
+                  </p>
                 </div>
 
                 <Button
@@ -605,16 +676,6 @@ export default function PromptTriggers() {
                       const isCompanyNameCell = target?.closest('[col-id="company_name"]');
                       if (event.data && !isCompanyNameCell) {
                         handleRowClick(event.data);
-                      }
-                    }}
-                    onSortChanged={(event) => {
-                      const sortModel = event.api.getColumnState().find(col => col.sort);
-                      if (sortModel) {
-                        const field = sortModel.colId as 'earning_call_date' | 'company_name' | 'document_type';
-                        if (field === 'earning_call_date' || field === 'company_name' || field === 'document_type') {
-                          setSortBy(field);
-                          setSortOrder(sortModel.sort as 'asc' | 'desc');
-                        }
                       }
                     }}
                     rowClass="cursor-pointer hover:bg-muted/50"

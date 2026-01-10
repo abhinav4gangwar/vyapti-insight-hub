@@ -1,5 +1,10 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchMetadata } from '@/pages/full-text-search/fts-types';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { useState, useMemo } from 'react';
 
 
 
@@ -15,6 +20,25 @@ const SOURCE_TYPE_LABELS: Record<string, string> = {
 };
 
 export const AnalyticsSummary = ({ metadata }: AnalyticsSummaryProps) => {
+  const [isCompanyListExpanded, setIsCompanyListExpanded] = useState(false);
+  const [companySearchTerm, setCompanySearchTerm] = useState('');
+
+  const filteredCompanies = useMemo(() => {
+    if (!companySearchTerm.trim()) {
+      return metadata.company_breakdown;
+    }
+    const searchLower = companySearchTerm.toLowerCase();
+    return metadata.company_breakdown.filter(
+      (company) =>
+        company.company_name.toLowerCase().includes(searchLower) ||
+        (company.isin && company.isin.toLowerCase().includes(searchLower))
+    );
+  }, [metadata.company_breakdown, companySearchTerm]);
+
+  const displayedCompanies = isCompanyListExpanded
+    ? filteredCompanies
+    : filteredCompanies.slice(0, 5);
+
   return (
     <div className="space-y-4 mb-6">
       {/* Summary Stats */}
@@ -67,21 +91,73 @@ export const AnalyticsSummary = ({ metadata }: AnalyticsSummaryProps) => {
         {/* Company Breakdown */}
         {metadata.company_breakdown.length > 0 && (
           <div className="bg-card border border-border rounded-lg p-4">
-            <h4 className="text-sm font-semibold mb-3 text-foreground">
-              Top Companies
-            </h4>
-            <div className="space-y-2">
-              {metadata.company_breakdown.slice(0, 5).map((company, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm">
-                  <span className="truncate flex-1 text-foreground">
-                    {company.company_name}
-                  </span>
-                  <Badge variant="secondary" className="ml-2">
-                    {company.match_count}
-                  </Badge>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-foreground">
+                All Companies ({metadata.company_breakdown.length})
+              </h4>
+              {metadata.company_breakdown.length > 5 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsCompanyListExpanded(!isCompanyListExpanded);
+                    if (isCompanyListExpanded) {
+                      setCompanySearchTerm('');
+                    }
+                  }}
+                  className="h-7 px-2 text-xs"
+                >
+                  {isCompanyListExpanded ? (
+                    <>
+                      Show Less
+                      <ChevronUp className="h-3 w-3 ml-1" />
+                    </>
+                  ) : (
+                    <>
+                      Show All
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
+
+            {isCompanyListExpanded && (
+              <div className="relative mb-3">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input
+                  placeholder="Search companies..."
+                  value={companySearchTerm}
+                  onChange={(e) => setCompanySearchTerm(e.target.value)}
+                  className="h-8 text-sm pl-7"
+                />
+              </div>
+            )}
+
+            <ScrollArea className={isCompanyListExpanded ? 'h-60' : ''}>
+              <div className="space-y-2">
+                {displayedCompanies.map((company, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <span className="truncate flex-1 text-foreground">
+                      {company.company_name}
+                    </span>
+                    <div className="flex gap-2 ml-2">
+                      <Badge variant="outline" className="text-xs">
+                        {company.document_count} docs
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {company.match_count} hits
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {isCompanyListExpanded && filteredCompanies.length === 0 && (
+                  <div className="text-sm text-muted-foreground text-center py-2">
+                    No companies match your search
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </div>
         )}
 

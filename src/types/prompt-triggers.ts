@@ -125,6 +125,17 @@ export interface PromptTriggersStats {
   };
 }
 
+export type PromptTriggerSortField =
+  | 'earning_call_date'
+  | 'company_name'
+  | 'document_type'
+  | 'total_triggers'
+  | 'Business Model'
+  | 'Competitive Advantage'
+  | 'Management Quality'
+  | 'Financial Health'
+  | 'Growth Prospects';
+
 export interface PromptTriggersParams {
   page?: number;
   page_size?: number;
@@ -133,7 +144,7 @@ export interface PromptTriggersParams {
   companies?: string;
   buckets?: string;
   questions?: string;
-  sort_by?: 'earning_call_date' | 'company_name' | 'document_type';
+  sort_by?: PromptTriggerSortField;
   sort_order?: 'asc' | 'desc';
   include_filter_options?: boolean;
 }

@@ -1,5 +1,6 @@
 export type SearchMode = 'all_words' | 'any_word' | 'exact_phrase' | 'literal';
 export type SourceType = 'earnings_call' | 'sebi_drhp' | 'expert_interview' | 'investor_presentation';
+export type SortBy = 'date' | 'hits';
 
 export interface SourceDateRange {
   from_year?: number;
@@ -27,6 +28,8 @@ export interface FTSSearchRequest {
   per_page?: number;
   include_other_snippets?: boolean;
   max_other_snippets?: number;
+  sort_by?: SortBy;
+  limit_per_source?: number;
 }
 
 export interface SnippetMatch {
@@ -55,6 +58,7 @@ export interface CompanyBreakdown {
   company_name: string;
   isin: string | null;
   match_count: number;
+  document_count: number;
 }
 
 export interface SourceTypeBreakdown {
