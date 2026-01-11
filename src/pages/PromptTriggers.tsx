@@ -5,11 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 import { ColDef, RowClickedEvent } from 'ag-grid-community';
-import { X, Search, ChevronLeft, ChevronRight, Sparkles, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, Search, ChevronLeft, ChevronRight, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { getPromptTriggers } from '@/lib/prompt-triggers-api';
 import { getDocumentUrl } from '@/lib/documents-api';
@@ -60,7 +62,9 @@ export default function PromptTriggers() {
   const [companySearch, setCompanySearch] = useState('');
   const [questionSearch, setQuestionSearch] = useState('');
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
-  const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
+  const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set());
+  const [showInactiveQuestions, setShowInactiveQuestions] = useState(false);
+  const [manuallyExpandedBuckets, setManuallyExpandedBuckets] = useState<Set<string>>(new Set());
 
   // Sorting states
   const [sortBy, setSortBy] = useState<PromptTriggerSortField>('earning_call_date');
@@ -80,15 +84,6 @@ export default function PromptTriggers() {
       .filter(company => company.toLowerCase().includes(companySearch.toLowerCase()))
       .slice(0, 10);
   }, [filterOptions?.companies, companySearch]);
-
-  // Filter questions based on search query (client-side)
-  const filteredQuestions = useMemo(() => {
-    if (!filterOptions?.questions) return [];
-    if (!questionSearch.trim()) return filterOptions.questions.slice(0, 15);
-    return filterOptions.questions
-      .filter(q => q.question_text.toLowerCase().includes(questionSearch.toLowerCase()))
-      .slice(0, 15);
-  }, [filterOptions?.questions, questionSearch]);
 
   // Get question text by ID
   const getQuestionText = (qid: number): string => {
@@ -204,8 +199,6 @@ export default function PromptTriggers() {
     if (!selectedQuestions.includes(qid)) {
       setSelectedQuestions([...selectedQuestions, qid]);
     }
-    setQuestionSearch('');
-    setShowQuestionDropdown(false);
   };
 
   const handleRemoveQuestion = (qid: number) => {
@@ -218,6 +211,69 @@ export default function PromptTriggers() {
     setSelectedCompanies([]);
     setSelectedBuckets([]);
     setSelectedQuestions([]);
+  };
+
+  const handleToggleBucketExpand = (bucketName: string) => {
+    setManuallyExpandedBuckets(prev => {
+      const next = new Set(prev);
+      if (next.has(bucketName)) {
+        next.delete(bucketName);
+      } else {
+        next.add(bucketName);
+      }
+      return next;
+    });
+  };
+
+  const getFilteredBucketQuestions = useCallback((bucket: BucketInfo) => {
+    let questions = bucket.questions;
+
+    if (!showInactiveQuestions) {
+      questions = questions.filter(q => q.is_active !== false);
+    }
+
+    if (questionSearch.trim()) {
+      questions = questions.filter(q =>
+        q.question_text.toLowerCase().includes(questionSearch.toLowerCase())
+      );
+    }
+
+    return questions;
+  }, [questionSearch, showInactiveQuestions]);
+
+  const bucketHasMatches = useCallback((bucket: BucketInfo) => {
+    const questions = showInactiveQuestions
+      ? bucket.questions
+      : bucket.questions.filter(q => q.is_active !== false);
+
+    if (!questionSearch.trim()) return questions.length > 0;
+    return questions.some(q =>
+      q.question_text.toLowerCase().includes(questionSearch.toLowerCase())
+    );
+  }, [questionSearch, showInactiveQuestions]);
+
+  // Auto-expand buckets when searching, collapse when search is cleared
+  useEffect(() => {
+    if (!filterOptions?.buckets) return;
+
+    if (questionSearch.trim()) {
+      // Expand all buckets that have matching questions
+      const bucketsToExpand = new Set<string>();
+      filterOptions.buckets.forEach(bucket => {
+        if (bucketHasMatches(bucket)) {
+          bucketsToExpand.add(bucket.name);
+        }
+      });
+      setExpandedBuckets(bucketsToExpand);
+    } else {
+      // When search is cleared, revert to manually expanded buckets
+      setExpandedBuckets(new Set(manuallyExpandedBuckets));
+    }
+  }, [questionSearch, filterOptions?.buckets, bucketHasMatches, manuallyExpandedBuckets]);
+
+  const getQuestionBucket = (qid: number): string => {
+    const question = filterOptions?.questions.find(q => q.qid === qid);
+    return question?.bucket || '';
   };
 
   const handleSortChange = (field: PromptTriggerSortField) => {
@@ -403,20 +459,10 @@ export default function PromptTriggers() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex flex-col">
-      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
-        {/* Header */}
-        <div className="mb-6 animate-fade-in">
-          <h1 className="financial-heading text-3xl mb-2 flex items-center">
-            <Sparkles className="h-8 w-8 mr-3 text-accent" />
-            Prompt Triggers
-          </h1>
-          <p className="financial-body">
-            AI-analyzed documents with identified triggers based on predefined questions
-          </p>
-        </div>
+    <div className="flex-1 min-h-0 bg-gradient-subtle flex flex-col overflow-hidden">
+      <main className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex-1 flex flex-col overflow-hidden min-h-0">
 
-        <div className="flex gap-4 flex-1">
+        <div className="flex gap-4 flex-1 overflow-hidden min-h-0">
           {/* Toggle Button for Filters */}
           <div className="flex-shrink-0">
             <Button
@@ -432,7 +478,7 @@ export default function PromptTriggers() {
 
           {/* Filter Sidebar */}
           {isFiltersExpanded && (
-            <div className="w-72 flex-shrink-0 space-y-5">
+            <div className="w-72 flex-shrink-0 space-y-5 overflow-y-auto max-h-[calc(100vh-120px)]">
               <div>
                 <h3 className="financial-subheading mb-4 text-base">Filters</h3>
 
@@ -564,84 +610,160 @@ export default function PromptTriggers() {
 
                 {/* Question Filter */}
                 <div className="space-y-3 mb-6 pb-6 border-b border-border">
-                  <Label className="text-sm font-medium">Questions</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Questions</Label>
+                    <div className="flex items-center gap-1.5 pr-2">
+                      <Checkbox
+                        id="show-inactive-questions"
+                        checked={showInactiveQuestions}
+                        onCheckedChange={(checked) => setShowInactiveQuestions(checked as boolean)}
+                        className="rounded-sm"
+                      />
+                      <label
+                        htmlFor="show-inactive-questions"
+                        className="text-xs text-foreground/80 cursor-pointer font-medium"
+                      >
+                        Show inactive
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Search Input */}
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder="Search questions..."
                       value={questionSearch}
                       onChange={(e) => setQuestionSearch(e.target.value)}
-                      onFocus={() => setShowQuestionDropdown(true)}
                       className="text-sm pl-8"
                     />
-                    {showQuestionDropdown && filteredQuestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-lg z-10 max-h-64 overflow-y-auto">
-                        {filteredQuestions.map((question) => (
-                          <button
-                            key={question.qid}
-                            onClick={() => handleAddQuestion(question.qid)}
-                            className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b border-border last:border-0"
-                          >
-                            <div className="text-xs text-muted-foreground mb-1">{question.bucket}</div>
-                            <div className="line-clamp-2">{question.question_text}</div>
-                          </button>
+                  </div>
+
+                  {/* Selected Questions Display */}
+                  {selectedQuestions.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted-foreground">
+                        {selectedQuestions.length} selected
+                      </div>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {selectedQuestions.map((qid) => (
+                          <div key={qid} className="flex items-start justify-between gap-2 bg-muted px-2 py-1.5 rounded text-xs">
+                            <div>
+                              <span className="text-muted-foreground">{getQuestionBucket(qid)}: </span>
+                              <span className="line-clamp-2">{getQuestionText(qid)}</span>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveQuestion(qid)}
+                              className="text-muted-foreground hover:text-foreground flex-shrink-0 mt-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
                         ))}
                       </div>
-                    )}
-                  </div>
-                  {selectedQuestions.length > 0 && (
-                    <div className="space-y-2">
-                      {selectedQuestions.map((qid) => (
-                        <div key={qid} className="flex items-center justify-between gap-2 bg-muted px-2 py-1 rounded text-xs">
-                          <span className="truncate">{getQuestionText(qid)}</span>
-                          <button
-                            onClick={() => handleRemoveQuestion(qid)}
-                            className="text-muted-foreground hover:text-foreground flex-shrink-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
                     </div>
                   )}
-                </div>
 
-                {/* Sort Controls */}
-                <div className="space-y-3 mb-6 pb-6 border-b border-border">
-                  <Label className="text-sm font-medium">Sort By</Label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={sortBy === 'earning_call_date' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleSortChange('earning_call_date')}
-                      className="flex items-center gap-1"
-                    >
-                      Date {getSortIcon('earning_call_date')}
-                    </Button>
-                    <Button
-                      variant={sortBy === 'company_name' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleSortChange('company_name')}
-                      className="flex items-center gap-1"
-                    >
-                      Company {getSortIcon('company_name')}
-                    </Button>
-                    <Button
-                      variant={sortBy === 'document_type' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleSortChange('document_type')}
-                      className="flex items-center gap-1"
-                    >
-                      Doc Type {getSortIcon('document_type')}
-                    </Button>
-                    <Button
-                      variant={sortBy === 'total_triggers' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleSortChange('total_triggers')}
-                      className="flex items-center gap-1"
-                    >
-                      Total {getSortIcon('total_triggers')}
-                    </Button>
+                  {/* Collapsible Bucket Sections */}
+                  <div className="space-y-0 border border-border rounded-md">
+                    {filterOptions?.buckets
+                      .filter(bucket => bucketHasMatches(bucket))
+                      .map((bucket) => {
+                        const filteredQuestions = getFilteredBucketQuestions(bucket);
+                        const selectedCount = bucket.questions.filter(q =>
+                          selectedQuestions.includes(q.qid)
+                        ).length;
+
+                        return (
+                          <Collapsible
+                            key={bucket.name}
+                            open={expandedBuckets.has(bucket.name)}
+                            onOpenChange={() => {
+                              handleToggleBucketExpand(bucket.name);
+                              // Update expandedBuckets immediately for controlled behavior
+                              setExpandedBuckets(prev => {
+                                const next = new Set(prev);
+                                if (next.has(bucket.name)) {
+                                  next.delete(bucket.name);
+                                } else {
+                                  next.add(bucket.name);
+                                }
+                                return next;
+                              });
+                            }}
+                          >
+                            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 hover:bg-muted text-sm font-medium border-b border-border last:border-0">
+                              <div className="flex items-center gap-2">
+                                <ChevronDown
+                                  className={`h-4 w-4 transition-transform ${
+                                    expandedBuckets.has(bucket.name) ? '' : '-rotate-90'
+                                  }`}
+                                />
+                                <span>{bucket.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {selectedCount > 0 && (
+                                  <Badge variant="default" className="text-xs h-5">
+                                    {selectedCount}
+                                  </Badge>
+                                )}
+                                <Badge variant="secondary" className="text-xs h-5">
+                                  {filteredQuestions.length}
+                                </Badge>
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="bg-muted/30">
+                                {filteredQuestions.map((question) => {
+                                  const isSelected = selectedQuestions.includes(question.qid);
+                                  return (
+                                    <button
+                                      key={question.qid}
+                                      onClick={() => {
+                                        if (isSelected) {
+                                          handleRemoveQuestion(question.qid);
+                                        } else {
+                                          handleAddQuestion(question.qid);
+                                        }
+                                      }}
+                                      className={`w-full text-left px-4 py-2 text-xs border-b border-border/50 last:border-0 transition-colors ${
+                                        isSelected
+                                          ? 'bg-blue-50 dark:bg-blue-950/30'
+                                          : 'hover:bg-muted/50'
+                                      }`}
+                                    >
+                                      <div className="flex items-start gap-2">
+                                        <div className={`w-4 h-4 mt-0.5 rounded border flex-shrink-0 flex items-center justify-center ${
+                                          isSelected
+                                            ? 'bg-blue-500 border-blue-500'
+                                            : 'border-border'
+                                        }`}>
+                                          {isSelected && (
+                                            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12">
+                                              <path
+                                                fill="currentColor"
+                                                d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z"
+                                              />
+                                            </svg>
+                                          )}
+                                        </div>
+                                        <span className={`line-clamp-2 ${question.is_active === false ? 'text-muted-foreground italic' : ''}`}>
+                                          {question.question_text}
+                                        </span>
+                                        {question.is_active === false && (
+                                          <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 text-muted-foreground flex-shrink-0">
+                                            Inactive
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Click column headers to sort by bucket counts
@@ -661,10 +783,17 @@ export default function PromptTriggers() {
           )}
 
           {/* Main Content */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {triggers.length > 0 ? (
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 min-h-0" style={{ height: 'calc(100vh - 280px)' }}>
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                  <p className="text-sm text-muted-foreground">Loading triggers...</p>
+                </div>
+              </div>
+            ) : triggers.length > 0 ? (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 min-h-0">
                   <AgGridReact
                     theme={themeQuartz}
                     rowData={triggers}
@@ -681,7 +810,7 @@ export default function PromptTriggers() {
                     rowClass="cursor-pointer hover:bg-muted/50"
                   />
                 </div>
-                <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
+                <div className="flex items-center justify-between pt-4 border-t border-border mt-4 flex-shrink-0">
                   <div className="financial-body text-sm text-muted-foreground">
                     Showing {pagination.showing_from} to {pagination.showing_to} of {pagination.total_count} documents
                   </div>
@@ -768,7 +897,7 @@ export default function PromptTriggers() {
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : !isLoading && triggers.length === 0 ? (
               <div className="text-center py-16">
                 <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="financial-subheading mb-2">No Triggers Found</h3>
@@ -779,18 +908,17 @@ export default function PromptTriggers() {
                   View All Documents
                 </Button>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </main>
 
       {/* Click outside handler for dropdowns */}
-      {(showCompanyDropdown || showQuestionDropdown) && (
+      {showCompanyDropdown && (
         <div
           className="fixed inset-0 z-0"
           onClick={() => {
             setShowCompanyDropdown(false);
-            setShowQuestionDropdown(false);
           }}
         />
       )}
